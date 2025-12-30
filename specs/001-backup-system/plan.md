@@ -150,8 +150,8 @@ specs/[###-feature]/
 ### Source Code (repository root)
 
 ```text
-backend/
-├── src/
+src/
+├── backend/
 │   ├── BackupChrono.Api/              # ASP.NET Core Web API
 │   │   ├── Controllers/               # REST API endpoints
 │   │   ├── Hubs/                      # SignalR hubs for real-time updates
@@ -165,62 +165,68 @@ backend/
 │   │   │   └── IBackupOrchestrator.cs
 │   │   ├── Services/                  # Service interfaces
 │   │   └── ValueObjects/              # Schedule, RetentionPolicy, etc.
-│   └── BackupChrono.Infrastructure/   # External integrations
-│       ├── Git/                       # LibGit2Sharp config management
-│       ├── Restic/                    # Direct Restic integration
-│       │   ├── ResticService.cs       # Main restic wrapper
-│       │   ├── ResticClient.cs        # Process spawning
-│       │   └── JsonParsers.cs         # Parse restic JSON output
-│       ├── Protocols/                 # Protocol plugin implementations
-│       │   ├── SmbProtocolPlugin.cs   # SMBLibrary integration
-│       │   ├── SshProtocolPlugin.cs   # SSH.NET integration
-│       │   ├── RsyncProtocolPlugin.cs # Rsync spawning
-│       │   └── ProtocolPluginLoader.cs# Plugin discovery
-│       └── Scheduling/                # Quartz.NET job scheduling
-└── tests/
-    ├── BackupChrono.Core.Tests/               # Unit tests for domain logic
-    ├── BackupChrono.Infrastructure.Tests/     # Infrastructure unit tests
-    │   ├── Git/                               # Git service tests
-    │   └── Protocols/                         # Protocol plugin tests
-    ├── BackupChrono.Infrastructure.Restic.Tests/ # Restic integration tests (CRITICAL)
-    │   ├── ResticVersionTests.cs              # Test restic version compatibility
-    │   ├── ResticBackupTests.cs               # Test backup operations
-    │   ├── ResticRestoreTests.cs              # Test restore operations
-    │   ├── ResticRetentionTests.cs            # Test retention policies
-    │   └── ResticErrorHandlingTests.cs        # Test error scenarios
-    ├── BackupChrono.Api.Tests/                # API integration tests
-    └── BackupChrono.Integration.Tests/        # End-to-end with TestContainers
-
-frontend/
-├── src/
-│   ├── components/                    # Reusable React components
-│   │   ├── common/                    # Buttons, inputs, tables
-│   │   ├── devices/                   # Device cards, device table
-│   │   └── layout/                    # Sidebar, header, navigation
-│   ├── pages/                         # Route-level components
-│   │   ├── Dashboard.tsx
-│   │   ├── DeviceDetail.tsx
-│   │   ├── DeviceSettings.tsx
-│   │   ├── ShareSettings.tsx
-│   │   ├── Configuration.tsx
-│   │   ├── Notifications.tsx
-│   │   └── Browse.tsx
-│   ├── services/                      # API clients
-│   │   ├── api.ts                     # Axios instance
-│   │   ├── deviceService.ts
-│   │   ├── backupService.ts
-│   │   └── configService.ts
-│   ├── hooks/                         # Custom React hooks
-│   ├── types/                         # TypeScript interfaces
-│   └── App.tsx
-└── tests/
-    ├── unit/                          # Vitest + React Testing Library
-    │   ├── components/                # Component tests
-    │   └── hooks/                     # Custom hook tests
-    └── e2e/                           # Playwright end-to-end tests
-        ├── backup-flow.spec.ts        # Full backup workflow
-        ├── restore-flow.spec.ts       # File restore workflow
-        └── configuration.spec.ts      # Config management
+│   ├── BackupChrono.Infrastructure/   # External integrations
+│   │   ├── Git/                       # LibGit2Sharp config management
+│   │   ├── Restic/                    # Direct Restic integration
+│   │   │   ├── ResticService.cs       # Main restic wrapper
+│   │   │   ├── ResticClient.cs        # Process spawning
+│   │   │   └── JsonParsers.cs         # Parse restic JSON output
+│   │   ├── Protocols/                 # Protocol plugin implementations
+│   │   │   ├── SmbProtocolPlugin.cs   # SMBLibrary integration
+│   │   │   ├── SshProtocolPlugin.cs   # SSH.NET integration
+│   │   │   ├── RsyncProtocolPlugin.cs # Rsync spawning
+│   │   │   └── ProtocolPluginLoader.cs# Plugin discovery
+│   │   └── Scheduling/                # Quartz.NET job scheduling
+│   ├── BackupChrono.sln               # Solution file
+│   └── tests/
+│       ├── BackupChrono.Core.Tests/               # Unit tests for domain logic
+│       ├── BackupChrono.Infrastructure.Tests/     # Infrastructure unit tests
+│       │   ├── Git/                               # Git service tests
+│       │   └── Protocols/                         # Protocol plugin tests
+│       ├── BackupChrono.Infrastructure.Restic.Tests/ # Restic integration tests (CRITICAL)
+│       │   ├── ResticVersionTests.cs              # Test restic version compatibility
+│       │   ├── ResticBackupTests.cs               # Test backup operations
+│       │   ├── ResticRestoreTests.cs              # Test restore operations
+│       │   ├── ResticRetentionTests.cs            # Test retention policies
+│       │   └── ResticErrorHandlingTests.cs        # Test error scenarios
+│       ├── BackupChrono.Api.Tests/                # API integration tests
+│       └── BackupChrono.Integration.Tests/        # End-to-end with TestContainers
+│
+├── frontend/
+│   ├── src/
+│   │   ├── components/                    # Reusable React components
+│   │   │   ├── common/                    # Buttons, inputs, tables
+│   │   │   ├── devices/                   # Device cards, device table
+│   │   │   └── layout/                    # Sidebar, header, navigation
+│   │   ├── pages/                         # Route-level components
+│   │   │   ├── Dashboard.tsx
+│   │   │   ├── DeviceDetail.tsx
+│   │   │   ├── DeviceSettings.tsx
+│   │   │   ├── ShareSettings.tsx
+│   │   │   ├── Configuration.tsx
+│   │   │   ├── Notifications.tsx
+│   │   │   └── Browse.tsx
+│   │   ├── services/                      # API clients
+│   │   │   ├── api.ts                     # Axios instance
+│   │   │   ├── deviceService.ts
+│   │   │   ├── backupService.ts
+│   │   │   └── configService.ts
+│   │   ├── hooks/                         # Custom React hooks
+│   │   ├── types/                         # TypeScript interfaces
+│   │   └── App.tsx
+│   └── tests/
+│       ├── unit/                          # Vitest + React Testing Library
+│       │   ├── components/                # Component tests
+│       │   └── hooks/                     # Custom hook tests
+│       └── e2e/                           # Playwright end-to-end tests
+│           ├── backup-flow.spec.ts        # Full backup workflow
+│           ├── restore-flow.spec.ts       # File restore workflow
+│           └── configuration.spec.ts      # Config management
+│
+└── plugins/
+    ├── README.md                         # Plugin development guide
+    └── community/                        # Community protocol plugin DLLs
+        └── .gitkeep                      # Example: NfsProtocolPlugin.dll
 
 docker/
 ├── Dockerfile.backend                 # .NET 8.0 runtime + restic binary (bundled)
@@ -228,27 +234,17 @@ docker/
 ├── docker-compose.yml                 # Local development
 └── docker-compose.prod.yml            # Production deployment
 
-config/
-└── .gitkeep                          # Git repo for config files (volume mount)
-                                      # Structure: devices/*.yaml, shares/*/*.yaml
-
-repository/
-└── .gitkeep                          # Restic repository (volume mount)
-                                      # Initialized on first run (restic init)
-                                      # Structure managed by restic (snapshots, index, keys, data)
-
-plugins/
-├── README.md                         # Plugin development guide
-└── community/                        # Community protocol plugin DLLs
-    └── .gitkeep                      # Example: NfsProtocolPlugin.dll
-
 docs/
 ├── api/                              # OpenAPI/Swagger specs
 ├── architecture/                     # Architecture decision records
 └── deployment/                       # Docker deployment guides
 ```
 
-**Structure Decision**: Web application structure with backend/frontend separation. ASP.NET Core backend provides RESTful API and SignalR for real-time backup status updates. React frontend provides modern, responsive UI. Clear separation allows independent scaling and testing of each tier. Docker Compose orchestrates multi-container deployment matching the spec's Docker-only requirement (FR-064).
+**Note**: `config/` and `repository/` directories are created at deployment time as Docker volume mounts and are not part of the source repository.
+- **config/**: Git repository for configuration files (devices/*.yaml, shares/*/*.yaml) - mounted at runtime
+- **repository/**: Restic repository for backup data - mounted at runtime
+
+**Structure Decision**: Web application structure with backend/frontend separation under `/src` for clean root directory. ASP.NET Core backend provides RESTful API and SignalR for real-time backup status updates. React frontend provides modern, responsive UI. Clear separation allows independent scaling and testing of each tier. Docker Compose orchestrates multi-container deployment matching the spec's Docker-only requirement (FR-064). Runtime directories (`config/`, `repository/`) are created as Docker volume mounts at deployment time.
 
 ## Complexity Tracking
 
