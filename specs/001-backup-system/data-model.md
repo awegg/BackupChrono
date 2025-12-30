@@ -97,15 +97,17 @@ Represents a specific path or mount point on a device to be backed up.
 
 ### Backup
 
-Represents the state of a device at a specific point in time, containing backups of all configured shares.
+Represents a backup snapshot at a specific point in time. Can be either device-level (all shares) or share-level (single share).
 
 **Fields**:
 - `Id`: `string` (unique backup identifier, e.g., "a1b2c3d4")
 - `DeviceId`: `Guid` (required, foreign key → Device)
+- `ShareId`: `Guid?` (optional, foreign key → Share) - Null for device-level backups
 - `DeviceName`: `string` (denormalized for query performance)
+- `ShareName`: `string?` (optional, denormalized) - Share name if share-level backup
 - `Timestamp`: `DateTime` (required, UTC)
 - `Status`: `enum BackupStatus` (required) - Success, Partial, Failed
-- `SharesPaths`: `Dictionary<string, string>` - Share names → paths included in this backup
+- `SharesPaths`: `Dictionary<string, string>` - Share names → paths included (device-level), or single entry (share-level)
 - `FilesNew`: `int` - Number of new files in this backup
 - `FilesChanged`: `int` - Number of changed files
 - `FilesUnmodified`: `int` - Number of unchanged files
@@ -117,8 +119,15 @@ Represents the state of a device at a specific point in time, containing backups
 
 **Relationships**:
 - Many-to-one: Backup → Device
+- Many-to-one: Backup → Share (optional, null for device-level backups)
 - Many-to-many: Backup ↔ DataBlock (via deduplication)
 - One-to-one: Backup ← BackupJob (created by)
+
+**Granularity**:
+- **Device-level backup**: `ShareId` is null, `SharesPaths` contains all configured shares on the device
+- **Share-level backup**: `ShareId` references a specific share, `SharesPaths` contains only that share
+- Default: Device-level (backs up all shares in one operation)
+- Share-level: Used when explicit share-specific backup is triggered via API or when share has independent schedule
 
 **Storage**:
 - Managed by backup engine in repository
@@ -251,9 +260,48 @@ Defines which files and directories to include or exclude from backups.
 - Cannot specify both `ExcludeRegex` and `IncludeOnlyRegex` (conflicting strategies)
 
 **Configuration Cascade**:
-- Global patterns apply to all devices/shares
-- Device patterns merge with global (union)
-- Share patterns override device and global (most specific wins)
+- **Global patterns**: Apply to all devices/shares as baseline
+- **Device patterns**: Merge with global (union) - device patterns are added to global patterns
+- **Share patterns**: Override device and global (complete replacement) - if share defines any patterns, only share patterns apply
+
+**Cascade Semantics** (intentional design for flexibility):
+
+The mixed semantic (device=merge, share=replace) enables two critical use cases:
+
+1. **Additive patterns at device level**: Add device-specific exclusions without repeating global patterns
+2. **Selective override at share level**: Remove unwanted exclusions for specific shares
+
+**Example 1 - Adding patterns at device level**:
+```yaml
+# Global config
+exclude_patterns: ["*.tmp", "*.log"]
+
+# Device override (merge/union)
+exclude_patterns: ["*.iso"]  
+# Effective at device: ["*.tmp", "*.log", "*.iso"] (all three patterns)
+
+# Share with no override (inherits device+global)
+exclude_patterns: null
+# Effective at share: ["*.tmp", "*.log", "*.iso"] (inherited)
+```
+
+**Example 2 - Reducing exclusions at share level**:
+```yaml
+# Global config
+exclude_patterns: ["*.tmp", "*.log", "*.iso"]
+
+# Web server share needs to backup Apache .log files
+# Complete replacement allows removing *.log from exclusions
+exclude_patterns: ["*.tmp", "*.iso", "downloads/"]  
+# Effective: ["*.tmp", "*.iso", "downloads/"] only
+# .log files now INCLUDED in backup (removed from exclusion list)
+```
+
+**Inheritance rules**:
+- If share-level patterns are **null/undefined**: device+global patterns apply (full inheritance)
+- If share-level patterns are **defined** (even empty array): only share patterns apply (complete replacement)
+
+**UI Recommendation**: When editing share patterns in web interface, pre-populate with current effective patterns (device+global merged) as a starting point to simplify adding patterns while keeping inherited ones.
 
 **Default** (Global):
 ```yaml
@@ -316,7 +364,8 @@ public interface IResticService
     Task Prune(string repositoryPath);
     
     // Backup operations
-    Task<Backup> CreateBackup(Device device, Share share, string sourcePath, IncludeExcludeRules rules);
+    Task<Backup> CreateBackup(Device device, Share? share, string sourcePath, IncludeExcludeRules rules);
+    // share: null = device-level (all shares), non-null = share-level (single share)
     Task<BackupProgress> GetBackupProgress(string jobId);
     Task CancelBackup(string jobId);
     
@@ -549,17 +598,19 @@ updated_at: "2025-12-30T10:05:00Z"
    ↓
 3. Load Device and Share configurations (with cascading)
    ↓
-4. Get IProtocolPlugin for device.Protocol
+4. Determine backup scope: device-level (all shares) or share-level (specific share from BackupJob.ShareId)
    ↓
-5. ProtocolPlugin.TestConnection(device)
+5. Get IProtocolPlugin for device.Protocol
    ↓
-6. If WakeOnLanEnabled: ProtocolPlugin.WakeDevice(device)
+6. ProtocolPlugin.TestConnection(device)
    ↓
-7. ProtocolPlugin.MountShare(device, share) → returns local path
+7. If WakeOnLanEnabled: ProtocolPlugin.WakeDevice(device)
    ↓
-8. ResticService.CreateBackup(device, share, localPath, rules)
+8. For each share in scope: ProtocolPlugin.MountShare(device, share) → returns local path
    ↓
-9. Restic process spawns, JSON progress streamed via stdout
+9. ResticService.CreateBackup(device, share?, localPath, rules)
+   ↓
+10. Restic process spawns, JSON progress streamed via stdout
    ↓
 10. SignalR hub broadcasts progress to connected clients
    ↓

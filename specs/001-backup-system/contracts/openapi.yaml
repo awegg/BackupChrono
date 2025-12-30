@@ -871,6 +871,8 @@ components:
           type: string
         password:
           type: string
+          writeOnly: true
+          description: Device password (write-only, never returned in responses)
         wakeOnLanEnabled:
           type: boolean
         wakeOnLanMacAddress:
@@ -898,6 +900,8 @@ components:
           type: string
         password:
           type: string
+          writeOnly: true
+          description: Device password (write-only, never returned in responses)
         wakeOnLanEnabled:
           type: boolean
         wakeOnLanMacAddress:
@@ -1034,8 +1038,15 @@ components:
         deviceId:
           type: string
           format: uuid
+        shareId:
+          type: string
+          format: uuid
+          description: Share ID for share-level backups (null for device-level)
         deviceName:
           type: string
+        shareName:
+          type: string
+          description: Share name for share-level backups (null for device-level)
         timestamp:
           type: string
           format: date-time
@@ -1044,6 +1055,7 @@ components:
           enum: [Success, Partial, Failed]
         sharesPaths:
           type: object
+          description: Share names to paths mapping (all shares for device-level, single entry for share-level)
           additionalProperties:
             type: string
         filesNew:
@@ -1291,6 +1303,8 @@ components:
           type: string
         smtpPassword:
           type: string
+          writeOnly: true
+          description: SMTP password (write-only, never returned in responses)
         smtpUseTls:
           type: boolean
           default: true

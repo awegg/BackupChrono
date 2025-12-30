@@ -11,10 +11,10 @@ The following features are explicitly **not** included in this specification:
 
 - **System/Disk Image Backups**: This system does not create block-level disk images or support bare-metal recovery. It focuses on file-level backups only.
 - **Database Backup Tool**: This is not a specialized database backup tool (e.g., for MySQL dumps, PostgreSQL backups). Database backups should be handled by dedicated tools or exported as files first.
-- **Continuous Data Protection (CDP)**: Real-time or near-real-time continuous backup is not supported. The system operates on scheduled snapshots.
+- **Continuous Data Protection (CDP)**: Real-time or near-real-time continuous backup is not supported. The system operates on scheduled backups.
 - **Client-Side Encryption**: End-to-end encryption where data is encrypted on the source before transmission is not included. Encryption-at-rest in the repository may be handled by storage plugins.
 - **Active Directory Integration**: No built-in AD/LDAP authentication or user directory services.
-- **Application-Aware Backups**: No VSS (Volume Shadow Copy Service) integration or application-specific snapshot coordination.
+- **Application-Aware Backups**: No VSS (Volume Shadow Copy Service) integration or application-specific backup coordination.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -38,7 +38,7 @@ A system administrator sets up the backup system to automatically pull data from
 
 ### User Story 2 - Restore Files from Backups (Priority: P2)
 
-A user needs to recover deleted or corrupted files. They access the web interface, select a device, view its backup history, select a specific backup snapshot, and browse the shares that were backed up. The user can browse the backup as if it were a regular file system, seeing folder structures and file names from any point in time.
+A user needs to recover deleted or corrupted files. They access the web interface, select a device, view its backup history, select a specific backup, and browse the shares that were backed up. The user can browse the backup as if it were a regular file system, seeing folder structures and file names from any point in time.
 
 **Why this priority**: Backups are only useful if data can be restored. This is the second most critical capability - the system must both capture and return data. Without restore, backups are worthless.
 
@@ -46,12 +46,12 @@ A user needs to recover deleted or corrupted files. They access the web interfac
 
 **Acceptance Scenarios**:
 
-1. **Given** multiple devices have backups, **When** the user selects a device, **Then** they see the backup history for that device with all snapshots and their dates/times
-2. **Given** a device's backup history is displayed, **When** the user selects a specific snapshot, **Then** they see all shares that were backed up in that snapshot
-3. **Given** a snapshot is selected, **When** the user browses a share, **Then** they see the complete directory structure as it existed at that point in time
+1. **Given** multiple devices have backups, **When** the user selects a device, **Then** they see the backup history for that device with all backups and their dates/times
+2. **Given** a device's backup history is displayed, **When** the user selects a specific backup, **Then** they see all shares that were backed up in that backup
+3. **Given** a backup is selected, **When** the user browses a share, **Then** they see the complete directory structure as it existed at that point in time
 4. **Given** the user has located a file they need, **When** they click the download button, **Then** the file is downloaded to their local machine
 5. **Given** the user needs multiple files, **When** they select a folder, **Then** they can download the entire folder and its contents
-6. **Given** a user is viewing a device's backup history, **When** they compare two snapshots, **Then** they can see which files changed across all shares on that device
+6. **Given** a user is viewing a device's backup history, **When** they compare two backups, **Then** they can see which files changed across all shares on that device
 
 ---
 
@@ -69,7 +69,7 @@ An administrator needs to ensure backups are running successfully and identify a
 2. **Given** a backup has failed on a device, **When** the administrator views the dashboard, **Then** the failed device/share is clearly highlighted with error information
 3. **Given** backups are running, **When** the administrator views storage statistics, **Then** they see total backup size and space saved through deduplication
 4. **Given** multiple backups are scheduled, **When** the administrator views the dashboard, **Then** they see upcoming scheduled backups organized by device for the next 24 hours
-5. **Given** the administrator clicks on a device, **When** the device detail page loads, **Then** they see complete backup history with all snapshots, success/failure status, and size information for that device
+5. **Given** the administrator clicks on a device, **When** the device detail page loads, **Then** they see complete backup history with all backups, success/failure status, and size information for that device
 
 ---
 
@@ -91,9 +91,9 @@ An administrator needs to add a new device and its shares to the backup system. 
 
 ---
 
-### User Story 5 - Track File History Across Snapshots (Priority: P5)
+### User Story 5 - Track File History Across Backups (Priority: P5)
 
-A user needs to understand when a specific file changed and what the previous versions looked like. They locate the file in the most recent backup, then view its history timeline showing all snapshots where the file existed and when it changed. They can download any historical version.
+A user needs to understand when a specific file changed and what the previous versions looked like. They locate the file in the most recent backup, then view its history timeline showing all backups where the file existed and when it changed. They can download any historical version.
 
 **Why this priority**: This provides advanced forensic capabilities useful for understanding file evolution and recovering from gradual data corruption. It's valuable but builds on the basic restore functionality.
 
@@ -101,8 +101,8 @@ A user needs to understand when a specific file changed and what the previous ve
 
 **Acceptance Scenarios**:
 
-1. **Given** a file exists in multiple snapshots, **When** the user views the file's history, **Then** they see a timeline showing all snapshots containing that file
-2. **Given** the file changed in some snapshots, **When** the user views the timeline, **Then** snapshots where the file changed are marked distinctly from snapshots where it remained unchanged
+1. **Given** a file exists in multiple backups, **When** the user views the file's history, **Then** they see a timeline showing all backups containing that file
+2. **Given** the file changed in some backups, **When** the user views the timeline, **Then** backups where the file changed are marked distinctly from backups where it remained unchanged
 3. **Given** the user has selected a historical version, **When** they download it, **Then** they receive the exact file content from that point in time
 4. **Given** two versions of a file exist, **When** the user selects "compare versions", **Then** they see the differences between those versions
 
@@ -121,7 +121,7 @@ An administrator configures backup sources for Unix/Linux servers using the rsyn
 1. **Given** a Linux server with rsync installed, **When** the administrator configures it as a backup source using rsync protocol, **Then** the system successfully connects and performs a backup
 2. **Given** a large file exists in a backup source, **When** a small change is made to the file and a new backup runs, **Then** only the changed portions are transferred
 3. **Given** a backup source is configured with rsync, **When** a backup runs, **Then** file permissions, ownership, and timestamps are preserved
-4. **Given** rsync is configured for a source, **When** files are deleted on the source, **Then** the backup snapshot reflects the deletions without re-transferring unchanged files
+4. **Given** rsync is configured for a source, **When** files are deleted on the source, **Then** the backup reflects the deletions without re-transferring unchanged files
 
 ---
 
@@ -144,7 +144,7 @@ An administrator configures email notifications to receive daily summaries of ba
 
 ### User Story 8 - Direct Restore to Source Location (Priority: P3)
 
-A user needs to restore files directly back to the original source machine rather than downloading them first. They select files from a backup snapshot and choose "restore to source," and the system pushes the files back to the original location, preserving paths and permissions.
+A user needs to restore files directly back to the original source machine rather than downloading them first. They select files from a backup and choose "restore to source," and the system pushes the files back to the original location, preserving paths and permissions.
 
 **Why this priority**: Direct restore simplifies disaster recovery by eliminating the manual step of downloading and re-uploading files. This is particularly useful for restoring entire directory structures or performing bulk restores.
 
@@ -152,7 +152,7 @@ A user needs to restore files directly back to the original source machine rathe
 
 **Acceptance Scenarios**:
 
-1. **Given** files exist in a backup snapshot, **When** the user selects "restore to source" for those files, **Then** the files are written back to their original paths on the source machine
+1. **Given** files exist in a backup, **When** the user selects "restore to source" for those files, **Then** the files are written back to their original paths on the source machine
 2. **Given** restored files already exist on the source, **When** restore to source is initiated, **Then** the user is prompted to confirm overwrite
 3. **Given** a directory is selected for restore, **When** restore to source runs, **Then** the entire directory structure is recreated on the source with correct permissions
 4. **Given** the source machine is offline, **When** restore to source is attempted, **Then** the system provides a clear error and allows the user to download instead
@@ -188,7 +188,7 @@ An administrator needs to grant different levels of access to multiple users acc
 **Acceptance Scenarios**:
 
 1. **Given** multi-user mode is enabled, **When** an administrator creates a new user account, **Then** the user can log in with their credentials and access the system according to their assigned role
-2. **Given** a user has read-only role, **When** they access the web interface, **Then** they can browse snapshots and download files but cannot modify configuration or trigger backups
+2. **Given** a user has read-only role, **When** they access the web interface, **Then** they can browse backups and download files but cannot modify configuration or trigger backups
 3. **Given** a user has operator role, **When** they access the web interface, **Then** they can trigger backups and download files but cannot modify system configuration
 4. **Given** a user has admin role, **When** they access the web interface, **Then** they can perform all operations including configuration changes and user management
 5. **Given** the system is in single-user mode (default for homelab), **When** a user accesses the web interface, **Then** authentication is handled by external mechanisms (reverse proxy, VPN, network isolation)
@@ -209,7 +209,7 @@ An administrator needs to grant different levels of access to multiple users acc
 - How does the system handle symbolic links and hard links? Symbolic links are stored as metadata only (preserve the link itself without following to target); hard links are treated as independent files
 - What happens when backed-up files have special permissions or ACLs? System stores permissions/ACLs as metadata and preserves them for restoration where the filesystem supports them
 - How does the system handle corrupted data in the backup repository?
-- What happens during a restore if the requested file was deleted in all snapshots?
+- What happens during a restore if the requested file was deleted in all backups?
 - What happens if the repository metadata becomes corrupted? System can reconstruct metadata from the self-describing backup data structure
 - How does the system handle a plugin failure (protocol or storage)? System logs the error, marks the backup as failed, and sends notifications without affecting other backup sources
 - What happens when switching storage backends for an existing repository? System must migrate data or maintain compatibility with the repository format
@@ -234,7 +234,7 @@ An administrator needs to grant different levels of access to multiple users acc
 
 **Backup Operations**
 - **FR-011**: System MUST perform incremental backups, only transferring changed data
-- **FR-012**: System MUST use global deduplication across all devices, shares, and snapshots
+- **FR-012**: System MUST use global deduplication across all devices, shares, and backups
 - **FR-013**: System MUST handle directory trees containing many small files efficiently
 - **FR-014**: System MUST handle individual files of any size (GB to TB scale)
 - **FR-015**: System MUST run backup jobs for shares according to configurable schedules (inherited or overridden)
@@ -253,10 +253,10 @@ An administrator needs to grant different levels of access to multiple users acc
 - **FR-026**: System MUST support device-level configuration overrides for compression, schedules, and retention policies
 - **FR-027**: System MUST support share-level configuration overrides that take precedence over device and global settings
 - **FR-028**: System MUST support configurable compression for backup data
-- **FR-029**: System MUST apply retention policies automatically, removing old snapshots according to rules
-- **FR-030**: System MUST support retention policies for latest, daily, weekly, monthly, and yearly snapshots
+- **FR-029**: System MUST apply retention policies automatically, removing old backups according to rules
+- **FR-030**: System MUST support retention policies for latest, daily, weekly, monthly, and yearly backups
 - **FR-031**: System MUST maintain data integrity through checksum verification
-- **FR-032**: System MUST support repository garbage collection to reclaim space from deleted snapshots
+- **FR-032**: System MUST support repository garbage collection to reclaim space from deleted backups
 - **FR-033**: System MUST preserve symbolic links as metadata without following them to their targets
 - **FR-034**: System MUST store file permissions and ACLs as metadata and restore them where the target filesystem supports them
 
@@ -268,15 +268,15 @@ An administrator needs to grant different levels of access to multiple users acc
 - **FR-039**: Users MUST be able to see upcoming scheduled backups organized by device
 
 **Web Interface - Browsing & Restore**
-- **FR-040**: Users MUST be able to select a device and view its backup history with all snapshots
-- **FR-041**: Users MUST be able to select a specific snapshot from a device's backup history
-- **FR-042**: Users MUST be able to browse all shares backed up in a selected snapshot
-- **FR-043**: Users MUST be able to browse the directory structure within a share snapshot
-- **FR-044**: Users MUST be able to download individual files from any share snapshot
-- **FR-045**: Users MUST be able to download entire folders from any share snapshot
+- **FR-040**: Users MUST be able to select a device and view its backup history with all backups
+- **FR-041**: Users MUST be able to select a specific backup from a device's backup history
+- **FR-042**: Users MUST be able to browse all shares backed up in a selected backup
+- **FR-043**: Users MUST be able to browse the directory structure within a share backup
+- **FR-044**: Users MUST be able to download individual files from any share backup
+- **FR-045**: Users MUST be able to download entire folders from any share backup
 - **FR-046**: Users MUST be able to restore files and folders directly back to the original device/share location
-- **FR-047**: Users MUST be able to compare two snapshots for a device to see what changed across all shares (diff view)
-- **FR-048**: Users MUST be able to view the history timeline for a specific file across all device snapshots
+- **FR-047**: Users MUST be able to compare two backups for a device to see what changed across all shares (diff view)
+- **FR-048**: Users MUST be able to view the history timeline for a specific file across all device backups
 
 **Web Interface - Configuration**
 - **FR-049**: Administrators MUST be able to add and edit devices through the web interface
@@ -308,8 +308,8 @@ An administrator needs to grant different levels of access to multiple users acc
 
 **Repository**
 - **FR-073**: System MUST store backups in repositories using pluggable storage backend implementations
-- **FR-074**: System MUST store all backup metadata (indexes, catalogs, snapshots) within the backup repository itself in a self-describing format
-- **FR-075**: System MUST organize snapshot metadata by device for efficient device-centric queries
+- **FR-074**: System MUST store all backup metadata (indexes, catalogs, backups) within the backup repository itself in a self-describing format
+- **FR-075**: System MUST organize backup metadata by device for efficient device-centric queries
 - **FR-076**: System MUST support integrity checks on the backup repository
 - **FR-077**: System MUST support repair operations for corrupted repository data
 - **FR-078**: System MUST support multiple storage backend plugins (local filesystem, S3-compatible, cloud storage providers)
@@ -322,7 +322,7 @@ An administrator needs to grant different levels of access to multiple users acc
 - **FR-083**: System MUST provide access to logs through both the web interface and filesystem
 - **FR-084**: System MUST expose health check endpoints for repository integrity, backup job status, and storage capacity
 - **FR-085**: System MUST log all backup operations with device, share, timestamps, and status
-- **FR-086**: System MUST log all restore operations with device, share, timestamp, snapshot identifier, and file list
+- **FR-086**: System MUST log all restore operations with device, share, timestamp, backup identifier, and file list
 - **FR-087**: System MUST pause all backup operations when repository storage is exhausted
 - **FR-088**: System MUST send critical alerts when backup operations are paused due to storage constraints
 - **FR-089**: System MUST support email notifications for backup failures, successes, and daily summaries organized by device
@@ -330,7 +330,7 @@ An administrator needs to grant different levels of access to multiple users acc
 
 **API & Extensibility**
 - **FR-091**: System MUST provide an API for triggering backups programmatically for specific devices or shares
-- **FR-092**: System MUST provide an API for querying snapshot history organized by device
+- **FR-092**: System MUST provide an API for querying backup history organized by device
 - **FR-093**: System MUST provide an API for managing policies at global, device, and share levels
 - **FR-094**: System MUST provide an API for querying configuration history from Git
 - **FR-095**: System MUST provide a plugin API for registering new data pull protocol implementations
@@ -347,13 +347,13 @@ An administrator needs to grant different levels of access to multiple users acc
 
 - **Share**: Represents a specific path or mount point on a device to be backed up (e.g., /data, C:\Users, /var/www). Contains share path, optional share-level configuration overrides (schedule, retention, patterns). Multiple shares can exist under one device. Share-level overrides take precedence over device and global settings.
 
-- **Snapshot**: Represents the state of a device at a specific point in time, containing backups of all configured shares. Contains timestamp, device reference, status, and references to deduplicated data blocks for each share. Snapshots are organized by device for easy device-centric navigation and history viewing.
+- **Backup**: Represents the state of a device at a specific point in time, containing backups of all configured shares. Can be device-level (all shares) or share-level (single share). Contains timestamp, device reference, optional share reference, status, and references to deduplicated data blocks. Backups are organized by device for easy device-centric navigation and history viewing.
 
-- **Data Block**: Represents a deduplicated chunk of file data. Multiple files and snapshots can reference the same block. Blocks are stored in the repository and tracked by checksums for integrity.
+- **Data Block**: Represents a deduplicated chunk of file data. Multiple files and backups can reference the same block. Blocks are stored in the repository and tracked by checksums for integrity.
 
 - **Backup Job**: Represents a scheduled or on-demand execution of a backup operation. Contains source reference, start time, end time, status, transferred data size, and error messages if applicable.
 
-- **Retention Policy**: Defines rules for how long snapshots should be kept. Contains counts for latest, daily, weekly, monthly, and yearly snapshots. Applied automatically to remove old snapshots.
+- **Retention Policy**: Defines rules for how long backups should be kept. Contains counts for latest, daily, weekly, monthly, and yearly backups. Applied automatically to remove old backups.
 
 - **Include/Exclude Rule**: Defines patterns for which files and directories to include or exclude from backups. Supports glob patterns and regex patterns. Can be defined at global or per-source scope with host-specific overrides.
 
@@ -369,7 +369,7 @@ An administrator needs to grant different levels of access to multiple users acc
 
 - **Storage Backend Plugin**: Represents a pluggable storage destination implementation (local filesystem, S3, Google Drive, Azure Blob, etc.). Each plugin handles data persistence, retrieval, and repository operations for its specific storage system. Plugins can be added without modifying core system code.
 
-- **Repository**: Represents the storage location for all backup data and metadata. Contains deduplicated blocks, snapshot metadata, backup catalogs, and integrity information in a self-describing format that requires no external database. Supports operations like garbage collection and repair.
+- **Repository**: Represents the storage location for all backup data and metadata. Contains deduplicated blocks, backup metadata, backup catalogs, and integrity information in a self-describing format that requires no external database. Supports operations like garbage collection and repair.
 
 ### Assumptions
 
@@ -378,7 +378,7 @@ An administrator needs to grant different levels of access to multiple users acc
 - Device-level settings are appropriate defaults for most shares on that device
 - Share-level overrides are used sparingly for exceptions
 - The system will be deployed on a server with sufficient storage for expected backup data
-- System time is synchronized (NTP) for accurate scheduling and snapshot timestamps
+- System time is synchronized (NTP) for accurate scheduling and backup timestamps
 - Web interface access will be secured at the network or reverse proxy level (not specifying authentication mechanism here)
 - Most files in backup sources are relatively stable (not constantly changing), making deduplication effective
 - Backup sources use standard file systems with UTF-8 compatible file naming
@@ -429,7 +429,7 @@ An administrator needs to grant different levels of access to multiple users acc
 
 **Storage Efficiency**
 - **SC-007**: Global deduplication reduces total storage requirements by at least 40% for typical file server workloads
-- **SC-008**: Repository garbage collection reclaims space from deleted snapshots within 24 hours
+- **SC-008**: Repository garbage collection reclaims space from deleted backups within 24 hours
 
 **Usability**
 - **SC-009**: Administrators can configure a new backup source in under 5 minutes using the web interface
