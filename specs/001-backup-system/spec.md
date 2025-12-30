@@ -20,70 +20,74 @@ The following features are explicitly **not** included in this specification:
 
 ### User Story 1 - Automated Scheduled Backups (Priority: P1)
 
-A system administrator sets up the backup system to automatically pull data from network shares and remote servers during off-hours. The administrator configures which sources to back up, when backups should run, and what retention policies to apply. The system then runs autonomously, creating incremental backups and managing disk space according to the configured policies.
+A system administrator sets up the backup system to automatically pull data from devices and their shares during off-hours. The administrator first adds devices (servers, NAS, workstations), then configures which shares on each device to back up. Configuration cascades from defaults to device-level to share-level overrides. The system then runs autonomously, creating incremental backups and managing disk space according to the configured policies.
 
 **Why this priority**: This is the core functionality of the backup system. Without automated backups, the system provides no value. This represents the fundamental "backup data without user intervention" capability that everything else builds upon.
 
-**Independent Test**: Can be fully tested by configuring one backup source with a simple schedule, running a backup, and verifying that data was captured. Delivers immediate value by protecting one data source.
+**Independent Test**: Can be fully tested by configuring one device with one share, setting a simple schedule, running a backup, and verifying that data was captured. Delivers immediate value by protecting one data source.
 
 **Acceptance Scenarios**:
 
-1. **Given** a network share is accessible, **When** the administrator adds it as a backup source with a daily schedule at 2 AM, **Then** the system automatically creates backups each night at 2 AM
-2. **Given** a backup job is scheduled, **When** the scheduled time arrives, **Then** the system pulls data from the source without requiring manual intervention
-3. **Given** multiple backup sources are configured with different schedules, **When** each schedule time arrives, **Then** each source is backed up independently according to its schedule
+1. **Given** a device with a network share is accessible, **When** the administrator adds the device and configures a share with a daily schedule at 2 AM, **Then** the system automatically creates backups each night at 2 AM
+2. **Given** a backup job is scheduled for a share, **When** the scheduled time arrives, **Then** the system pulls data from the share without requiring manual intervention
+3. **Given** multiple devices with shares are configured with different schedules, **When** each schedule time arrives, **Then** each share is backed up independently according to its schedule
 4. **Given** a backup completes successfully, **When** the next scheduled backup runs, **Then** only changed data is backed up (incremental backup)
+5. **Given** a device-level schedule is configured, **When** a share on that device has no schedule override, **Then** the share uses the device-level schedule
 
 ---
 
 ### User Story 2 - Restore Files from Backups (Priority: P2)
 
-A user needs to recover deleted or corrupted files. They access the web interface, browse through available backup snapshots, locate the files they need, and download them. The user can browse the backup as if it were a regular file system, seeing folder structures and file names from any point in time.
+A user needs to recover deleted or corrupted files. They access the web interface, select a device, view its backup history, select a specific backup snapshot, and browse the shares that were backed up. The user can browse the backup as if it were a regular file system, seeing folder structures and file names from any point in time.
 
 **Why this priority**: Backups are only useful if data can be restored. This is the second most critical capability - the system must both capture and return data. Without restore, backups are worthless.
 
-**Independent Test**: Can be tested by creating a backup of test files, then using the web UI to browse and download those files. Delivers value by proving data can be recovered.
+**Independent Test**: Can be tested by creating a backup of test files, then using the web UI to select the device, view backup history, and browse/download files. Delivers value by proving data can be recovered.
 
 **Acceptance Scenarios**:
 
-1. **Given** multiple backup snapshots exist, **When** the user opens the web interface, **Then** they see a list of available snapshots with dates and times
-2. **Given** a snapshot is selected, **When** the user browses the snapshot, **Then** they see the complete directory structure as it existed at that point in time
-3. **Given** the user has located a file they need, **When** they click the download button, **Then** the file is downloaded to their local machine
-4. **Given** the user needs multiple files, **When** they select a folder, **Then** they can download the entire folder and its contents
-5. **Given** a user is browsing a snapshot, **When** they compare it to a different snapshot, **Then** they can see which files changed between those snapshots
+1. **Given** multiple devices have backups, **When** the user selects a device, **Then** they see the backup history for that device with all snapshots and their dates/times
+2. **Given** a device's backup history is displayed, **When** the user selects a specific snapshot, **Then** they see all shares that were backed up in that snapshot
+3. **Given** a snapshot is selected, **When** the user browses a share, **Then** they see the complete directory structure as it existed at that point in time
+4. **Given** the user has located a file they need, **When** they click the download button, **Then** the file is downloaded to their local machine
+5. **Given** the user needs multiple files, **When** they select a folder, **Then** they can download the entire folder and its contents
+6. **Given** a user is viewing a device's backup history, **When** they compare two snapshots, **Then** they can see which files changed across all shares on that device
 
 ---
 
 ### User Story 3 - Monitor Backup Health (Priority: P3)
 
-An administrator needs to ensure backups are running successfully and identify any issues. They access a dashboard that shows the status of all backup sources, when they were last backed up successfully, how much space is being used, and how much space is saved through deduplication. If any backups fail, alerts are clearly visible.
+An administrator needs to ensure backups are running successfully and identify any issues. They access a dashboard that shows the status of all devices and their shares, when they were last backed up successfully, how much space is being used, and how much space is saved through deduplication. Clicking on a device shows detailed backup history for that device. If any backups fail, alerts are clearly visible.
 
 **Why this priority**: While the system can run automatically, administrators need visibility to ensure everything is working correctly. This provides confidence and early warning of problems.
 
-**Independent Test**: Can be tested by setting up backups and accessing the dashboard to view their status. Delivers value by providing operational visibility and peace of mind.
+**Independent Test**: Can be tested by setting up backups and accessing the dashboard to view device status and history. Delivers value by providing operational visibility and peace of mind.
 
 **Acceptance Scenarios**:
 
-1. **Given** the administrator opens the web interface, **When** they view the dashboard, **Then** they see the last backup time for each configured source
-2. **Given** a backup has failed, **When** the administrator views the dashboard, **Then** the failed backup is clearly highlighted with error information
+1. **Given** the administrator opens the web interface, **When** they view the dashboard, **Then** they see the last backup time for each configured device and its shares
+2. **Given** a backup has failed on a device, **When** the administrator views the dashboard, **Then** the failed device/share is clearly highlighted with error information
 3. **Given** backups are running, **When** the administrator views storage statistics, **Then** they see total backup size and space saved through deduplication
-4. **Given** multiple backups are scheduled, **When** the administrator views the dashboard, **Then** they see upcoming scheduled backups for the next 24 hours
+4. **Given** multiple backups are scheduled, **When** the administrator views the dashboard, **Then** they see upcoming scheduled backups organized by device for the next 24 hours
+5. **Given** the administrator clicks on a device, **When** the device detail page loads, **Then** they see complete backup history with all snapshots, success/failure status, and size information for that device
 
 ---
 
 ### User Story 4 - Configure Backup Sources via Web UI (Priority: P4)
 
-An administrator needs to add a new network share or server to the backup system. Instead of editing configuration files, they use the web interface to add the source, specify connection credentials, define include/exclude patterns, set the backup schedule, and configure retention policies. Changes take effect immediately.
+An administrator needs to add a new device and its shares to the backup system. Instead of editing configuration files, they use the web interface to: (1) add a device with connection credentials and device-level settings, (2) add shares under that device with share-specific overrides. Configuration cascades from global defaults → device-level → share-level. Changes take effect immediately.
 
 **Why this priority**: While configuration can initially be done via files, a web UI makes the system more accessible to non-technical users and reduces errors. This is valuable but not essential for core functionality.
 
-**Independent Test**: Can be tested by using the web UI to add a new backup source and verify it appears in the configuration. Delivers value by making administration easier.
+**Independent Test**: Can be tested by using the web UI to add a new device with shares and verify the hierarchy appears in the configuration. Delivers value by making administration easier.
 
 **Acceptance Scenarios**:
 
-1. **Given** the administrator is logged into the web interface, **When** they click "Add Backup Source", **Then** they see a form to enter source details (type, address, credentials)
-2. **Given** the administrator has entered source details, **When** they save the configuration, **Then** the new source appears in the list of backup sources
-3. **Given** a backup source exists, **When** the administrator edits its include/exclude patterns, **Then** the next backup respects the updated patterns
-4. **Given** the administrator configures a retention policy, **When** they save it, **Then** old snapshots are automatically removed according to the policy
+1. **Given** the administrator is logged into the web interface, **When** they click "Add Device", **Then** they see a form to enter device details (name, protocol, host, credentials)
+2. **Given** a device exists, **When** the administrator clicks "Add Share" for that device, **Then** they see a form to configure the share path and optional overrides for schedule, retention, and patterns
+3. **Given** a device has device-level settings configured, **When** a share on that device has no overrides, **Then** the share inherits the device-level settings
+4. **Given** a share has explicit overrides, **When** the administrator views the effective configuration, **Then** the share-level overrides take precedence over device and global defaults
+5. **Given** the administrator edits include/exclude patterns at device level, **When** they save the configuration, **Then** all shares on that device without overrides use the updated patterns
 
 ---
 
@@ -214,120 +218,136 @@ An administrator needs to grant different levels of access to multiple users acc
 
 ### Functional Requirements
 
+**Device & Share Management**
+- **FR-001**: System MUST organize backup sources in a two-level hierarchy: Device → Shares
+- **FR-002**: System MUST allow defining devices with connection information (protocol, host, credentials)
+- **FR-003**: System MUST allow defining multiple shares under each device with share-specific paths
+- **FR-004**: System MUST cascade configuration from global defaults → device-level → share-level (most specific wins)
+- **FR-005**: System MUST display backup history organized by device with all shares visible under each device
+
 **Source Connectivity**
-- **FR-001**: System MUST connect to SMB/CIFS network shares natively without requiring manual mounting
-- **FR-002**: System MUST connect to remote servers via SSH/SFTP
-- **FR-003**: System MUST connect to remote servers via rsync protocol for efficient delta transfers
-- **FR-004**: System MUST authenticate to backup sources using configurable credentials
-- **FR-005**: System MUST operate as a central pull-based server (no client software on target machines)
+- **FR-006**: System MUST connect to SMB/CIFS network shares natively without requiring manual mounting
+- **FR-007**: System MUST connect to remote servers via SSH/SFTP
+- **FR-008**: System MUST connect to remote servers via rsync protocol for efficient delta transfers
+- **FR-009**: System MUST authenticate to backup sources using credentials configured at device level
+- **FR-010**: System MUST operate as a central pull-based server (no client software on target machines)
 
 **Backup Operations**
-- **FR-006**: System MUST perform incremental backups, only transferring changed data
-- **FR-007**: System MUST use global deduplication across all backup sources and all snapshots
-- **FR-008**: System MUST handle directory trees containing many small files efficiently
-- **FR-009**: System MUST handle individual files of any size (GB to TB scale)
-- **FR-010**: System MUST run backup jobs according to configurable schedules
-- **FR-011**: System MUST run backups automatically without user intervention
-- **FR-012**: System MUST run backups during configurable time windows (e.g., off-hours only)
-- **FR-013**: System MUST retry failed backups automatically according to configurable retry policies
-- **FR-014**: System MUST skip scheduled backups when a previous backup of the same source is still running
-- **FR-015**: System MUST support Wake-on-LAN to wake sleeping backup sources before backup jobs
-- **FR-016**: System MUST support blackout periods where backups are prevented during specified times or days
+- **FR-011**: System MUST perform incremental backups, only transferring changed data
+- **FR-012**: System MUST use global deduplication across all devices, shares, and snapshots
+- **FR-013**: System MUST handle directory trees containing many small files efficiently
+- **FR-014**: System MUST handle individual files of any size (GB to TB scale)
+- **FR-015**: System MUST run backup jobs for shares according to configurable schedules (inherited or overridden)
+- **FR-016**: System MUST run backups automatically without user intervention
+- **FR-017**: System MUST run backups during configurable time windows (e.g., off-hours only)
+- **FR-018**: System MUST retry failed backups automatically according to configurable retry policies
+- **FR-019**: System MUST skip scheduled backups when a previous backup of the same share is still running
+- **FR-020**: System MUST support Wake-on-LAN at device level to wake sleeping devices before backup jobs
+- **FR-021**: System MUST support blackout periods where backups are prevented during specified times or days
 
 **Data Management**
-- **FR-017**: System MUST support include/exclude rules using glob patterns for files and directories
-- **FR-018**: System MUST support regex-based file exclusion patterns (BackupFilesExclude)
-- **FR-019**: System MUST support regex-based inclusion-only patterns (BackupFilesOnly)
-- **FR-020**: System MUST apply include/exclude rules at both per-source and global levels
-- **FR-021**: System MUST support host-specific configuration overrides for compression, schedules, and retention policies
-- **FR-022**: System MUST support configurable compression for backup data
-- **FR-023**: System MUST apply retention policies automatically, removing old snapshots according to rules
-- **FR-024**: System MUST support retention policies for latest, daily, weekly, monthly, and yearly snapshots
-- **FR-025**: System MUST maintain data integrity through checksum verification
-- **FR-026**: System MUST support repository garbage collection to reclaim space from deleted snapshots
-- **FR-027**: System MUST preserve symbolic links as metadata without following them to their targets
-- **FR-028**: System MUST store file permissions and ACLs as metadata and restore them where the target filesystem supports them
+- **FR-022**: System MUST support include/exclude rules using glob patterns for files and directories
+- **FR-023**: System MUST support regex-based file exclusion patterns (BackupFilesExclude)
+- **FR-024**: System MUST support regex-based inclusion-only patterns (BackupFilesOnly)
+- **FR-025**: System MUST apply include/exclude rules at global, device, and share levels with share-level taking precedence
+- **FR-026**: System MUST support device-level configuration overrides for compression, schedules, and retention policies
+- **FR-027**: System MUST support share-level configuration overrides that take precedence over device and global settings
+- **FR-028**: System MUST support configurable compression for backup data
+- **FR-029**: System MUST apply retention policies automatically, removing old snapshots according to rules
+- **FR-030**: System MUST support retention policies for latest, daily, weekly, monthly, and yearly snapshots
+- **FR-031**: System MUST maintain data integrity through checksum verification
+- **FR-032**: System MUST support repository garbage collection to reclaim space from deleted snapshots
+- **FR-033**: System MUST preserve symbolic links as metadata without following them to their targets
+- **FR-034**: System MUST store file permissions and ACLs as metadata and restore them where the target filesystem supports them
 
 **Web Interface - Dashboard**
-- **FR-029**: Users MUST be able to view the last backup time for each source
-- **FR-030**: Users MUST be able to see backup status (success/failure) for each source
-- **FR-031**: Users MUST be able to view backup size and deduplication savings
-- **FR-032**: Users MUST be able to see upcoming scheduled backups
+- **FR-035**: Users MUST be able to view devices with their backup status and last backup time
+- **FR-036**: Users MUST be able to click on a device to view complete backup history for that device
+- **FR-037**: Users MUST be able to see backup status (success/failure) for each device and share
+- **FR-038**: Users MUST be able to view backup size and deduplication savings
+- **FR-039**: Users MUST be able to see upcoming scheduled backups organized by device
 
 **Web Interface - Browsing & Restore**
-- **FR-033**: Users MUST be able to browse available backup snapshots
-- **FR-034**: Users MUST be able to browse the directory structure within a snapshot
-- **FR-035**: Users MUST be able to download individual files from any snapshot
-- **FR-036**: Users MUST be able to download entire folders from any snapshot
-- **FR-037**: Users MUST be able to restore files and folders directly back to the original source location
-- **FR-038**: Users MUST be able to compare two snapshots to see what changed (diff view)
-- **FR-039**: Users MUST be able to view the history timeline for a specific file across snapshots
+- **FR-040**: Users MUST be able to select a device and view its backup history with all snapshots
+- **FR-041**: Users MUST be able to select a specific snapshot from a device's backup history
+- **FR-042**: Users MUST be able to browse all shares backed up in a selected snapshot
+- **FR-043**: Users MUST be able to browse the directory structure within a share snapshot
+- **FR-044**: Users MUST be able to download individual files from any share snapshot
+- **FR-045**: Users MUST be able to download entire folders from any share snapshot
+- **FR-046**: Users MUST be able to restore files and folders directly back to the original device/share location
+- **FR-047**: Users MUST be able to compare two snapshots for a device to see what changed across all shares (diff view)
+- **FR-048**: Users MUST be able to view the history timeline for a specific file across all device snapshots
 
 **Web Interface - Configuration**
-- **FR-040**: Administrators MUST be able to add and edit backup sources through the web interface
-- **FR-041**: Administrators MUST be able to configure include/exclude rules through the web interface
-- **FR-042**: Administrators MUST be able to configure retention policies through the web interface
-- **FR-043**: Administrators MUST be able to configure backup schedules through the web interface
-- **FR-044**: Administrators MUST be able to configure blackout periods through the web interface
-- **FR-045**: Administrators MUST be able to configure host-specific overrides through the web interface
-- **FR-046**: Administrators MUST be able to configure Wake-on-LAN settings per backup source through the web interface
-- **FR-047**: Administrators MUST be able to view configuration change history through the web interface
-- **FR-048**: Administrators MUST be able to view diffs between configuration versions through the web interface
-- **FR-049**: Administrators MUST be able to rollback to previous configuration versions through the web interface
+- **FR-049**: Administrators MUST be able to add and edit devices through the web interface
+- **FR-050**: Administrators MUST be able to add and edit shares under devices through the web interface
+- **FR-051**: Administrators MUST be able to configure include/exclude rules at global, device, and share levels through the web interface
+- **FR-052**: Administrators MUST be able to configure retention policies at global, device, and share levels through the web interface
+- **FR-053**: Administrators MUST be able to configure backup schedules at global, device, and share levels through the web interface
+- **FR-054**: Administrators MUST be able to configure blackout periods through the web interface
+- **FR-055**: Administrators MUST be able to view effective configuration for a share showing what is inherited vs. overridden
+- **FR-056**: Administrators MUST be able to configure Wake-on-LAN settings at device level through the web interface
+- **FR-057**: Administrators MUST be able to view configuration change history through the web interface
+- **FR-058**: Administrators MUST be able to view diffs between configuration versions through the web interface
+- **FR-059**: Administrators MUST be able to rollback to previous configuration versions through the web interface
 
 **Configuration & Deployment**
-- **FR-050**: System MUST use declarative configuration files in a version-controllable format (YAML or JSON)
-- **FR-051**: System MUST store all configuration in a Git repository for version control
-- **FR-052**: System MUST automatically commit configuration changes to Git with descriptive messages
-- **FR-053**: System MUST run as a container
-- **FR-054**: System MUST leverage mature, established open-source components for core functionality (backup engines, deduplication, protocols)
-- **FR-055**: System MUST NOT require a central database; all metadata must be stored alongside backup data in a self-describing format
-- **FR-056**: System MUST use a plugin architecture for data pull protocols to enable adding new protocols (e.g., FTP, WebDAV) without core system changes
-- **FR-057**: System MUST use a plugin architecture for storage backends to enable adding new storage destinations (e.g., Google Drive, S3, Azure Blob) without core system changes
-- **FR-058**: System MUST discover and load plugins automatically at startup by scanning a designated plugin directory
-- **FR-059**: System MUST support bind-mounting for configuration and repository storage
-- **FR-060**: System MUST support deployment behind reverse proxies
-- **FR-061**: System MUST support TLS termination at the reverse proxy level
+- **FR-060**: System MUST use declarative configuration files in a version-controllable format (YAML or JSON)
+- **FR-061**: System MUST represent device-share hierarchy clearly in configuration format
+- **FR-062**: System MUST store all configuration in a Git repository for version control
+- **FR-063**: System MUST automatically commit configuration changes to Git with descriptive messages
+- **FR-064**: System MUST run as a container
+- **FR-065**: System MUST leverage mature, established open-source components for core functionality (backup engines, deduplication, protocols)
+- **FR-066**: System MUST NOT require a central database; all metadata must be stored alongside backup data in a self-describing format
+- **FR-067**: System MUST use a plugin architecture for data pull protocols to enable adding new protocols (e.g., FTP, WebDAV) without core system changes
+- **FR-068**: System MUST use a plugin architecture for storage backends to enable adding new storage destinations (e.g., Google Drive, S3, Azure Blob) without core system changes
+- **FR-069**: System MUST discover and load plugins automatically at startup by scanning a designated plugin directory
+- **FR-070**: System MUST support bind-mounting for configuration and repository storage
+- **FR-071**: System MUST support deployment behind reverse proxies
+- **FR-072**: System MUST support TLS termination at the reverse proxy level
 
 **Repository**
-- **FR-062**: System MUST store backups in repositories using pluggable storage backend implementations
-- **FR-063**: System MUST store all backup metadata (indexes, catalogs, snapshots) within the backup repository itself in a self-describing format
-- **FR-064**: System MUST support integrity checks on the backup repository
-- **FR-065**: System MUST support repair operations for corrupted repository data
-- **FR-066**: System MUST support multiple storage backend plugins (local filesystem, S3-compatible, cloud storage providers)
-- **FR-067**: System MUST allow storage backend plugins to be configured per repository or globally
-- **FR-068**: System MUST embed repository format version identifier in repository metadata
-- **FR-069**: System MUST reject operations on repositories with incompatible format versions
-- **FR-070**: System MUST provide a migration tool for upgrading repository format versions when format changes occur
+- **FR-073**: System MUST store backups in repositories using pluggable storage backend implementations
+- **FR-074**: System MUST store all backup metadata (indexes, catalogs, snapshots) within the backup repository itself in a self-describing format
+- **FR-075**: System MUST organize snapshot metadata by device for efficient device-centric queries
+- **FR-076**: System MUST support integrity checks on the backup repository
+- **FR-077**: System MUST support repair operations for corrupted repository data
+- **FR-078**: System MUST support multiple storage backend plugins (local filesystem, S3-compatible, cloud storage providers)
+- **FR-079**: System MUST allow storage backend plugins to be configured per repository or globally
+- **FR-080**: System MUST embed repository format version identifier in repository metadata
+- **FR-081**: System MUST reject operations on repositories with incompatible format versions
+- **FR-082**: System MUST provide a migration tool for upgrading repository format versions when format changes occur
 
 **Observability**
-- **FR-071**: System MUST provide access to logs through both the web interface and filesystem
-- **FR-072**: System MUST expose health check endpoints for repository integrity, backup job status, and storage capacity
-- **FR-073**: System MUST log all backup operations with timestamps and status
-- **FR-074**: System MUST log all restore operations with timestamp, snapshot identifier, and file list
-- **FR-075**: System MUST pause all backup operations when repository storage is exhausted
-- **FR-076**: System MUST send critical alerts when backup operations are paused due to storage constraints
-- **FR-077**: System MUST support email notifications for backup failures, successes, and daily summaries
-- **FR-078**: System MUST support configurable email recipients and notification thresholds
+- **FR-083**: System MUST provide access to logs through both the web interface and filesystem
+- **FR-084**: System MUST expose health check endpoints for repository integrity, backup job status, and storage capacity
+- **FR-085**: System MUST log all backup operations with device, share, timestamps, and status
+- **FR-086**: System MUST log all restore operations with device, share, timestamp, snapshot identifier, and file list
+- **FR-087**: System MUST pause all backup operations when repository storage is exhausted
+- **FR-088**: System MUST send critical alerts when backup operations are paused due to storage constraints
+- **FR-089**: System MUST support email notifications for backup failures, successes, and daily summaries organized by device
+- **FR-090**: System MUST support configurable email recipients and notification thresholds
 
 **API & Extensibility**
-- **FR-079**: System MUST provide an API for triggering backups programmatically
-- **FR-080**: System MUST provide an API for querying snapshot history
-- **FR-081**: System MUST provide an API for managing policies
-- **FR-082**: System MUST provide an API for querying configuration history from Git
-- **FR-083**: System MUST provide a plugin API for registering new data pull protocol implementations
-- **FR-084**: System MUST provide a plugin API for registering new storage backend implementations
+- **FR-091**: System MUST provide an API for triggering backups programmatically for specific devices or shares
+- **FR-092**: System MUST provide an API for querying snapshot history organized by device
+- **FR-093**: System MUST provide an API for managing policies at global, device, and share levels
+- **FR-094**: System MUST provide an API for querying configuration history from Git
+- **FR-095**: System MUST provide a plugin API for registering new data pull protocol implementations
+- **FR-096**: System MUST provide a plugin API for registering new storage backend implementations
 
 **Performance & Reliability**
-- **FR-085**: System MUST operate efficiently on home-server class hardware
-- **FR-086**: System MUST run continuously and remain stable for long-running operation
-- **FR-087**: System MUST support backing up multiple sources concurrently
+- **FR-097**: System MUST operate efficiently on home-server class hardware
+- **FR-098**: System MUST run continuously and remain stable for long-running operation
+- **FR-099**: System MUST support backing up multiple shares from multiple devices concurrently
 
 ### Key Entities
 
-- **Backup Source**: Represents a remote location to back up (SMB share, SSH server, or rsync server). Contains connection information, authentication credentials, include/exclude patterns, schedule, retention policy, and host-specific overrides. A source can have multiple snapshots over time.
+- **Device**: Represents a physical or virtual machine being backed up (NAS, server, workstation). Contains protocol type (SMB, SSH, rsync), host/IP address, authentication credentials, and device-level configuration (schedule, retention, compression, patterns). A device can have multiple shares and appears as the primary organizational unit in the UI. Device-level settings cascade to shares unless overridden.
 
-- **Snapshot**: Represents the state of a backup source at a specific point in time. Contains timestamp, status, file tree structure, and references to deduplicated data blocks. Snapshots are created on schedule and managed by retention policies.
+- **Share**: Represents a specific path or mount point on a device to be backed up (e.g., /data, C:\Users, /var/www). Contains share path, optional share-level configuration overrides (schedule, retention, patterns). Multiple shares can exist under one device. Share-level overrides take precedence over device and global settings.
+
+- **Snapshot**: Represents the state of a device at a specific point in time, containing backups of all configured shares. Contains timestamp, device reference, status, and references to deduplicated data blocks for each share. Snapshots are organized by device for easy device-centric navigation and history viewing.
 
 - **Data Block**: Represents a deduplicated chunk of file data. Multiple files and snapshots can reference the same block. Blocks are stored in the repository and tracked by checksums for integrity.
 
@@ -341,7 +361,7 @@ An administrator needs to grant different levels of access to multiple users acc
 
 - **Blackout Period**: Defines time periods when backups must not run (e.g., business hours, maintenance windows). Can be configured globally or per-source with specific days and time ranges.
 
-- **Host Override**: Defines source-specific configuration that overrides global defaults. Can include compression settings, retention policies, schedules, and protocol-specific parameters.
+- **Configuration Override**: Defines device-level or share-level configuration that overrides higher-level defaults. Configuration cascades: Global Defaults → Device-Level → Share-Level (most specific wins). Can include compression settings, retention policies, schedules, include/exclude patterns, and protocol-specific parameters.
 
 - **Configuration Commit**: Represents a version-controlled change to system configuration stored in Git. Contains commit hash, timestamp, author, message, and the specific configuration changes made. Enables configuration history tracking and rollback.
 
@@ -353,8 +373,10 @@ An administrator needs to grant different levels of access to multiple users acc
 
 ### Assumptions
 
-- Network connectivity to backup sources is stable during scheduled backup windows
-- Administrators have necessary permissions to access backup sources (read permissions on shares/servers)
+- Network connectivity to devices is stable during scheduled backup windows
+- Administrators have necessary permissions to access devices and shares (read permissions)
+- Device-level settings are appropriate defaults for most shares on that device
+- Share-level overrides are used sparingly for exceptions
 - The system will be deployed on a server with sufficient storage for expected backup data
 - System time is synchronized (NTP) for accurate scheduling and snapshot timestamps
 - Web interface access will be secured at the network or reverse proxy level (not specifying authentication mechanism here)
