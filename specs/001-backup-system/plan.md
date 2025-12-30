@@ -89,6 +89,50 @@ BackupChrono is a modern, declarative, central-pull backup system designed for h
 - Git integration patterns (LibGit2Sharp implementation details)
 - Security credential storage approach
 
+**Phase 1 Re-evaluation** (2025-12-30):
+
+✅ **3 C# Projects Rule**: Compliant
+- BackupChrono.Core (domain entities, interfaces)
+- BackupChrono.Infrastructure (restic, protocols, git, scheduling)
+- BackupChrono.Api (controllers, SignalR hubs)
+- Test projects excluded from count (4 test projects)
+
+✅ **No Pattern Over-engineering**: Compliant
+- No Repository pattern (Git is the repository, restic manages backups)
+- No Unit of Work (no database transactions)
+- No CQRS (simple CRUD operations)
+- No Mediator (direct service injection)
+- Service layer only: DeviceService, BackupOrchestrator, SchedulingService
+
+✅ **Protocol Plugin Interface**: Compliant (4 methods - under 5 limit)
+```csharp
+public interface IProtocolPlugin
+{
+    Task<bool> TestConnection(Device device);
+    Task<string> MountShare(Device device, Share share);
+    Task UnmountShare(string mountPath);
+    Task WakeDevice(Device device);
+}
+```
+
+✅ **Restic Integration**: Compliant (direct process spawning)
+- ResticService spawns restic as subprocess
+- JSON output parsed for progress/status
+- No wrapper library overhead
+- See: data-model.md IResticService interface
+
+✅ **Git Integration**: Compliant (LibGit2Sharp direct usage)
+- GitConfigService uses LibGit2Sharp for commits/history
+- Auto-commit on config changes
+- Rollback via git reset
+- No custom abstraction layer
+
+✅ **Security Credential Storage**: Compliant
+- Device passwords encrypted in YAML using repository passphrase
+- RESTIC_PASSWORD via environment variable (Docker secrets)
+- SMTP credentials in env vars (not committed to Git)
+- No plaintext credentials in configuration files
+
 ## Project Structure
 
 ### Documentation (this feature)
