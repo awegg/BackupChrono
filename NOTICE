@@ -1,0 +1,58 @@
+BackupChrono
+Copyright 2025 Alexander Weggerle
+
+This product includes software developed by Alexander Weggerle.
+
+===============================================================================
+
+This software uses the following third-party components:
+
+-------------------------------------------------------------------------------
+Microsoft SpecKit - AI-assisted specification and planning framework
+https://github.com/microsoft/speckit
+Copyright (c) Microsoft Corporation
+Licensed under MIT License
+-------------------------------------------------------------------------------
+
+-------------------------------------------------------------------------------
+restic - Fast, secure, efficient backup program
+https://github.com/restic/restic
+Copyright (c) 2014, Alexander Neumann <alexander@bumpern.de>
+Licensed under BSD 2-Clause License
+-------------------------------------------------------------------------------
+
+-------------------------------------------------------------------------------
+LibGit2Sharp - Git + .NET/Mono
+https://github.com/libgit2/libgit2sharp
+Copyright (c) LibGit2Sharp contributors
+Licensed under MIT License
+-------------------------------------------------------------------------------
+
+-------------------------------------------------------------------------------
+ASP.NET Core - Cross-platform .NET framework
+https://github.com/dotnet/aspnetcore
+Copyright (c) .NET Foundation and Contributors
+Licensed under MIT License
+-------------------------------------------------------------------------------
+
+-------------------------------------------------------------------------------
+Quartz.NET - Job scheduling system
+https://github.com/quartznet/quartznet
+Copyright (c) Marko Lahma
+Licensed under Apache License 2.0
+-------------------------------------------------------------------------------
+
+-------------------------------------------------------------------------------
+SignalR - Real-time web functionality
+https://github.com/SignalR/SignalR
+Copyright (c) .NET Foundation and Contributors
+Licensed under Apache License 2.0
+-------------------------------------------------------------------------------
+
+For complete license texts of third-party components, see the respective
+project repositories or the LICENSES directory (if present).
+
+This software bundles restic as a pre-compiled binary for user convenience.
+Restic is distributed under the BSD 2-Clause License and is not modified by
+BackupChrono. For the complete restic source code and license, visit:
+https://github.com/restic/restic

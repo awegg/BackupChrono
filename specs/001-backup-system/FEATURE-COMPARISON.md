@@ -228,7 +228,7 @@
 
 | Component | BackupChrono | BackupPC | UrBackup | Kopia | Duplicati |
 |-----------|-------------|----------|----------|-------|-----------|
-| **Backend** | Python/Go (TBD) | Perl | C++ | Go | C# (.NET) |
+| **Backend** | C# (ASP.NET Core 8.0) | Perl | C++ | Go | C# (.NET) |
 | **Web UI** | Modern JS framework | Perl CGI | Modern web | Electron/React | Webserver |
 | **Storage** | Pluggable (restic/kopia/borg) | Custom pool | Custom | Custom (Kopia format) | Custom |
 | **Dedup Engine** | Delegate to component | Custom file-level | Block-level | Block-level (zstd) | Block-level |
