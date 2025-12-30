@@ -1,0 +1,1349 @@
+openapi: 3.0.3
+info:
+  title: BackupChrono API
+  description: Central pull backup system with device-centric organization
+  version: 1.0.0
+  contact:
+    name: BackupChrono
+servers:
+  - url: http://localhost:5000/api
+    description: Local development server
+  - url: https://backup.example.com/api
+    description: Production server
+
+tags:
+  - name: devices
+    description: Device management operations
+  - name: shares
+    description: Share management operations
+  - name: backup-jobs
+    description: Backup job execution tracking
+  - name: backups
+    description: Backup data browsing and restore
+  - name: configuration
+    description: Global configuration management
+  - name: notifications
+    description: Email notification settings
+
+paths:
+  # ==================== DEVICES ====================
+  /devices:
+    get:
+      tags: [devices]
+      summary: List all devices
+      operationId: listDevices
+      responses:
+        '200':
+          description: List of devices
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Device'
+    
+    post:
+      tags: [devices]
+      summary: Create a new device
+      operationId: createDevice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceCreate'
+      responses:
+        '201':
+          description: Device created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Device'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /devices/{deviceId}:
+    parameters:
+      - $ref: '#/components/parameters/DeviceId'
+    
+    get:
+      tags: [devices]
+      summary: Get device by ID
+      operationId: getDevice
+      responses:
+        '200':
+          description: Device details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceDetail'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    
+    put:
+      tags: [devices]
+      summary: Update device
+      operationId: updateDevice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceUpdate'
+      responses:
+        '200':
+          description: Device updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Device'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    
+    delete:
+      tags: [devices]
+      summary: Delete device
+      operationId: deleteDevice
+      responses:
+        '204':
+          description: Device deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /devices/{deviceId}/test-connection:
+    parameters:
+      - $ref: '#/components/parameters/DeviceId'
+    
+    post:
+      tags: [devices]
+      summary: Test device connection
+      operationId: testDeviceConnection
+      responses:
+        '200':
+          description: Connection test result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  latency:
+                    type: integer
+                    description: Connection latency in milliseconds
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /devices/{deviceId}/wake:
+    parameters:
+      - $ref: '#/components/parameters/DeviceId'
+    
+    post:
+      tags: [devices]
+      summary: Send Wake-on-LAN packet to device
+      operationId: wakeDevice
+      responses:
+        '200':
+          description: WOL packet sent
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        '400':
+          description: WOL not enabled for this device
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /devices/{deviceId}/backups:
+    parameters:
+      - $ref: '#/components/parameters/DeviceId'
+    
+    get:
+      tags: [devices, backups]
+      summary: Get backup history for device
+      operationId: getDeviceBackups
+      responses:
+        '200':
+          description: Backup history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Backup'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ==================== SHARES ====================
+  /devices/{deviceId}/shares:
+    parameters:
+      - $ref: '#/components/parameters/DeviceId'
+    
+    get:
+      tags: [shares]
+      summary: List shares for a device
+      operationId: listShares
+      responses:
+        '200':
+          description: List of shares
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Share'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    
+    post:
+      tags: [shares]
+      summary: Create a new share
+      operationId: createShare
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShareCreate'
+      responses:
+        '201':
+          description: Share created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Share'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /devices/{deviceId}/shares/{shareId}:
+    parameters:
+      - $ref: '#/components/parameters/DeviceId'
+      - $ref: '#/components/parameters/ShareId'
+    
+    get:
+      tags: [shares]
+      summary: Get share by ID
+      operationId: getShare
+      responses:
+        '200':
+          description: Share details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShareDetail'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    
+    put:
+      tags: [shares]
+      summary: Update share
+      operationId: updateShare
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShareUpdate'
+      responses:
+        '200':
+          description: Share updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Share'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    
+    delete:
+      tags: [shares]
+      summary: Delete share
+      operationId: deleteShare
+      responses:
+        '204':
+          description: Share deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /devices/{deviceId}/shares/{shareId}/effective-config:
+    parameters:
+      - $ref: '#/components/parameters/DeviceId'
+      - $ref: '#/components/parameters/ShareId'
+    
+    get:
+      tags: [shares]
+      summary: Get effective configuration for share (after cascading)
+      operationId: getShareEffectiveConfig
+      responses:
+        '200':
+          description: Effective configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EffectiveConfig'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ==================== BACKUP JOBS ====================
+  /backup-jobs:
+    get:
+      tags: [backup-jobs]
+      summary: List backup jobs
+      operationId: listBackupJobs
+      parameters:
+        - name: deviceId
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Filter by device ID
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [Pending, Running, Success, Failed, Cancelled]
+          description: Filter by status
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+          description: Maximum number of results
+      responses:
+        '200':
+          description: List of backup jobs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BackupJob'
+    
+    post:
+      tags: [backup-jobs]
+      summary: Trigger a manual backup
+      operationId: triggerBackup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [deviceId]
+              properties:
+                deviceId:
+                  type: string
+                  format: uuid
+                shareId:
+                  type: string
+                  format: uuid
+                  description: Optional - backup specific share only
+      responses:
+        '202':
+          description: Backup job queued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BackupJob'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /backup-jobs/{jobId}:
+    parameters:
+      - name: jobId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    
+    get:
+      tags: [backup-jobs]
+      summary: Get backup job status
+      operationId: getBackupJob
+      responses:
+        '200':
+          description: Backup job details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BackupJob'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    
+    delete:
+      tags: [backup-jobs]
+      summary: Cancel running backup job
+      operationId: cancelBackupJob
+      responses:
+        '204':
+          description: Backup cancelled
+        '400':
+          description: Job not running or already completed
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ==================== BACKUPS ====================
+  /backups:
+    get:
+      tags: [backups]
+      summary: List all backups
+      operationId: listBackups
+      parameters:
+        - name: deviceId
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Filter by device ID
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+          description: Maximum number of results
+      responses:
+        '200':
+          description: List of backups
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Backup'
+
+  /backups/{backupId}:
+    parameters:
+      - $ref: '#/components/parameters/BackupId'
+    
+    get:
+      tags: [backups]
+      summary: Get backup details
+      operationId: getBackup
+      responses:
+        '200':
+          description: Backup details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BackupDetail'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /backups/{backupId}/files:
+    parameters:
+      - $ref: '#/components/parameters/BackupId'
+      - name: path
+        in: query
+        schema:
+          type: string
+          default: /
+        description: Directory path to browse
+    
+    get:
+      tags: [backups]
+      summary: Browse files in backup
+      operationId: browseBackupFiles
+      responses:
+        '200':
+          description: File listing
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FileEntry'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /backups/{backupId}/restore:
+    parameters:
+      - $ref: '#/components/parameters/BackupId'
+    
+    post:
+      tags: [backups]
+      summary: Restore files from backup
+      operationId: restoreBackup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RestoreRequest'
+      responses:
+        '202':
+          description: Restore job queued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  restoreId:
+                    type: string
+                  status:
+                    type: string
+                    enum: [Pending, Running]
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /backups/files/history:
+    get:
+      tags: [backups]
+      summary: Get version history for a specific file across all backups
+      operationId: getFileHistory
+      parameters:
+        - name: deviceId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: filePath
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Full path to file
+      responses:
+        '200':
+          description: File version history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FileVersion'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  # ==================== CONFIGURATION ====================
+  /configuration/global:
+    get:
+      tags: [configuration]
+      summary: Get global configuration
+      operationId: getGlobalConfig
+      responses:
+        '200':
+          description: Global configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GlobalConfig'
+    
+    put:
+      tags: [configuration]
+      summary: Update global configuration
+      operationId: updateGlobalConfig
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GlobalConfigUpdate'
+      responses:
+        '200':
+          description: Global configuration updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GlobalConfig'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /configuration/history:
+    get:
+      tags: [configuration]
+      summary: Get configuration change history
+      operationId: getConfigHistory
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        '200':
+          description: Configuration history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ConfigCommit'
+
+  /configuration/history/{commitHash}:
+    parameters:
+      - name: commitHash
+        in: path
+        required: true
+        schema:
+          type: string
+    
+    get:
+      tags: [configuration]
+      summary: Get configuration at specific commit
+      operationId: getConfigAtCommit
+      responses:
+        '200':
+          description: Configuration at commit
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /configuration/rollback:
+    post:
+      tags: [configuration]
+      summary: Rollback configuration to previous commit
+      operationId: rollbackConfig
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [commitHash]
+              properties:
+                commitHash:
+                  type: string
+                reason:
+                  type: string
+                  description: Reason for rollback (appears in commit message)
+      responses:
+        '200':
+          description: Configuration rolled back
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigCommit'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ==================== NOTIFICATIONS ====================
+  /notifications:
+    get:
+      tags: [notifications]
+      summary: Get notification settings
+      operationId: getNotificationSettings
+      responses:
+        '200':
+          description: Notification settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationSettings'
+    
+    put:
+      tags: [notifications]
+      summary: Update notification settings
+      operationId: updateNotificationSettings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotificationSettings'
+      responses:
+        '200':
+          description: Notification settings updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationSettings'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /notifications/test:
+    post:
+      tags: [notifications]
+      summary: Send test notification email
+      operationId: sendTestNotification
+      responses:
+        '200':
+          description: Test email sent
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        '400':
+          description: Email configuration invalid or SMTP error
+
+  # ==================== REPOSITORY ====================
+  /repository/stats:
+    get:
+      tags: [repository]
+      summary: Get repository statistics
+      operationId: getRepositoryStats
+      responses:
+        '200':
+          description: Repository statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RepositoryStats'
+
+  /repository/verify:
+    post:
+      tags: [repository]
+      summary: Verify repository integrity
+      operationId: verifyRepository
+      responses:
+        '202':
+          description: Verification started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  jobId:
+                    type: string
+                  status:
+                    type: string
+
+  /repository/prune:
+    post:
+      tags: [repository]
+      summary: Prune repository (garbage collection)
+      operationId: pruneRepository
+      responses:
+        '202':
+          description: Prune started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  jobId:
+                    type: string
+                  status:
+                    type: string
+
+# ==================== COMPONENTS ====================
+components:
+  parameters:
+    DeviceId:
+      name: deviceId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    
+    ShareId:
+      name: shareId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    
+    BackupId:
+      name: backupId
+      in: path
+      required: true
+      schema:
+        type: string
+        description: Unique backup identifier
+
+  responses:
+    BadRequest:
+      description: Bad request - validation error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    # ========== DEVICE SCHEMAS ==========
+    Device:
+      type: object
+      required: [id, name, protocol, host, username]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        protocol:
+          type: string
+          enum: [SMB, SSH, Rsync]
+        host:
+          type: string
+          minLength: 1
+          maxLength: 255
+        port:
+          type: integer
+          minimum: 1
+          maximum: 65535
+        username:
+          type: string
+          minLength: 1
+          maxLength: 100
+        wakeOnLanEnabled:
+          type: boolean
+          default: false
+        wakeOnLanMacAddress:
+          type: string
+          pattern: '^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    
+    DeviceDetail:
+      allOf:
+        - $ref: '#/components/schemas/Device'
+        - type: object
+          properties:
+            schedule:
+              $ref: '#/components/schemas/Schedule'
+            retentionPolicy:
+              $ref: '#/components/schemas/RetentionPolicy'
+            includeExcludeRules:
+              $ref: '#/components/schemas/IncludeExcludeRules'
+            shares:
+              type: array
+              items:
+                $ref: '#/components/schemas/Share'
+            lastBackup:
+              $ref: '#/components/schemas/Backup'
+    
+    DeviceCreate:
+      type: object
+      required: [name, protocol, host, username, password]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        protocol:
+          type: string
+          enum: [SMB, SSH, Rsync]
+        host:
+          type: string
+        port:
+          type: integer
+        username:
+          type: string
+        password:
+          type: string
+        wakeOnLanEnabled:
+          type: boolean
+        wakeOnLanMacAddress:
+          type: string
+        schedule:
+          $ref: '#/components/schemas/Schedule'
+        retentionPolicy:
+          $ref: '#/components/schemas/RetentionPolicy'
+        includeExcludeRules:
+          $ref: '#/components/schemas/IncludeExcludeRules'
+    
+    DeviceUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        protocol:
+          type: string
+          enum: [SMB, SSH, Rsync]
+        host:
+          type: string
+        port:
+          type: integer
+        username:
+          type: string
+        password:
+          type: string
+        wakeOnLanEnabled:
+          type: boolean
+        wakeOnLanMacAddress:
+          type: string
+        schedule:
+          $ref: '#/components/schemas/Schedule'
+        retentionPolicy:
+          $ref: '#/components/schemas/RetentionPolicy'
+        includeExcludeRules:
+          $ref: '#/components/schemas/IncludeExcludeRules'
+
+    # ========== SHARE SCHEMAS ==========
+    Share:
+      type: object
+      required: [id, deviceId, name, path, enabled]
+      properties:
+        id:
+          type: string
+          format: uuid
+        deviceId:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        path:
+          type: string
+          minLength: 1
+          maxLength: 500
+        enabled:
+          type: boolean
+          default: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    
+    ShareDetail:
+      allOf:
+        - $ref: '#/components/schemas/Share'
+        - type: object
+          properties:
+            schedule:
+              $ref: '#/components/schemas/Schedule'
+            retentionPolicy:
+              $ref: '#/components/schemas/RetentionPolicy'
+            includeExcludeRules:
+              $ref: '#/components/schemas/IncludeExcludeRules'
+    
+    ShareCreate:
+      type: object
+      required: [name, path]
+      properties:
+        name:
+          type: string
+        path:
+          type: string
+        enabled:
+          type: boolean
+        schedule:
+          $ref: '#/components/schemas/Schedule'
+        retentionPolicy:
+          $ref: '#/components/schemas/RetentionPolicy'
+        includeExcludeRules:
+          $ref: '#/components/schemas/IncludeExcludeRules'
+    
+    ShareUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        path:
+          type: string
+        enabled:
+          type: boolean
+        schedule:
+          $ref: '#/components/schemas/Schedule'
+        retentionPolicy:
+          $ref: '#/components/schemas/RetentionPolicy'
+        includeExcludeRules:
+          $ref: '#/components/schemas/IncludeExcludeRules'
+
+    # ========== BACKUP JOB SCHEMAS ==========
+    BackupJob:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        deviceId:
+          type: string
+          format: uuid
+        shareId:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [Scheduled, Manual, Retry]
+        status:
+          type: string
+          enum: [Pending, Running, Success, Failed, Cancelled]
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+        backupId:
+          type: string
+          description: Backup ID if job completed successfully
+        filesProcessed:
+          type: integer
+        bytesTransferred:
+          type: integer
+          format: int64
+        errorMessage:
+          type: string
+        retryAttempt:
+          type: integer
+        nextRetryAt:
+          type: string
+          format: date-time
+
+    # ========== BACKUP SCHEMAS ==========
+    Backup:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique backup identifier
+        deviceId:
+          type: string
+          format: uuid
+        deviceName:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [Success, Partial, Failed]
+        sharesPaths:
+          type: object
+          additionalProperties:
+            type: string
+        filesNew:
+          type: integer
+        filesChanged:
+          type: integer
+        filesUnmodified:
+          type: integer
+        dataAdded:
+          type: integer
+          format: int64
+        dataProcessed:
+          type: integer
+          format: int64
+        duration:
+          type: string
+          description: ISO 8601 duration
+        errorMessage:
+          type: string
+        createdByJobId:
+          type: string
+          format: uuid
+          description: Backup job that created this backup
+    
+    BackupDetail:
+      allOf:
+        - $ref: '#/components/schemas/Backup'
+        - type: object
+          properties:
+            shares:
+              type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  path:
+                    type: string
+                  fileCount:
+                    type: integer
+                  size:
+                    type: integer
+                    format: int64
+
+    FileEntry:
+      type: object
+      properties:
+        name:
+          type: string
+        path:
+          type: string
+        isDirectory:
+          type: boolean
+        size:
+          type: integer
+          format: int64
+        modifiedAt:
+          type: string
+          format: date-time
+        permissions:
+          type: string
+
+    FileVersion:
+      type: object
+      properties:
+        backupId:
+          type: string
+          description: Backup ID containing this file version
+        timestamp:
+          type: string
+          format: date-time
+        size:
+          type: integer
+          format: int64
+        hash:
+          type: string
+
+    RestoreRequest:
+      type: object
+      required: [targetPath]
+      properties:
+        targetPath:
+          type: string
+          description: Restore destination path
+        includePaths:
+          type: array
+          items:
+            type: string
+          description: Specific files/folders to restore (empty = restore all)
+        restoreToSource:
+          type: boolean
+          default: false
+          description: Restore directly to original device/share location
+
+    # ========== VALUE OBJECTS ==========
+    Schedule:
+      type: object
+      required: [cronExpression]
+      properties:
+        cronExpression:
+          type: string
+          example: "0 2 * * *"
+        timeWindowStart:
+          type: string
+          format: time
+          example: "02:00"
+        timeWindowEnd:
+          type: string
+          format: time
+          example: "06:00"
+    
+    RetentionPolicy:
+      type: object
+      properties:
+        keepLatest:
+          type: integer
+          minimum: 0
+          default: 7
+        keepDaily:
+          type: integer
+          minimum: 0
+          default: 7
+        keepWeekly:
+          type: integer
+          minimum: 0
+          default: 4
+        keepMonthly:
+          type: integer
+          minimum: 0
+          default: 12
+        keepYearly:
+          type: integer
+          minimum: 0
+          default: 3
+
+    IncludeExcludeRules:
+      type: object
+      properties:
+        excludePatterns:
+          type: array
+          items:
+            type: string
+          example: ["*.tmp", "node_modules/"]
+        excludeRegex:
+          type: array
+          items:
+            type: string
+        includeOnlyRegex:
+          type: array
+          items:
+            type: string
+        excludeIfPresent:
+          type: array
+          items:
+            type: string
+          example: [".nobackup"]
+
+    # ========== CONFIGURATION SCHEMAS ==========
+    GlobalConfig:
+      type: object
+      properties:
+        schedule:
+          $ref: '#/components/schemas/Schedule'
+        retentionPolicy:
+          $ref: '#/components/schemas/RetentionPolicy'
+        includeExcludeRules:
+          $ref: '#/components/schemas/IncludeExcludeRules'
+        repository:
+          type: object
+          properties:
+            path:
+              type: string
+            passwordEnv:
+              type: string
+    
+    GlobalConfigUpdate:
+      type: object
+      properties:
+        schedule:
+          $ref: '#/components/schemas/Schedule'
+        retentionPolicy:
+          $ref: '#/components/schemas/RetentionPolicy'
+        includeExcludeRules:
+          $ref: '#/components/schemas/IncludeExcludeRules'
+
+    EffectiveConfig:
+      type: object
+      properties:
+        schedule:
+          allOf:
+            - $ref: '#/components/schemas/Schedule'
+            - type: object
+              properties:
+                source:
+                  type: string
+                  enum: [Global, Device, Share]
+        retentionPolicy:
+          allOf:
+            - $ref: '#/components/schemas/RetentionPolicy'
+            - type: object
+              properties:
+                source:
+                  type: string
+                  enum: [Global, Device, Share]
+        includeExcludeRules:
+          allOf:
+            - $ref: '#/components/schemas/IncludeExcludeRules'
+            - type: object
+              properties:
+                source:
+                  type: string
+                  enum: [Global, Device, Share]
+
+    ConfigCommit:
+      type: object
+      properties:
+        hash:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        author:
+          type: string
+        email:
+          type: string
+        message:
+          type: string
+        filesChanged:
+          type: array
+          items:
+            type: string
+
+    # ========== NOTIFICATION SCHEMAS ==========
+    NotificationSettings:
+      type: object
+      properties:
+        emailEnabled:
+          type: boolean
+          default: false
+        smtpHost:
+          type: string
+        smtpPort:
+          type: integer
+        smtpUsername:
+          type: string
+        smtpPassword:
+          type: string
+        smtpUseTls:
+          type: boolean
+          default: true
+        fromAddress:
+          type: string
+          format: email
+        toAddresses:
+          type: array
+          items:
+            type: string
+            format: email
+        notifyOnSuccess:
+          type: boolean
+          default: false
+        notifyOnFailure:
+          type: boolean
+          default: true
+        dailySummary:
+          type: boolean
+          default: true
+        dailySummaryTime:
+          type: string
+          format: time
+          example: "08:00"
+
+    # ========== REPOSITORY SCHEMAS ==========
+    RepositoryStats:
+      type: object
+      properties:
+        totalSize:
+          type: integer
+          format: int64
+        uniqueSize:
+          type: integer
+          format: int64
+        deduplicationSavings:
+          type: integer
+          format: int64
+        backupCount:
+          type: integer
+          description: Total number of backups in repository
+        fileCount:
+          type: integer
+
+    # ========== ERROR SCHEMA ==========
+    Error:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+        code:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
