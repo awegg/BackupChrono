@@ -33,9 +33,9 @@ This document organizes implementation tasks by **user story** to enable indepen
 
 ## Phase 1: Setup
 
-**Goal**: Initialize project structure, dependencies, and Docker environment.
+**Goal**: Initialize project structure, dependencies, Docker environment, and CI/CD pipeline.
 
-**Effort Estimate**: 2-3 days
+**Effort Estimate**: 2-4 days
 
 ### Tasks
 
@@ -53,8 +53,9 @@ This document organizes implementation tasks by **user story** to enable indepen
 - [ ] T012 [P] Create README.md with setup instructions, architecture overview, Docker deployment guide
 - [ ] T013 [P] Create directory structure: src/backend/, src/frontend/, src/plugins/, docker/, docs/
 - [ ] T014 Initialize Git repository with .gitignore (.NET, Node, Docker, IDE files)
+- [ ] T200 [P] Create CI/CD pipeline configuration (.github/workflows/) for build, test, Docker image publishing
 
-**Checkpoint**: Solution compiles, Docker builds successfully, all test projects execute (empty).
+**Checkpoint**: Solution compiles, Docker builds successfully, all test projects execute (empty), CI/CD pipeline validates PRs.
 
 ---
 
@@ -111,7 +112,7 @@ This document organizes implementation tasks by **user story** to enable indepen
 
 **Story Goal**: As a homelab admin, I want my devices to be backed up automatically on a schedule, so I don't have to manually trigger backups.
 
-**Effort Estimate**: 6-8 days
+**Effort Estimate**: 7-9 days (includes production-critical monitoring and graceful shutdown)
 
 **Independent Test Criteria**:
 - Device can be created with SMB credentials and schedule
@@ -139,8 +140,12 @@ This document organizes implementation tasks by **user story** to enable indepen
 - [ ] T065 [US1] Create BackupOrchestratorTests in BackupChrono.Infrastructure.Tests/Services/BackupOrchestratorTests.cs for backup workflow
 - [ ] T066 [US1] Create ResticBackupTests in BackupChrono.Infrastructure.Restic.Tests/ResticBackupTests.cs for backup operations against test repository
 - [ ] T067 [US1] Create end-to-end backup test in BackupChrono.Integration.Tests/BackupFlowTests.cs using TestContainers
+- [ ] T180 [US1] Add health check logic to HealthController for repository integrity, backup job status, storage capacity
+- [ ] T181 [US1] Implement storage capacity monitoring with alerts when repository disk usage exceeds threshold
+- [ ] T182 [US1] Add backup operation pause logic when repository storage exhausted
+- [ ] T195 [US1] Add graceful shutdown handling in BackupChrono.Api/Program.cs to complete running backups before exit
 
-**Checkpoint**: Can create device with shares, trigger manual backup via API, verify backup in repository with restic CLI, scheduled backups execute automatically.
+**Checkpoint**: Can create device with shares, trigger manual backup via API, verify backup in repository with restic CLI, scheduled backups execute automatically, health checks validate system state, graceful shutdown prevents data loss.
 
 ---
 
@@ -435,18 +440,15 @@ This document organizes implementation tasks by **user story** to enable indepen
 
 ## Phase 13: Polish & Cross-Cutting Concerns
 
-**Goal**: Production readiness, documentation, and operational features.
+**Goal**: Final polish, advanced features, and comprehensive documentation.
 
-**Effort Estimate**: 5-6 days
+**Effort Estimate**: 3-4 days
 
 ### Tasks
 
 - [ ] T177 [P] Implement ResticRetentionTests in BackupChrono.Infrastructure.Restic.Tests/ResticRetentionTests.cs verifying retention policy application
 - [ ] T178 [P] Implement ResticService.Prune for garbage collection and space reclamation
 - [ ] T179 [P] Implement ResticService.VerifyIntegrity for repository integrity checks
-- [ ] T180 [P] Add health check logic to HealthController for repository integrity, backup job status, storage capacity
-- [ ] T181 [P] Implement storage capacity monitoring with alerts when repository disk usage exceeds threshold
-- [ ] T182 [P] Add backup operation pause logic when repository storage exhausted
 - [ ] T183 [P] Implement skip-if-running logic in BackupJob to prevent schedule overlaps
 - [ ] T184 [P] Add proper credential encryption/decryption in GitConfigService using repository passphrase
 - [ ] T185 [P] Create API documentation in docs/api/ using Swagger UI hosted at /swagger
@@ -459,12 +461,10 @@ This document organizes implementation tasks by **user story** to enable indepen
 - [ ] T192 [P] Add database-free verification tests in BackupChrono.Integration.Tests/ confirming no database dependency
 - [ ] T193 [P] Create repository format version validation in ResticService rejecting incompatible versions
 - [ ] T194 [P] Implement repository migration tool in src/backend/BackupChrono.Infrastructure/Restic/RepositoryMigration.cs for format upgrades
-- [ ] T195 [P] Add graceful shutdown handling in BackupChrono.Api/Program.cs to complete running backups before exit
 - [ ] T196 [P] Create performance tests in BackupChrono.Performance.Tests/ for 1M+ files, 10+ concurrent backups
 - [ ] T197 Finalize README.md with complete setup instructions, architecture diagrams, contribution guidelines
 - [ ] T198 Create CHANGELOG.md documenting feature implementation and version history
 - [ ] T199 Add .editorconfig for consistent code formatting
-- [ ] T200 Create CI/CD pipeline configuration (.github/workflows/) for build, test, Docker image publishing
 
 **Checkpoint**: All production features implemented, tests passing, documentation complete, Docker images published.
 
@@ -474,7 +474,7 @@ This document organizes implementation tasks by **user story** to enable indepen
 
 ### User Story Dependency Graph
 
-```
+```text
 Setup (Phase 1)
   ↓
 Foundational (Phase 2) ← BLOCKING for all user stories
@@ -574,10 +574,10 @@ After US2 completes:
 ## Summary
 
 - **Total Tasks**: 200
-- **Setup Tasks**: 14 (Phase 1)
+- **Setup Tasks**: 15 (Phase 1) - includes CI/CD setup
 - **Foundational Tasks**: 36 (Phase 2)
-- **User Story Tasks**: 126 (Phases 3-12)
-  - US1: 17 tasks
+- **User Story Tasks**: 130 (Phases 3-12)
+  - US1: 21 tasks (includes production-critical monitoring)
   - US2: 12 tasks
   - US9: 11 tasks
   - US6: 8 tasks
@@ -587,25 +587,25 @@ After US2 completes:
   - US4: 24 tasks
   - US5: 9 tasks
   - US10: 15 tasks
-- **Polish Tasks**: 24 (Phase 13)
+- **Polish Tasks**: 19 (Phase 13)
 
 **Parallel Opportunities**: 78 tasks marked `[P]` (39% of total tasks).
 
-**MVP Scope**: Phases 1-4 (67 tasks) deliver automated backups and file restoration.
+**MVP Scope**: Phases 1-4 (72 tasks) deliver production-ready automated backups and file restoration with monitoring.
 
 **Independent Testing**: Each user story phase has clear test criteria and checkpoint verification before proceeding to next story.
 
 ## Effort Estimates
 
 ### Total Project Effort
-**Sequential**: 56-68 days (11-14 weeks) for single developer  
+**Sequential**: 55-68 days (11-14 weeks) for single developer  
 **Parallel (2 developers)**: 32-40 days (6-8 weeks) with optimal task distribution  
 **Parallel (3+ developers)**: 24-30 days (5-6 weeks) with parallelized Phase 2 and user stories
 
 ### By Phase
-- **Phase 1 (Setup)**: 2-3 days
+- **Phase 1 (Setup)**: 2-4 days (includes CI/CD pipeline)
 - **Phase 2 (Foundational)**: 10-12 days ⚠️ BLOCKING - Must complete before user stories
-- **Phase 3 (US1 - Automated Backups)**: 6-8 days 🎯 MVP
+- **Phase 3 (US1 - Automated Backups)**: 7-9 days 🎯 MVP (includes production monitoring)
 - **Phase 4 (US2 - Restore Files)**: 4-5 days 🎯 MVP
 - **Phase 5 (US9 - Git Config)**: 3-4 days
 - **Phase 6 (US6 - Rsync)**: 3-4 days
@@ -615,18 +615,18 @@ After US2 completes:
 - **Phase 10 (US4 - Web UI)**: 8-10 days
 - **Phase 11 (US5 - File History)**: 3-4 days
 - **Phase 12 (US10 - Multi-User)**: 4-5 days
-- **Phase 13 (Polish)**: 5-6 days
+- **Phase 13 (Polish)**: 3-4 days
 
 ### MVP Effort
-**Phases 1-4**: 22-28 days (4.5-6 weeks) for single developer  
-**Parallel (2 developers)**: 14-18 days (3-4 weeks) with one on backend, one on testing/integration
+**Phases 1-4**: 23-30 days (4.5-6 weeks) for single developer (production-ready with CI/CD and monitoring)  
+**Parallel (2 developers)**: 15-19 days (3-4 weeks) with one on backend, one on testing/integration
 
 ### Post-MVP Increments
 - **Config Management (US9)**: +3-4 days
 - **Protocol Support (US6)**: +3-4 days
 - **Observability (US3 + US7)**: +6-8 days
 - **Advanced Features (US8 + US4 + US5 + US10)**: +17-22 days
-- **Production (Phase 13)**: +5-6 days
+- **Polish (Phase 13)**: +3-4 days
 
 ### Assumptions
 - Estimates assume experienced developers familiar with ASP.NET Core, React, and Docker

@@ -306,7 +306,7 @@ cd ..
 ### 3. Trigger Manual Backup
 
 Using the Web UI:
-1. Navigate to [http://localhost:3000]
+1. Navigate to [http://localhost:3000](http://localhost:3000)
 2. Click on "test-device" in dashboard
 3. Click "Backup Now" button
 4. Watch real-time progress via SignalR updates
