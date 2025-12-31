@@ -42,8 +42,13 @@ public class ResticErrorHandlingTests : IAsyncLifetime
         _repositoryPath = "/tmp/test-repo";
         await _container.ExecAsync(new[] { "/bin/sh", "-c", $"mkdir -p {_repositoryPath}" });
         
-        await _container.ExecAsync(new[] { "/bin/sh", "-c", 
+        var initResult = await _container.ExecAsync(new[] { "/bin/sh", "-c", 
             $"export RESTIC_PASSWORD={ResticPassword} && restic init --repo {_repositoryPath}" });
+        
+        if (initResult.ExitCode != 0)
+        {
+            throw new Exception($"Failed to initialize restic repository: {initResult.Stderr}");
+        }
     }
 
     public async Task DisposeAsync()

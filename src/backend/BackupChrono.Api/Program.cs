@@ -1,4 +1,5 @@
 using BackupChrono.Api.Middleware;
+using BackupChrono.Core.Interfaces;
 using BackupChrono.Infrastructure.Git;
 using BackupChrono.Infrastructure.Plugins;
 using BackupChrono.Infrastructure.Restic;
@@ -61,11 +62,40 @@ builder.Services.AddSingleton<PluginLoader>();
 builder.Services.AddSingleton<GitConfigService>(sp => 
     new GitConfigService(builder.Configuration["ConfigRepository:Path"] ?? "./config"));
 builder.Services.AddSingleton<ResticClient>(sp => 
-    new ResticClient(
+{
+    var resticPassword = builder.Configuration["Restic:Password"];
+    
+    if (string.IsNullOrWhiteSpace(resticPassword))
+    {
+        if (builder.Environment.IsDevelopment())
+        {
+            // In development, allow empty password but log a warning
+            var logger = sp.GetRequiredService<ILogger<Program>>();
+            logger.LogWarning("Restic password is not configured. Set Restic:Password in appsettings.json or environment variable. Using empty password for development only.");
+            resticPassword = "development-password-changeme";
+        }
+        else
+        {
+            // In production, require password to be configured
+            throw new InvalidOperationException("Restic password must be configured in production environment. Set Restic:Password in configuration or RESTIC_PASSWORD environment variable.");
+        }
+    }
+    
+    return new ResticClient(
         builder.Configuration["Restic:BinaryPath"] ?? "restic",
         builder.Configuration["Restic:RepositoryPath"] ?? "/restic-repo",
-        builder.Configuration["Restic:Password"] ?? ""));
-builder.Services.AddSingleton<ResticService>();
+        resticPassword);
+});
+builder.Services.AddSingleton<IResticService, ResticService>();
+
+// TODO: Register missing service implementations (Phase 3 - User Story 1)
+// These interfaces exist but implementations are not yet created:
+// - IDeviceService implementation needed (T051 - DeviceService)
+// - IShareService implementation needed (T052 - ShareService)
+// - IBackupOrchestrator implementation needed (T053 - BackupOrchestrator)
+// builder.Services.AddScoped<IDeviceService, DeviceService>();
+// builder.Services.AddScoped<IShareService, ShareService>();
+// builder.Services.AddScoped<IBackupOrchestrator, BackupOrchestrator>();
 
 var app = builder.Build();
 

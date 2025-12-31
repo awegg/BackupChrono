@@ -39,9 +39,10 @@ public class Device
     public required string Username { get; set; }
 
     /// <summary>
-    /// Authentication password/credential (stored encrypted in Git configuration).
+    /// Authentication password/credential (automatically encrypted using AES-256-GCM when serialized to YAML).
+    /// Access plaintext via Password.GetPlaintext(). Never stored unencrypted.
     /// </summary>
-    public required string Password { get; set; }
+    public required EncryptedCredential Password { get; set; }
 
     /// <summary>
     /// Whether Wake-on-LAN is enabled for this device.

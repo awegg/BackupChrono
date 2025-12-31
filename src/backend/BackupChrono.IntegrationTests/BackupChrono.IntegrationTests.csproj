@@ -24,4 +24,10 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\BackupChrono.Core\BackupChrono.Core.csproj" />
+    <ProjectReference Include="..\BackupChrono.Infrastructure\BackupChrono.Infrastructure.csproj" />
+    <ProjectReference Include="..\BackupChrono.Api\BackupChrono.Api.csproj" />
+  </ItemGroup>
+
 </Project>

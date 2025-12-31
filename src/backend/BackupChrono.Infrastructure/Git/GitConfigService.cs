@@ -22,10 +22,12 @@ public class GitConfigService
         
         _yamlSerializer = new SerializerBuilder()
             .WithNamingConvention(UnderscoredNamingConvention.Instance)
+            .WithTypeConverter(new YamlEncryptedCredentialConverter())
             .Build();
             
         _yamlDeserializer = new DeserializerBuilder()
             .WithNamingConvention(UnderscoredNamingConvention.Instance)
+            .WithTypeConverter(new YamlEncryptedCredentialConverter())
             .IgnoreUnmatchedProperties()
             .Build();
     }
@@ -52,14 +54,13 @@ public class GitConfigService
     public async Task SaveDevice(Device device)
     {
         var devicePath = Path.Combine(_repositoryPath, "devices", $"{device.Name}.yaml");
-        Directory.CreateDirectory(Path.GetDirectoryName(devicePath)!);
-
         var yaml = _yamlSerializer.Serialize(device);
-        await File.WriteAllTextAsync(devicePath, yaml);
 
         await _gitLock.WaitAsync();
         try
         {
+            Directory.CreateDirectory(Path.GetDirectoryName(devicePath)!);
+            await File.WriteAllTextAsync(devicePath, yaml);
             await CommitChangesAsync($"Update device: {device.Name}", new[] { devicePath });
         }
         finally
@@ -111,19 +112,18 @@ public class GitConfigService
     {
         var devicePath = Path.Combine(_repositoryPath, "devices", $"{deviceName}.yaml");
         
-        if (File.Exists(devicePath))
+        await _gitLock.WaitAsync();
+        try
         {
-            File.Delete(devicePath);
-            
-            await _gitLock.WaitAsync();
-            try
+            if (File.Exists(devicePath))
             {
+                File.Delete(devicePath);
                 await CommitChangesAsync($"Delete device: {deviceName}", new[] { devicePath });
             }
-            finally
-            {
-                _gitLock.Release();
-            }
+        }
+        finally
+        {
+            _gitLock.Release();
         }
     }
 
@@ -133,14 +133,13 @@ public class GitConfigService
     public async Task SaveShare(Share share, string deviceName)
     {
         var sharePath = Path.Combine(_repositoryPath, "shares", deviceName, $"{share.Name}.yaml");
-        Directory.CreateDirectory(Path.GetDirectoryName(sharePath)!);
-
         var yaml = _yamlSerializer.Serialize(share);
-        await File.WriteAllTextAsync(sharePath, yaml);
 
         await _gitLock.WaitAsync();
         try
         {
+            Directory.CreateDirectory(Path.GetDirectoryName(sharePath)!);
+            await File.WriteAllTextAsync(sharePath, yaml);
             await CommitChangesAsync($"Update share: {deviceName}/{share.Name}", new[] { sharePath });
         }
         finally
@@ -192,19 +191,18 @@ public class GitConfigService
     {
         var sharePath = Path.Combine(_repositoryPath, "shares", deviceName, $"{shareName}.yaml");
         
-        if (File.Exists(sharePath))
+        await _gitLock.WaitAsync();
+        try
         {
-            File.Delete(sharePath);
-            
-            await _gitLock.WaitAsync();
-            try
+            if (File.Exists(sharePath))
             {
+                File.Delete(sharePath);
                 await CommitChangesAsync($"Delete share: {deviceName}/{shareName}", new[] { sharePath });
             }
-            finally
-            {
-                _gitLock.Release();
-            }
+        }
+        finally
+        {
+            _gitLock.Release();
         }
     }
 
