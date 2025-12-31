@@ -283,24 +283,24 @@ dotnet test /p:CollectCoverage=true /p:CoverageReportFormat=opencover
 
 ## Roadmap
 
-**Phase 1: MVP (Completed)**
+### Phase 1: MVP (Completed)
 - ✅ ASP.NET Core solution structure
 - ✅ Docker deployment
 - ✅ NuGet dependencies
-- ⏳ CI/CD pipeline
+- ✅ CI/CD pipeline
 
-**Phase 2: Core Features (In Progress)**
+### Phase 2: Core Features (In Progress)
 - Domain entities and value objects
 - Restic integration
 - Git configuration management
 - Protocol plugins (SMB, SFTP)
 
-**Phase 3: Scheduling & Automation**
+### Phase 3: Scheduling & Automation
 - Quartz.NET scheduler
 - Backup job execution
 - Real-time progress tracking (SignalR)
 
-**Phase 4: Frontend**
+### Phase 4: Frontend
 - React 18 dashboard
 - Job management UI
 - Backup history viewer
