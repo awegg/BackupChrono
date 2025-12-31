@@ -34,7 +34,7 @@ jobs:
       run: dotnet test src/backend/BackupChrono.sln --configuration Release --no-build --verbosity normal --filter "FullyQualifiedName!~Integration"
       
     - name: Run integration tests
-      run: dotnet test src/backend/BackupChrono.Integration.Tests/ --configuration Release --no-build --verbosity normal
+      run: dotnet test src/backend/BackupChrono.IntegrationTests/ --configuration Release --no-build --verbosity normal
       
     - name: Generate code coverage
       run: dotnet test src/backend/BackupChrono.sln --configuration Release --no-build --collect:"XPlat Code Coverage" --results-directory ./coverage

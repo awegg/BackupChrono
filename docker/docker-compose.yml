@@ -30,9 +30,3 @@ services:
     depends_on:
       - backupchrono-api
     restart: unless-stopped
-
-volumes:
-  config:
-    driver: local
-  repository:
-    driver: local

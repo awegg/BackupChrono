@@ -153,6 +153,20 @@ docker-compose up -d
 
 ### Production Mode
 
+**Prerequisites:**
+Before running production mode, create the required directories on the host:
+
+```bash
+# Linux/macOS
+sudo mkdir -p /var/backupchrono/config /var/backupchrono/repository
+sudo chown -R 1000:1000 /var/backupchrono  # Match container user
+
+# Windows (using WSL2 for Docker Desktop)
+mkdir -p /mnt/c/backupchrono/config /mnt/c/backupchrono/repository
+# Then update docker-compose.prod.yml volumes to use Windows paths
+```
+
+**Start production deployment:**
 ```bash
 cd docker
 docker-compose -f docker-compose.prod.yml up -d
@@ -165,12 +179,19 @@ docker-compose -f docker-compose.prod.yml up -d
 - Structured logging
 - Auto-restart policies
 
-**Important**: Mount production volumes to persistent storage:
+**Volume Mappings:**
 ```yaml
 volumes:
-  - /var/backupchrono/config:/config       # Git configuration
-  - /var/backupchrono/repository:/repository # Restic data
+  - /var/backupchrono/config:/config       # Git configuration repository
+  - /var/backupchrono/repository:/repository # Restic backup data
 ```
+
+**Notes:**
+- `/var/backupchrono/config`: Stores Git-versioned backup job configurations (~100MB)
+- `/var/backupchrono/repository`: Stores Restic backup data (size depends on backups)
+- Both directories must exist before starting containers
+- Ensure proper permissions for Docker to read/write these paths
+- For Windows: Adjust paths in docker-compose.prod.yml or use WSL2 paths
 
 ## Configuration
 

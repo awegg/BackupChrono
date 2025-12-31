@@ -7,8 +7,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="LibGit2Sharp" Version="0.31.0" />
-    <PackageReference Include="Microsoft.AspNetCore.SignalR" Version="1.2.0" />
     <PackageReference Include="Quartz" Version="3.15.1" />
     <PackageReference Include="SMBLibrary" Version="1.5.5.1" />
     <PackageReference Include="SSH.NET" Version="2025.1.0" />

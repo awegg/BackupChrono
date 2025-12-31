@@ -3,6 +3,9 @@
 
 FROM nginx:alpine
 
+# Install curl for health checks
+RUN apk add --no-cache curl
+
 # Create placeholder index.html
 RUN echo '<!DOCTYPE html><html><head><title>BackupChrono</title></head><body><h1>BackupChrono</h1><p>Frontend coming soon...</p></body></html>' > /usr/share/nginx/html/index.html
 
