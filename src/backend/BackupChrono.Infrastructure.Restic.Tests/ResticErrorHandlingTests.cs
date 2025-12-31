@@ -31,7 +31,7 @@ public class ResticErrorHandlingTests : IClassFixture<ResticTestFixture>
     {
         // Arrange & Act
         var result = await _fixture.Container!.ExecAsync(new[] { "/bin/sh", "-c",
-            $"export RESTIC_PASSWORD={ResticTestFixture.ResticPassword} && restic snapshots --repo /invalid/repo/path" });
+            $"export RESTIC_PASSWORD={_fixture.ResticPassword} && restic snapshots --repo /invalid/repo/path" });
 
         // Assert
         result.ExitCode.Should().NotBe(0);
@@ -59,7 +59,7 @@ public class ResticErrorHandlingTests : IClassFixture<ResticTestFixture>
 
         // Act
         var result = await _fixture.Container.ExecAsync(new[] { "/bin/sh", "-c",
-            $"export RESTIC_PASSWORD={ResticTestFixture.ResticPassword} && restic backup /tmp/backup-source --repo {_fixture.RepositoryPath} --json" });
+            $"export RESTIC_PASSWORD={_fixture.ResticPassword} && restic backup /tmp/backup-source --repo {_fixture.RepositoryPath} --json" });
 
         // Assert
         result.ExitCode.Should().Be(0);
@@ -86,7 +86,7 @@ public class ResticErrorHandlingTests : IClassFixture<ResticTestFixture>
     {
         // Arrange & Act
         var result = await _fixture.Container!.ExecAsync(new[] { "/bin/sh", "-c",
-            $"export RESTIC_PASSWORD={ResticTestFixture.ResticPassword} && restic check --repo {_fixture.RepositoryPath}" });
+            $"export RESTIC_PASSWORD={_fixture.ResticPassword} && restic check --repo {_fixture.RepositoryPath}" });
 
         // Assert
         result.ExitCode.Should().Be(0);
@@ -105,9 +105,9 @@ public class ResticErrorHandlingTests : IClassFixture<ResticTestFixture>
         // Act
         var tasks = new[]
         {
-            _fixture.Container.ExecAsync(new[] { "/bin/sh", "-c", $"export RESTIC_PASSWORD={ResticTestFixture.ResticPassword} && restic backup /tmp/source1 --repo {_fixture.RepositoryPath}" }),
-            _fixture.Container.ExecAsync(new[] { "/bin/sh", "-c", $"export RESTIC_PASSWORD={ResticTestFixture.ResticPassword} && restic backup /tmp/source2 --repo {_fixture.RepositoryPath}" }),
-            _fixture.Container.ExecAsync(new[] { "/bin/sh", "-c", $"export RESTIC_PASSWORD={ResticTestFixture.ResticPassword} && restic backup /tmp/source3 --repo {_fixture.RepositoryPath}" })
+            _fixture.Container.ExecAsync(new[] { "/bin/sh", "-c", $"export RESTIC_PASSWORD={_fixture.ResticPassword} && restic backup /tmp/source1 --repo {_fixture.RepositoryPath}" }),
+            _fixture.Container.ExecAsync(new[] { "/bin/sh", "-c", $"export RESTIC_PASSWORD={_fixture.ResticPassword} && restic backup /tmp/source2 --repo {_fixture.RepositoryPath}" }),
+            _fixture.Container.ExecAsync(new[] { "/bin/sh", "-c", $"export RESTIC_PASSWORD={_fixture.ResticPassword} && restic backup /tmp/source3 --repo {_fixture.RepositoryPath}" })
         };
 
         // Assert - At least one succeeds, others may fail due to locking

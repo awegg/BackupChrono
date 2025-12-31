@@ -12,24 +12,25 @@ public class ResticTestFixture : IAsyncLifetime
 {
     public IContainer? Container { get; private set; }
     public string RepositoryPath { get; private set; } = "/tmp/test-repo";
-    public const string ResticPassword = "test-password-123";
+    public readonly string ResticPassword = Guid.NewGuid().ToString();
 
     public async Task InitializeAsync()
     {
-        // Build a container with restic installed
+        // Build a container with restic installed (pinned to alpine:3.19 for reproducibility)
         Container = new ContainerBuilder()
-            .WithImage("alpine:latest")
+            .WithImage("alpine:3.19")
             .WithCommand("/bin/sh", "-c", "while true; do sleep 30; done")
             .Build();
 
         await Container.StartAsync();
 
-        // Install restic in the container
+        // Install restic v0.18.1 in the container with retry logic
         var installResult = await Container.ExecAsync(new[] { "/bin/sh", "-c", 
             "apk add --no-cache wget ca-certificates bzip2 && " +
-            "wget -q https://github.com/restic/restic/releases/download/v0.17.3/restic_0.17.3_linux_amd64.bz2 && " +
-            "bunzip2 restic_0.17.3_linux_amd64.bz2 && " +
-            "mv restic_0.17.3_linux_amd64 /usr/local/bin/restic && " +
+            "wget --tries=3 -q https://github.com/restic/restic/releases/download/v0.18.1/restic_0.18.1_linux_amd64.bz2 && " +
+            "echo '680838f19d67151adba227e1570cdd8af12c19cf1735783ed1ba928bc41f363d  restic_0.18.1_linux_amd64.bz2' | sha256sum -c - && " +
+            "bunzip2 restic_0.18.1_linux_amd64.bz2 && " +
+            "mv restic_0.18.1_linux_amd64 /usr/local/bin/restic && " +
             "chmod +x /usr/local/bin/restic" });
 
         if (installResult.ExitCode != 0)

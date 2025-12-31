@@ -62,7 +62,7 @@ public class ResticVersionTests : IClassFixture<ResticTestFixture>
     {
         // Arrange & Act
         var result = await _fixture.Container!.ExecAsync(new[] { "/bin/sh", "-c",
-            $"export RESTIC_PASSWORD={ResticTestFixture.ResticPassword} && restic snapshots --repo {_fixture.RepositoryPath} --json" });
+            $"export RESTIC_PASSWORD={_fixture.ResticPassword} && restic snapshots --repo {_fixture.RepositoryPath} --json" });
 
         // Assert
         result.ExitCode.Should().Be(0);
