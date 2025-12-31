@@ -1,0 +1,54 @@
+# Stage 1: Build the .NET application
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+
+# Copy project files for restore
+COPY src/backend/BackupChrono.Core/*.csproj ./BackupChrono.Core/
+COPY src/backend/BackupChrono.Infrastructure/*.csproj ./BackupChrono.Infrastructure/
+COPY src/backend/BackupChrono.Api/*.csproj ./BackupChrono.Api/
+
+# Restore dependencies for API project only
+RUN dotnet restore BackupChrono.Api/BackupChrono.Api.csproj
+
+# Copy source code
+COPY src/backend/BackupChrono.Core/ ./BackupChrono.Core/
+COPY src/backend/BackupChrono.Infrastructure/ ./BackupChrono.Infrastructure/
+COPY src/backend/BackupChrono.Api/ ./BackupChrono.Api/
+
+# Build and publish the application
+RUN dotnet publish BackupChrono.Api/BackupChrono.Api.csproj -c Release -o /app/publish
+
+# Stage 2: Download and prepare restic binary
+FROM alpine:latest AS restic
+RUN apk add --no-cache wget ca-certificates \
+    && wget https://github.com/restic/restic/releases/download/v0.17.3/restic_0.17.3_linux_amd64.bz2 \
+    && echo "5097faeda6aa13167aae6e36efdba636637f8741fed89bbf015678334632d4d3  restic_0.17.3_linux_amd64.bz2" | sha256sum -c - \
+    && bunzip2 restic_0.17.3_linux_amd64.bz2 \
+    && mv restic_0.17.3_linux_amd64 /usr/local/bin/restic \
+    && chmod +x /usr/local/bin/restic
+
+# Stage 3: Runtime image
+FROM mcr.microsoft.com/dotnet/aspnet:8.0
+WORKDIR /app
+
+# Install git for configuration management
+RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
+
+# Copy published application
+COPY --from=build /app/publish .
+
+# Copy restic binary
+COPY --from=restic /usr/local/bin/restic /usr/local/bin/restic
+
+# Create directories for volumes
+RUN mkdir -p /config /repository
+
+# Environment variables
+ENV ASPNETCORE_URLS=http://+:5000 \
+    GIT_CONFIG_PATH=/config \
+    RESTIC_REPOSITORY=/repository \
+    RESTIC_PASSWORD_FILE=/app/restic-password
+
+EXPOSE 5000
+
+ENTRYPOINT ["dotnet", "BackupChrono.Api.dll"]
