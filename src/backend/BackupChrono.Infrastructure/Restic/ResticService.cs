@@ -39,10 +39,14 @@ public class ResticService : IResticService
             await _client.ExecuteCommand(new[] { "snapshots", "--json" });
             return true;
         }
-        catch
+        catch (InvalidOperationException ex) when (ex.Message.Contains("Is there a repository at the following location?") || 
+                                                     ex.Message.Contains("unable to open repository") ||
+                                                     ex.Message.Contains("repository does not exist"))
         {
+            // Repository not initialized - this is expected when checking existence
             return false;
         }
+        // Let other exceptions (network failures, permission issues, corrupted repos) propagate
     }
 
     public async Task<RepositoryStats> GetStats(string repositoryPath)
