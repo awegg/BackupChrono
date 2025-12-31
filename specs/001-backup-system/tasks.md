@@ -67,42 +67,42 @@ This document organizes implementation tasks by **user story** to enable indepen
 
 ### Tasks
 
-- [ ] T015 [P] Create ProtocolType enum in BackupChrono.Core/Entities/ProtocolType.cs
-- [ ] T016 [P] Create BackupJobType enum in BackupChrono.Core/Entities/BackupJobType.cs
-- [ ] T017 [P] Create BackupJobStatus enum in BackupChrono.Core/Entities/BackupJobStatus.cs
-- [ ] T018 [P] Create BackupStatus enum in BackupChrono.Core/Entities/BackupStatus.cs
-- [ ] T019 [P] Create Schedule value object in BackupChrono.Core/ValueObjects/Schedule.cs
-- [ ] T020 [P] Create RetentionPolicy value object in BackupChrono.Core/ValueObjects/RetentionPolicy.cs
-- [ ] T021 [P] Create IncludeExcludeRules value object in BackupChrono.Core/ValueObjects/IncludeExcludeRules.cs
-- [ ] T022 [P] Create ConfigurationCommit value object in BackupChrono.Core/ValueObjects/ConfigurationCommit.cs
-- [ ] T023 [P] Create Device entity in BackupChrono.Core/Entities/Device.cs with all fields per data-model.md
-- [ ] T024 [P] Create Share entity in BackupChrono.Core/Entities/Share.cs with all fields per data-model.md
-- [ ] T025 [P] Create Backup entity in BackupChrono.Core/Entities/Backup.cs with all fields per data-model.md
-- [ ] T026 [P] Create BackupJob entity in BackupChrono.Core/Entities/BackupJob.cs with all fields per data-model.md
-- [ ] T027 [P] Create DataBlock entity in BackupChrono.Core/Entities/DataBlock.cs (conceptual, managed by restic)
-- [ ] T028 [P] Create Repository entity in BackupChrono.Core/Entities/Repository.cs
-- [ ] T029 [P] Create IProtocolPlugin interface in BackupChrono.Core/Interfaces/IProtocolPlugin.cs with 4 methods per data-model.md
-- [ ] T030 [P] Create IResticService interface in BackupChrono.Core/Interfaces/IResticService.cs with ~12 methods per data-model.md
-- [ ] T031 [P] Create IDeviceService interface in BackupChrono.Core/Interfaces/IDeviceService.cs for CRUD operations
-- [ ] T032 [P] Create IShareService interface in BackupChrono.Core/Interfaces/IShareService.cs for CRUD operations
-- [ ] T033 [P] Create IBackupOrchestrator interface in BackupChrono.Core/Interfaces/IBackupOrchestrator.cs for job coordination
-- [ ] T034 [P] Create DTOs in BackupChrono.Core/DTOs/: BackupProgress, RestoreProgress, RepositoryStats, FileEntry, FileVersion per data-model.md
-- [ ] T035 Implement GitConfigService in src/backend/BackupChrono.Infrastructure/Git/GitConfigService.cs using LibGit2Sharp for YAML file read/write and commits
-- [ ] T036 Implement ResticClient in src/backend/BackupChrono.Infrastructure/Restic/ResticClient.cs for process spawning with JSON output parsing
-- [ ] T037 Implement ResticService in src/backend/BackupChrono.Infrastructure/Restic/ResticService.cs implementing IResticService with all 12+ methods
-- [ ] T038 Implement JsonParsers in src/backend/BackupChrono.Infrastructure/Restic/JsonParsers.cs for parsing restic JSON output (backup stats, progress, file lists)
-- [ ] T039 [P] Implement SmbProtocolPlugin in src/backend/BackupChrono.Infrastructure/Protocols/SmbProtocolPlugin.cs using SMBLibrary
-- [ ] T040 [P] Implement SshProtocolPlugin in src/backend/BackupChrono.Infrastructure/Protocols/SshProtocolPlugin.cs using SSH.NET
-- [ ] T041 [P] Implement RsyncProtocolPlugin in src/backend/BackupChrono.Infrastructure/Protocols/RsyncProtocolPlugin.cs spawning rsync process
-- [ ] T042 Implement ProtocolPluginLoader in src/backend/BackupChrono.Infrastructure/Protocols/ProtocolPluginLoader.cs for plugin discovery
-- [ ] T043 Configure Serilog in BackupChrono.Api/Program.cs with JSON logging to stdout and file
-- [ ] T044 Add global error handling middleware in BackupChrono.Api/Middleware/ErrorHandlingMiddleware.cs
-- [ ] T045 Configure CORS in BackupChrono.Api/Program.cs for frontend origin
-- [ ] T046 Configure Swagger/OpenAPI in BackupChrono.Api/Program.cs using contracts/openapi.yaml
-- [ ] T047 Configure dependency injection in BackupChrono.Api/Program.cs for all services and plugins
-- [ ] T048 Create health check endpoint at /health in BackupChrono.Api/Controllers/HealthController.cs
-- [ ] T049 Create ResticVersionTests in BackupChrono.Infrastructure.Restic.Tests/ResticVersionTests.cs to verify restic binary compatibility
-- [ ] T050 Create ResticErrorHandlingTests in BackupChrono.Infrastructure.Restic.Tests/ResticErrorHandlingTests.cs to verify error scenarios
+- [X] T015 [P] Create ProtocolType enum in BackupChrono.Core/Entities/ProtocolType.cs
+- [X] T016 [P] Create BackupJobType enum in BackupChrono.Core/Entities/BackupJobType.cs
+- [X] T017 [P] Create BackupJobStatus enum in BackupChrono.Core/Entities/BackupJobStatus.cs
+- [X] T018 [P] Create BackupStatus enum in BackupChrono.Core/Entities/BackupStatus.cs
+- [X] T019 [P] Create Schedule value object in BackupChrono.Core/ValueObjects/Schedule.cs
+- [X] T020 [P] Create RetentionPolicy value object in BackupChrono.Core/ValueObjects/RetentionPolicy.cs
+- [X] T021 [P] Create IncludeExcludeRules value object in BackupChrono.Core/ValueObjects/IncludeExcludeRules.cs
+- [X] T022 [P] Create ConfigurationCommit value object in BackupChrono.Core/ValueObjects/ConfigurationCommit.cs
+- [X] T023 [P] Create Device entity in BackupChrono.Core/Entities/Device.cs with all fields per data-model.md
+- [X] T024 [P] Create Share entity in BackupChrono.Core/Entities/Share.cs with all fields per data-model.md
+- [X] T025 [P] Create Backup entity in BackupChrono.Core/Entities/Backup.cs with all fields per data-model.md
+- [X] T026 [P] Create BackupJob entity in BackupChrono.Core/Entities/BackupJob.cs with all fields per data-model.md
+- [X] T027 [P] Create DataBlock entity in BackupChrono.Core/Entities/DataBlock.cs (conceptual, managed by restic)
+- [X] T028 [P] Create Repository entity in BackupChrono.Core/Entities/Repository.cs
+- [X] T029 [P] Create IProtocolPlugin interface in BackupChrono.Core/Interfaces/IProtocolPlugin.cs with 4 methods per data-model.md
+- [X] T030 [P] Create IResticService interface in BackupChrono.Core/Interfaces/IResticService.cs with ~12 methods per data-model.md
+- [X] T031 [P] Create IDeviceService interface in BackupChrono.Core/Interfaces/IDeviceService.cs for CRUD operations
+- [X] T032 [P] Create IShareService interface in BackupChrono.Core/Interfaces/IShareService.cs for CRUD operations
+- [X] T033 [P] Create IBackupOrchestrator interface in BackupChrono.Core/Interfaces/IBackupOrchestrator.cs for job coordination
+- [X] T034 [P] Create DTOs in BackupChrono.Core/DTOs/: BackupProgress, RestoreProgress, RepositoryStats, FileEntry, FileVersion per data-model.md
+- [X] T035 Implement GitConfigService in src/backend/BackupChrono.Infrastructure/Git/GitConfigService.cs using LibGit2Sharp for YAML file read/write and commits
+- [X] T036 Implement ResticClient in src/backend/BackupChrono.Infrastructure/Restic/ResticClient.cs for process spawning with JSON output parsing
+- [X] T037 Implement ResticService in src/backend/BackupChrono.Infrastructure/Restic/ResticService.cs implementing IResticService with all 12+ methods
+- [X] T038 Implement JsonParsers in src/backend/BackupChrono.Infrastructure/Restic/JsonParsers.cs for parsing restic JSON output (backup stats, progress, file lists)
+- [X] T039 [P] Implement SmbProtocolPlugin in src/backend/BackupChrono.Infrastructure/Protocols/SmbProtocolPlugin.cs using SMBLibrary
+- [X] T040 [P] Implement SshProtocolPlugin in src/backend/BackupChrono.Infrastructure/Protocols/SshProtocolPlugin.cs using SSH.NET
+- [X] T041 [P] Implement RsyncProtocolPlugin in src/backend/BackupChrono.Infrastructure/Protocols/RsyncProtocolPlugin.cs spawning rsync process
+- [X] T042 Implement ProtocolPluginLoader in src/backend/BackupChrono.Infrastructure/Protocols/ProtocolPluginLoader.cs for plugin discovery
+- [X] T043 Configure Serilog in BackupChrono.Api/Program.cs with JSON logging to stdout and file
+- [X] T044 Add global error handling middleware in BackupChrono.Api/Middleware/ErrorHandlingMiddleware.cs
+- [X] T045 Configure CORS in BackupChrono.Api/Program.cs for frontend origin
+- [X] T046 Configure Swagger/OpenAPI in BackupChrono.Api/Program.cs using contracts/openapi.yaml
+- [X] T047 Configure dependency injection in BackupChrono.Api/Program.cs for all services and plugins
+- [X] T048 Create health check endpoint at /health in BackupChrono.Api/Controllers/HealthController.cs
+- [X] T049 Create ResticVersionTests in BackupChrono.Infrastructure.Restic.Tests/ResticVersionTests.cs to verify restic binary compatibility
+- [X] T050 Create ResticErrorHandlingTests in BackupChrono.Infrastructure.Restic.Tests/ResticErrorHandlingTests.cs to verify error scenarios
 
 **Checkpoint**: All foundational services compile and pass unit tests. Health check endpoint responds. Plugins load successfully at startup.
 

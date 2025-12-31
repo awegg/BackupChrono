@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using System.Reflection;
 
 namespace BackupChrono.Api.Controllers;
 
@@ -22,7 +23,6 @@ public class InfoController : ControllerBase
 
     /// <summary>
     /// Get API version and information
-    /// <summary>
     /// Provides basic API metadata and the current UTC timestamp.
     /// </summary>
     /// <returns>An object with the fields `Name`, `Version`, `Description`, and `Timestamp` (UTC).</returns>
@@ -30,10 +30,15 @@ public class InfoController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     public IActionResult GetInfo()
     {
+        var assembly = Assembly.GetExecutingAssembly();
+        var version = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+                      ?? assembly.GetName().Version?.ToString()
+                      ?? "0.0.0";
+
         return Ok(new
         {
             Name = "BackupChrono API",
-            Version = "1.0.0",
+            Version = version,
             Description = "Version-controlled backup orchestration system",
             Timestamp = DateTime.UtcNow
         });

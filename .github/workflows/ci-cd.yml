@@ -30,20 +30,65 @@ jobs:
     - name: Build solution
       run: dotnet build src/backend/BackupChrono.sln --configuration Release --no-restore
       
-    - name: Run unit tests
-      run: dotnet test src/backend/BackupChrono.sln --configuration Release --no-build --verbosity normal --filter "FullyQualifiedName!~Integration"
+    - name: Run unit tests with coverage
+      run: dotnet test src/backend/BackupChrono.UnitTests/ --configuration Release --no-build --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage/unit --logger "junit;LogFilePath=test-results.xml"
       
-    - name: Run integration tests
-      run: dotnet test src/backend/BackupChrono.IntegrationTests/ --configuration Release --no-build --verbosity normal
-      
-    - name: Generate code coverage
-      run: dotnet test src/backend/BackupChrono.sln --configuration Release --no-build --collect:"XPlat Code Coverage" --results-directory ./coverage
-      
-    - name: Upload coverage reports
+    - name: Upload unit test coverage
       uses: codecov/codecov-action@v4
       with:
-        directory: ./coverage
+        token: ${{ secrets.CODECOV_TOKEN }}
+        directory: ./coverage/unit
         fail_ci_if_error: false
+        flags: unit
+        name: codecov-unit
+        
+    - name: Upload unit test results
+      if: ${{ !cancelled() }}
+      uses: codecov/test-results-action@v1
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        files: ./coverage/unit/test-results.xml
+        flags: unit
+        
+    - name: Run restic integration tests with coverage
+      run: dotnet test src/backend/BackupChrono.Infrastructure.Restic.Tests/ --configuration Release --no-build --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage/restic --logger "junit;LogFilePath=test-results.xml"
+      
+    - name: Upload restic test coverage
+      uses: codecov/codecov-action@v4
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        directory: ./coverage/restic
+        fail_ci_if_error: false
+        flags: restic
+        name: codecov-restic
+        
+    - name: Upload restic test results
+      if: ${{ !cancelled() }}
+      uses: codecov/test-results-action@v1
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        files: ./coverage/restic/test-results.xml
+        flags: restic
+        
+    - name: Run integration tests with coverage
+      run: dotnet test src/backend/BackupChrono.IntegrationTests/ --configuration Release --no-build --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage/integration --logger "junit;LogFilePath=test-results.xml"
+      
+    - name: Upload integration test coverage
+      uses: codecov/codecov-action@v4
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        directory: ./coverage/integration
+        fail_ci_if_error: false
+        flags: integration
+        name: codecov-integration
+        
+    - name: Upload integration test results
+      if: ${{ !cancelled() }}
+      uses: codecov/test-results-action@v1
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        files: ./coverage/integration/test-results.xml
+        flags: integration
 
   docker-build:
     name: Docker Build

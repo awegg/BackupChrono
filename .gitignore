@@ -112,3 +112,4 @@ _ReSharper*/
 # Restic test data (generated during tests)
 *.restic-test/
 test-repos/
+test-results.xml

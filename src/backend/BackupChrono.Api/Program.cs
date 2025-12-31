@@ -1,3 +1,8 @@
+using BackupChrono.Api.Middleware;
+using BackupChrono.Core.Interfaces;
+using BackupChrono.Infrastructure.Git;
+using BackupChrono.Infrastructure.Plugins;
+using BackupChrono.Infrastructure.Restic;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -9,7 +14,14 @@ builder.Host.UseSerilog((context, configuration) =>
 // Add services to the container
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new() 
+    { 
+        Title = "BackupChrono API", 
+        Version = "v1" 
+    });
+});
 
 // Add SignalR
 builder.Services.AddSignalR();
@@ -31,16 +43,69 @@ builder.Services.AddCors(options =>
         else
         {
             // Fallback: allow any origin if not configured (Development only)
-            policy.AllowAnyOrigin()
-                  .AllowAnyMethod()
-                  .AllowAnyHeader();
-        }
-    });
+            if (builder.Environment.IsDevelopment())
+            {
+                policy.AllowAnyOrigin()
+                      .AllowAnyMethod()
+                      .AllowAnyHeader();
+            }
+            else
+            {
+                // In production, require explicit origins to be configured
+                throw new InvalidOperationException("CORS origins must be configured in production environment.");
+            }
+        }    });
 });
+
+// Register application services
+builder.Services.AddSingleton<PluginLoader>();
+builder.Services.AddSingleton<GitConfigService>(sp => 
+    new GitConfigService(builder.Configuration["ConfigRepository:Path"] ?? "./config"));
+builder.Services.AddSingleton<ResticClient>(sp => 
+{
+    var resticPassword = builder.Configuration["Restic:Password"];
+    
+    if (string.IsNullOrWhiteSpace(resticPassword))
+    {
+        if (builder.Environment.IsDevelopment())
+        {
+            // In development, allow empty password but log a warning
+            var logger = sp.GetRequiredService<ILogger<Program>>();
+            logger.LogWarning("Restic password is not configured. Set Restic:Password in appsettings.json or environment variable. Using empty password for development only.");
+            resticPassword = "development-password-changeme";
+        }
+        else
+        {
+            // In production, require password to be configured
+            throw new InvalidOperationException("Restic password must be configured in production environment. Set Restic:Password in configuration or RESTIC_PASSWORD environment variable.");
+        }
+    }
+    
+    return new ResticClient(
+        builder.Configuration["Restic:BinaryPath"] ?? "restic",
+        builder.Configuration["Restic:RepositoryPath"] ?? "/restic-repo",
+        resticPassword);
+});
+builder.Services.AddSingleton<IResticService, ResticService>();
+
+// TODO: Register missing service implementations (Phase 3 - User Story 1)
+// These interfaces exist but implementations are not yet created:
+// - IDeviceService implementation needed (T051 - DeviceService)
+// - IShareService implementation needed (T052 - ShareService)
+// - IBackupOrchestrator implementation needed (T053 - BackupOrchestrator)
+// builder.Services.AddScoped<IDeviceService, DeviceService>();
+// builder.Services.AddScoped<IShareService, ShareService>();
+// builder.Services.AddScoped<IBackupOrchestrator, BackupOrchestrator>();
 
 var app = builder.Build();
 
+// Initialize PluginLoader to register all protocol plugins
+var pluginLoader = app.Services.GetRequiredService<PluginLoader>();
+app.Logger.LogInformation("Loaded {PluginCount} protocol plugins", pluginLoader.GetAllPlugins().Count());
+
 // Configure the HTTP request pipeline
+app.UseMiddleware<ErrorHandlingMiddleware>();
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -52,12 +117,9 @@ if (app.Environment.IsDevelopment())
 
 app.UseSerilogRequestLogging();
 app.UseCors("AllowFrontend");
-app.UseAuthorization();
+// TODO: Add authentication/authorization when implementing user management and access control
+// app.UseAuthentication();
+// app.UseAuthorization();
 app.MapControllers();
-
-// Health check endpoint
-app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }))
-   .WithName("HealthCheck")
-   .WithTags("Health");
 
 app.Run();

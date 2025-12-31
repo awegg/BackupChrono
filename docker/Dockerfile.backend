@@ -19,12 +19,12 @@ COPY src/backend/BackupChrono.Api/ ./BackupChrono.Api/
 RUN dotnet publish BackupChrono.Api/BackupChrono.Api.csproj -c Release -o /app/publish
 
 # Stage 2: Download and prepare restic binary
-FROM alpine:latest AS restic
+FROM alpine:3.19 AS restic
 RUN apk add --no-cache wget ca-certificates \
-    && wget https://github.com/restic/restic/releases/download/v0.17.3/restic_0.17.3_linux_amd64.bz2 \
-    && echo "5097faeda6aa13167aae6e36efdba636637f8741fed89bbf015678334632d4d3  restic_0.17.3_linux_amd64.bz2" | sha256sum -c - \
-    && bunzip2 restic_0.17.3_linux_amd64.bz2 \
-    && mv restic_0.17.3_linux_amd64 /usr/local/bin/restic \
+    && wget --tries=3 https://github.com/restic/restic/releases/download/v0.18.1/restic_0.18.1_linux_amd64.bz2 \
+    && echo "680838f19d67151adba227e1570cdd8af12c19cf1735783ed1ba928bc41f363d  restic_0.18.1_linux_amd64.bz2" | sha256sum -c - \
+    && bunzip2 restic_0.18.1_linux_amd64.bz2 \
+    && mv restic_0.18.1_linux_amd64 /usr/local/bin/restic \
     && chmod +x /usr/local/bin/restic
 
 # Stage 3: Runtime image
