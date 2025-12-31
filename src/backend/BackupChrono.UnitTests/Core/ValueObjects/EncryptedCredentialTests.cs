@@ -50,7 +50,7 @@ public class EncryptedCredentialTests
     }
 
     [Fact]
-    public void SetEncryptedValue_ClearsCachedPlaintext()
+    public void SetEncryptedValue_AllowsDecryptionOfExternallyEncryptedValue()
     {
         // Arrange
         var credential1 = new EncryptedCredential("password123");

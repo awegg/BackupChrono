@@ -1,6 +1,4 @@
 using BackupChrono.Infrastructure.Restic;
-using DotNet.Testcontainers.Builders;
-using DotNet.Testcontainers.Containers;
 using Xunit;
 using FluentAssertions;
 
@@ -9,61 +7,20 @@ namespace BackupChrono.Infrastructure.Restic.Tests;
 /// <summary>
 /// Tests for verifying restic error handling scenarios.
 /// </summary>
-public class ResticErrorHandlingTests : IAsyncLifetime
+public class ResticErrorHandlingTests : IClassFixture<ResticTestFixture>
 {
-    private IContainer? _container;
-    private string _repositoryPath = string.Empty;
-    private const string ResticPassword = "test-password-123";
+    private readonly ResticTestFixture _fixture;
 
-    public async Task InitializeAsync()
+    public ResticErrorHandlingTests(ResticTestFixture fixture)
     {
-        // Build a container with restic installed
-        _container = new ContainerBuilder()
-            .WithImage("alpine:latest")
-            .WithCommand("/bin/sh", "-c", "while true; do sleep 30; done")
-            .Build();
-
-        await _container.StartAsync();
-
-        // Install restic in the container
-        var installResult = await _container.ExecAsync(new[] { "/bin/sh", "-c", 
-            "apk add --no-cache wget ca-certificates bzip2 && " +
-            "wget -q https://github.com/restic/restic/releases/download/v0.17.3/restic_0.17.3_linux_amd64.bz2 && " +
-            "bunzip2 restic_0.17.3_linux_amd64.bz2 && " +
-            "mv restic_0.17.3_linux_amd64 /usr/local/bin/restic && " +
-            "chmod +x /usr/local/bin/restic" });
-
-        if (installResult.ExitCode != 0)
-        {
-            throw new Exception($"Failed to install restic: {installResult.Stderr}");
-        }
-
-        // Initialize a test repository
-        _repositoryPath = "/tmp/test-repo";
-        await _container.ExecAsync(new[] { "/bin/sh", "-c", $"mkdir -p {_repositoryPath}" });
-        
-        var initResult = await _container.ExecAsync(new[] { "/bin/sh", "-c", 
-            $"export RESTIC_PASSWORD={ResticPassword} && restic init --repo {_repositoryPath}" });
-        
-        if (initResult.ExitCode != 0)
-        {
-            throw new Exception($"Failed to initialize restic repository: {initResult.Stderr}");
-        }
-    }
-
-    public async Task DisposeAsync()
-    {
-        if (_container != null)
-        {
-            await _container.DisposeAsync();
-        }
+        _fixture = fixture;
     }
 
     [Fact]
     public async Task Restic_ShouldReturnError_WhenBinaryNotFound()
     {
         // Arrange & Act
-        var result = await _container!.ExecAsync(new[] { "nonexistent-restic-binary", "version" });
+        var result = await _fixture.Container!.ExecAsync(new[] { "nonexistent-restic-binary", "version" });
 
         // Assert
         result.ExitCode.Should().NotBe(0);
@@ -73,8 +30,8 @@ public class ResticErrorHandlingTests : IAsyncLifetime
     public async Task Restic_ShouldReturnError_ForInvalidRepository()
     {
         // Arrange & Act
-        var result = await _container!.ExecAsync(new[] { "/bin/sh", "-c",
-            $"export RESTIC_PASSWORD={ResticPassword} && restic snapshots --repo /invalid/repo/path" });
+        var result = await _fixture.Container!.ExecAsync(new[] { "/bin/sh", "-c",
+            $"export RESTIC_PASSWORD={ResticTestFixture.ResticPassword} && restic snapshots --repo /invalid/repo/path" });
 
         // Assert
         result.ExitCode.Should().NotBe(0);
@@ -85,8 +42,8 @@ public class ResticErrorHandlingTests : IAsyncLifetime
     public async Task Restic_ShouldReturnError_ForIncorrectPassword()
     {
         // Arrange & Act
-        var result = await _container!.ExecAsync(new[] { "/bin/sh", "-c",
-            $"export RESTIC_PASSWORD=wrong-password && restic check --repo {_repositoryPath}" });
+        var result = await _fixture.Container!.ExecAsync(new[] { "/bin/sh", "-c",
+            $"export RESTIC_PASSWORD=wrong-password && restic check --repo {_fixture.RepositoryPath}" });
 
         // Assert
         result.ExitCode.Should().NotBe(0);
@@ -97,12 +54,12 @@ public class ResticErrorHandlingTests : IAsyncLifetime
     public async Task Restic_ShouldBackup_WithValidInputs()
     {
         // Arrange - Create a test file
-        await _container!.ExecAsync(new[] { "/bin/sh", "-c", 
+        await _fixture.Container!.ExecAsync(new[] { "/bin/sh", "-c", 
             "mkdir -p /tmp/backup-source && echo 'test content' > /tmp/backup-source/test.txt" });
 
         // Act
-        var result = await _container.ExecAsync(new[] { "/bin/sh", "-c",
-            $"export RESTIC_PASSWORD={ResticPassword} && restic backup /tmp/backup-source --repo {_repositoryPath} --json" });
+        var result = await _fixture.Container.ExecAsync(new[] { "/bin/sh", "-c",
+            $"export RESTIC_PASSWORD={ResticTestFixture.ResticPassword} && restic backup /tmp/backup-source --repo {_fixture.RepositoryPath} --json" });
 
         // Assert
         result.ExitCode.Should().Be(0);
@@ -117,7 +74,7 @@ public class ResticErrorHandlingTests : IAsyncLifetime
 
         // Act
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-        await _container!.ExecAsync(new[] { "restic", "version" }, cts.Token);
+        await _fixture.Container!.ExecAsync(new[] { "restic", "version" }, cts.Token);
         stopwatch.Stop();
 
         // Assert
@@ -128,8 +85,8 @@ public class ResticErrorHandlingTests : IAsyncLifetime
     public async Task Restic_ShouldCheck_RepositoryIntegrity()
     {
         // Arrange & Act
-        var result = await _container!.ExecAsync(new[] { "/bin/sh", "-c",
-            $"export RESTIC_PASSWORD={ResticPassword} && restic check --repo {_repositoryPath}" });
+        var result = await _fixture.Container!.ExecAsync(new[] { "/bin/sh", "-c",
+            $"export RESTIC_PASSWORD={ResticTestFixture.ResticPassword} && restic check --repo {_fixture.RepositoryPath}" });
 
         // Assert
         result.ExitCode.Should().Be(0);
@@ -139,7 +96,7 @@ public class ResticErrorHandlingTests : IAsyncLifetime
     public async Task Restic_ShouldHandleLockContention_Gracefully()
     {
         // Arrange - Create multiple snapshots concurrently
-        await _container!.ExecAsync(new[] { "/bin/sh", "-c", 
+        await _fixture.Container!.ExecAsync(new[] { "/bin/sh", "-c", 
             "mkdir -p /tmp/source1 /tmp/source2 /tmp/source3 && " +
             "echo 'data1' > /tmp/source1/file.txt && " +
             "echo 'data2' > /tmp/source2/file.txt && " +
@@ -148,9 +105,9 @@ public class ResticErrorHandlingTests : IAsyncLifetime
         // Act
         var tasks = new[]
         {
-            _container.ExecAsync(new[] { "/bin/sh", "-c", $"export RESTIC_PASSWORD={ResticPassword} && restic backup /tmp/source1 --repo {_repositoryPath}" }),
-            _container.ExecAsync(new[] { "/bin/sh", "-c", $"export RESTIC_PASSWORD={ResticPassword} && restic backup /tmp/source2 --repo {_repositoryPath}" }),
-            _container.ExecAsync(new[] { "/bin/sh", "-c", $"export RESTIC_PASSWORD={ResticPassword} && restic backup /tmp/source3 --repo {_repositoryPath}" })
+            _fixture.Container.ExecAsync(new[] { "/bin/sh", "-c", $"export RESTIC_PASSWORD={ResticTestFixture.ResticPassword} && restic backup /tmp/source1 --repo {_fixture.RepositoryPath}" }),
+            _fixture.Container.ExecAsync(new[] { "/bin/sh", "-c", $"export RESTIC_PASSWORD={ResticTestFixture.ResticPassword} && restic backup /tmp/source2 --repo {_fixture.RepositoryPath}" }),
+            _fixture.Container.ExecAsync(new[] { "/bin/sh", "-c", $"export RESTIC_PASSWORD={ResticTestFixture.ResticPassword} && restic backup /tmp/source3 --repo {_fixture.RepositoryPath}" })
         };
 
         // Assert - At least one succeeds, others may fail due to locking

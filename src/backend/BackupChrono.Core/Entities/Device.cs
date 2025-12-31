@@ -78,4 +78,17 @@ public class Device
     /// Timestamp when the device was last updated.
     /// </summary>
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
+    /// <summary>
+    /// Validates that the device configuration is consistent.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">Thrown when WakeOnLan is enabled but MAC address is missing.</exception>
+    public void Validate()
+    {
+        if (WakeOnLanEnabled && string.IsNullOrWhiteSpace(WakeOnLanMacAddress))
+        {
+            throw new InvalidOperationException(
+                $"Device '{Name}': WakeOnLanMacAddress is required when WakeOnLanEnabled is true.");
+        }
+    }
 }

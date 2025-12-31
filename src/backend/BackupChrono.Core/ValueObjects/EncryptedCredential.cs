@@ -149,15 +149,31 @@ public class EncryptedCredential
                 var key = Convert.FromBase64String(keyBase64);
                 if (key.Length == 32) // AES-256 requires 32 bytes
                     return key;
+                
+                throw new InvalidOperationException(
+                    $"BACKUPCHRONO_ENCRYPTION_KEY must be exactly 32 bytes (256 bits) when Base64 decoded. Got {key.Length} bytes. " +
+                    "Generate a secure key with: openssl rand -base64 32");
             }
-            catch
+            catch (FormatException ex)
             {
-                // Fall through to default
+                throw new InvalidOperationException(
+                    "BACKUPCHRONO_ENCRYPTION_KEY is not valid Base64. Generate a secure key with: openssl rand -base64 32", ex);
             }
         }
         
+        // Check if we're in production environment
+        var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+        var isProduction = string.Equals(environment, "Production", StringComparison.OrdinalIgnoreCase);
+        
+        if (isProduction)
+        {
+            throw new InvalidOperationException(
+                "BACKUPCHRONO_ENCRYPTION_KEY environment variable must be set in production. " +
+                "Generate a secure 256-bit key with: openssl rand -base64 32");
+        }
+        
         // INSECURE DEFAULT - Only for development/testing
-        // In production, this should fail if no key is configured
+        // In production (ASPNETCORE_ENVIRONMENT=Production), the exception above will be thrown
         var defaultKey = "DEVELOPMENT_KEY_CHANGE_IN_PRODUCTION_32BYTES!";
         return SHA256.HashData(Encoding.UTF8.GetBytes(defaultKey));
     }
