@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  backupchrono-api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.backend
+    container_name: backupchrono-api-prod
+    ports:
+      - "5000:5000"
+    volumes:
+      # Production volumes should be mounted from host or external storage
+      - /var/backupchrono/config:/config
+      - /var/backupchrono/repository:/repository
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - GIT_CONFIG_PATH=/config
+      - RESTIC_REPOSITORY=/repository
+      - RESTIC_PASSWORD_FILE=/run/secrets/restic_password
+    secrets:
+      - restic_password
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+        reservations:
+          cpus: '1.0'
+          memory: 2G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  backupchrono-frontend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.frontend
+    container_name: backupchrono-frontend-prod
+    ports:
+      - "80:80"
+    depends_on:
+      backupchrono-api:
+        condition: service_healthy
+    restart: always
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+secrets:
+  restic_password:
+    file: ./secrets/restic_password.txt

@@ -39,21 +39,21 @@ This document organizes implementation tasks by **user story** to enable indepen
 
 ### Tasks
 
-- [ ] T001 Create ASP.NET Core solution with 3 projects (Core, Infrastructure, Api) per plan.md architecture
-- [ ] T002 [P] Add NuGet packages to BackupChrono.Core: No external dependencies needed (domain models only)
-- [ ] T003 [P] Add NuGet packages to BackupChrono.Infrastructure: LibGit2Sharp, Quartz, Microsoft.AspNetCore.SignalR, SSH.NET, SMBLibrary, YamlDotNet
-- [ ] T004 [P] Add NuGet packages to BackupChrono.Api: Microsoft.AspNetCore.OpenApi, Swashbuckle.AspNetCore, Serilog.AspNetCore
-- [ ] T005 [P] Create test projects: BackupChrono.Core.Tests, BackupChrono.Infrastructure.Tests, BackupChrono.Infrastructure.Restic.Tests, BackupChrono.Api.Tests, BackupChrono.Integration.Tests
-- [ ] T006 [P] Add test NuGet packages: xUnit, xUnit.runner.visualstudio, Moq, FluentAssertions, Microsoft.AspNetCore.Mvc.Testing, Testcontainers
-- [ ] T007 Create Dockerfile.backend for .NET 8.0 runtime with restic binary bundled
-- [ ] T008 [P] Create Dockerfile.frontend placeholder (nginx serving React build) for future frontend implementation
-- [ ] T009 Create docker-compose.yml for local development with backend, config volume, repository volume
-- [ ] T010 Create docker-compose.prod.yml for production deployment
-- [ ] T011 Create .dockerignore with bin/, obj/, node_modules/, .git/, .vs/
-- [ ] T012 [P] Create README.md with setup instructions, architecture overview, Docker deployment guide
-- [ ] T013 [P] Create directory structure: src/backend/, src/frontend/, src/plugins/, docker/, docs/
-- [ ] T014 Initialize Git repository with .gitignore (.NET, Node, Docker, IDE files)
-- [ ] T200 [P] Create CI/CD pipeline configuration (.github/workflows/) for build, test, Docker image publishing
+- [X] T001 Create ASP.NET Core solution with 3 projects (Core, Infrastructure, Api) per plan.md architecture
+- [X] T002 [P] Add NuGet packages to BackupChrono.Core: No external dependencies needed (domain models only)
+- [X] T003 [P] Add NuGet packages to BackupChrono.Infrastructure: LibGit2Sharp, Quartz, Microsoft.AspNetCore.SignalR, SSH.NET, SMBLibrary, YamlDotNet
+- [X] T004 [P] Add NuGet packages to BackupChrono.Api: Microsoft.AspNetCore.OpenApi, Swashbuckle.AspNetCore, Serilog.AspNetCore
+- [X] T005 [P] Create test projects: BackupChrono.UnitTests (Core+Infrastructure+Api), BackupChrono.Infrastructure.Restic.Tests, BackupChrono.IntegrationTests
+- [X] T006 [P] Add test NuGet packages: xUnit, xUnit.runner.visualstudio, Moq, FluentAssertions, Microsoft.AspNetCore.Mvc.Testing, Testcontainers
+- [X] T007 Create Dockerfile.backend for .NET 8.0 runtime with restic binary bundled
+- [X] T008 [P] Create Dockerfile.frontend placeholder (nginx serving React build) for future frontend implementation
+- [X] T009 Create docker-compose.yml for local development with backend, config volume, repository volume
+- [X] T010 Create docker-compose.prod.yml for production deployment
+- [X] T011 Create .dockerignore with bin/, obj/, node_modules/, .git/, .vs/
+- [X] T012 [P] Create README.md with setup instructions, architecture overview, Docker deployment guide
+- [X] T013 [P] Create directory structure: src/backend/, src/frontend/, src/plugins/, docker/, docs/
+- [X] T014 Initialize Git repository with .gitignore (.NET, Node, Docker, IDE files)
+- [X] T200 [P] Create CI/CD pipeline configuration (.github/workflows/) for build, test, Docker image publishing
 
 **Checkpoint**: Solution compiles, Docker builds successfully, all test projects execute (empty), CI/CD pipeline validates PRs.
 

@@ -1,0 +1,52 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BackupChrono.Core", "BackupChrono.Core\BackupChrono.Core.csproj", "{F8B9A333-4244-4A39-A33E-8875A2BA09CE}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BackupChrono.Infrastructure", "BackupChrono.Infrastructure\BackupChrono.Infrastructure.csproj", "{2D21E103-7344-42B8-9930-19CEEDB006C4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BackupChrono.Api", "BackupChrono.Api\BackupChrono.Api.csproj", "{69EDAECB-EB11-4AA2-AE2C-C3523007B773}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BackupChrono.Infrastructure.Restic.Tests", "BackupChrono.Infrastructure.Restic.Tests\BackupChrono.Infrastructure.Restic.Tests.csproj", "{0B38109F-59AC-42DC-9727-B95EA70DE2CD}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BackupChrono.UnitTests", "BackupChrono.UnitTests\BackupChrono.UnitTests.csproj", "{BC0F48CF-1408-41C9-A406-1FC03AE6BA00}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BackupChrono.IntegrationTests", "BackupChrono.IntegrationTests\BackupChrono.IntegrationTests.csproj", "{523FDDC9-8AD5-4941-A5BD-353505337AF5}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F8B9A333-4244-4A39-A33E-8875A2BA09CE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F8B9A333-4244-4A39-A33E-8875A2BA09CE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F8B9A333-4244-4A39-A33E-8875A2BA09CE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F8B9A333-4244-4A39-A33E-8875A2BA09CE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2D21E103-7344-42B8-9930-19CEEDB006C4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2D21E103-7344-42B8-9930-19CEEDB006C4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2D21E103-7344-42B8-9930-19CEEDB006C4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2D21E103-7344-42B8-9930-19CEEDB006C4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{69EDAECB-EB11-4AA2-AE2C-C3523007B773}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{69EDAECB-EB11-4AA2-AE2C-C3523007B773}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{69EDAECB-EB11-4AA2-AE2C-C3523007B773}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{69EDAECB-EB11-4AA2-AE2C-C3523007B773}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0B38109F-59AC-42DC-9727-B95EA70DE2CD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0B38109F-59AC-42DC-9727-B95EA70DE2CD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0B38109F-59AC-42DC-9727-B95EA70DE2CD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0B38109F-59AC-42DC-9727-B95EA70DE2CD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BC0F48CF-1408-41C9-A406-1FC03AE6BA00}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BC0F48CF-1408-41C9-A406-1FC03AE6BA00}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BC0F48CF-1408-41C9-A406-1FC03AE6BA00}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BC0F48CF-1408-41C9-A406-1FC03AE6BA00}.Release|Any CPU.Build.0 = Release|Any CPU
+		{523FDDC9-8AD5-4941-A5BD-353505337AF5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{523FDDC9-8AD5-4941-A5BD-353505337AF5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{523FDDC9-8AD5-4941-A5BD-353505337AF5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{523FDDC9-8AD5-4941-A5BD-353505337AF5}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

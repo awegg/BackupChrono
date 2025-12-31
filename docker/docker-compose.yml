@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  backupchrono-api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.backend
+    container_name: backupchrono-api
+    ports:
+      - "5000:5000"
+    volumes:
+      # Git configuration repository (stores backup job definitions)
+      - ./config:/config
+      # Restic repository (stores actual backup data)
+      - ./repository:/repository
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - GIT_CONFIG_PATH=/config
+      - RESTIC_REPOSITORY=/repository
+      - RESTIC_PASSWORD=${RESTIC_PASSWORD:-changeme}
+    restart: unless-stopped
+
+  backupchrono-frontend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.frontend
+    container_name: backupchrono-frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - backupchrono-api
+    restart: unless-stopped
+
+volumes:
+  config:
+    driver: local
+  repository:
+    driver: local
