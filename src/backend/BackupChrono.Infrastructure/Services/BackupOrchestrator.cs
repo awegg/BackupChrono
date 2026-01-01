@@ -117,20 +117,27 @@ public class BackupOrchestrator : IBackupOrchestrator
         catch (OperationCanceledException)
         {
             _logger.LogInformation("Device backup cancelled for '{DeviceName}'", device.Name);
-            job.Status = BackupJobStatus.Cancelled;
-            job.ErrorMessage = "Backup cancelled by user";
+            // Only update status if not already cancelled (may have been cancelled externally)
+            if (job.Status != BackupJobStatus.Cancelled)
+            {
+                job.Status = BackupJobStatus.Cancelled;
+                job.ErrorMessage = "Backup cancelled by user";
+            }
             job.CompletedAt = DateTime.UtcNow;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Device backup failed for '{DeviceName}'", device.Name);
-            job.Status = BackupJobStatus.Failed;
-            job.ErrorMessage = ex.Message;
+            // Only update status if not already finalised (may have been cancelled externally)
+            if (job.Status != BackupJobStatus.Cancelled)
+            {
+                job.Status = BackupJobStatus.Failed;
+                job.ErrorMessage = ex.Message;
+            }
             job.CompletedAt = DateTime.UtcNow;
         }
         finally
         {
-            cts.Dispose();
             await UntrackJob(job.Id);
         }
 
@@ -187,21 +194,28 @@ public class BackupOrchestrator : IBackupOrchestrator
         catch (OperationCanceledException)
         {
             _logger.LogInformation("Share backup cancelled for '{DeviceName}/{ShareName}'", device.Name, share.Name);
-            job.Status = BackupJobStatus.Cancelled;
-            job.ErrorMessage = "Backup cancelled by user";
+            // Only update status if not already cancelled (may have been cancelled externally)
+            if (job.Status != BackupJobStatus.Cancelled)
+            {
+                job.Status = BackupJobStatus.Cancelled;
+                job.ErrorMessage = "Backup cancelled by user";
+            }
             job.CompletedAt = DateTime.UtcNow;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Share backup failed for '{DeviceName}/{ShareName}'", device.Name, share.Name);
-            job.Status = BackupJobStatus.Failed;
-            job.ErrorMessage = ex.Message;
+            // Only update status if not already finalised (may have been cancelled externally)
+            if (job.Status != BackupJobStatus.Cancelled)
+            {
+                job.Status = BackupJobStatus.Failed;
+                job.ErrorMessage = ex.Message;
+            }
             job.CompletedAt = DateTime.UtcNow;
         }
         finally
         {
             await UntrackJob(job.Id);
-            cts.Dispose();
         }
 
         return job;

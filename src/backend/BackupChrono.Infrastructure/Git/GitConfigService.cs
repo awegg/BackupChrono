@@ -247,11 +247,11 @@ public class GitConfigService
             Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
             await File.WriteAllTextAsync(fullPath, yaml);
 
-            // Stage and commit all changes (covers writes and any prior deletions)
+            // Stage and commit only the specific file written
             await Task.Run(() =>
             {
                 using var repo = new LibGit2Sharp.Repository(_repositoryPath);
-                Commands.Stage(repo, "*");
+                Commands.Stage(repo, fullPath);
 
                 var status = repo.RetrieveStatus();
                 if (!status.IsDirty)

@@ -38,12 +38,20 @@ public class StorageStatus
 }
 
 /// <summary>
-/// Storage threshold levels.
+/// Storage threshold levels based on configurable thresholds (see StorageMonitorOptions).
+/// Default: Warning at 80%, Critical at 90%, Exhausted at 95%.
 /// </summary>
 public enum StorageThresholdLevel
 {
-    Normal,      // < 80% used
-    Warning,     // 80-90% used
-    Critical,    // 90-95% used
-    Exhausted    // > 95% used
+    /// <summary>Storage utilization is normal (below warning threshold).</summary>
+    Normal,
+
+    /// <summary>Storage utilization has exceeded warning threshold (default 80%).</summary>
+    Warning,
+
+    /// <summary>Storage utilization has exceeded critical threshold (default 90%).</summary>
+    Critical,
+
+    /// <summary>Storage utilization has exceeded exhausted threshold (default 95%).</summary>
+    Exhausted
 }

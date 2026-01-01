@@ -1,5 +1,6 @@
 using BackupChrono.Core.Entities;
 using BackupChrono.Core.Interfaces;
+using Microsoft.Extensions.Logging;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
 
@@ -10,10 +11,12 @@ public class BackupJobRepository : IBackupJobRepository
     private readonly string _jobsDirectory;
     private readonly ISerializer _yamlSerializer;
     private readonly IDeserializer _yamlDeserializer;
+    private readonly ILogger<BackupJobRepository> _logger;
 
-    public BackupJobRepository(string repositoryPath)
+    public BackupJobRepository(string repositoryPath, ILogger<BackupJobRepository> logger)
     {
         _jobsDirectory = Path.Combine(repositoryPath, "jobs");
+        _logger = logger;
         Directory.CreateDirectory(_jobsDirectory);
         
         _yamlSerializer = new SerializerBuilder()
@@ -68,9 +71,7 @@ public class BackupJobRepository : IBackupJobRepository
             }
             catch (Exception ex)
             {
-                // Log error but continue processing other files
-                // Consider injecting ILogger for proper logging
-                Console.WriteLine($"Failed to read job file {file}: {ex.Message}");
+                _logger.LogError(ex, "Failed to read job file {JobFile}", file);
             }
         }
 

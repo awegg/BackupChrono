@@ -29,7 +29,9 @@ public enum BackupJobStatus
     /// Job was cancelled by user.
     /// </summary>
     Cancelled,
+
     /// <summary>
     /// Job completed with partial success (some operations succeeded, others failed).
     /// </summary>
-    PartiallyCompleted}
+    PartiallyCompleted
+}

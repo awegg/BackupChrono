@@ -103,8 +103,8 @@ builder.Services.AddSingleton<IProtocolPluginLoader, ProtocolPluginLoader>();
 builder.Services.AddScoped<IDeviceService, DeviceService>();
 builder.Services.AddScoped<IShareService, ShareService>();
 
-// Backup orchestration
-builder.Services.AddScoped<IBackupOrchestrator, BackupOrchestrator>();
+// Backup orchestration - Singleton to preserve job state during shutdown
+builder.Services.AddSingleton<IBackupOrchestrator, BackupOrchestrator>();
 
 // Storage monitoring
 builder.Services.AddSingleton<IStorageMonitor, StorageMonitor>();
@@ -113,7 +113,8 @@ builder.Services.AddSingleton<IStorageMonitor, StorageMonitor>();
 builder.Services.AddSingleton<IBackupJobRepository, BackupJobRepository>(sp =>
 {
     var gitConfig = sp.GetRequiredService<GitConfigService>();
-    return new BackupJobRepository(gitConfig.RepositoryPath);
+    var logger = sp.GetRequiredService<ILogger<BackupJobRepository>>();
+    return new BackupJobRepository(gitConfig.RepositoryPath, logger);
 });
 
 // Quartz Scheduler
@@ -121,14 +122,10 @@ builder.Services.AddSingleton<IQuartzSchedulerService, QuartzSchedulerService>()
 
 var app = builder.Build();
 
-// Start the Quartz scheduler
+// Start the Quartz scheduler (which also schedules all backups)
 var schedulerService = app.Services.GetRequiredService<IQuartzSchedulerService>();
 await schedulerService.Start();
-app.Logger.LogInformation("Quartz scheduler started");
-
-// Schedule all backups based on device/share configurations
-await schedulerService.ScheduleAllBackups();
-app.Logger.LogInformation("All backups scheduled");
+app.Logger.LogInformation("Quartz scheduler started with all configured backups");
 
 // Configure the HTTP request pipeline
 app.UseMiddleware<ErrorHandlingMiddleware>();
@@ -202,3 +199,8 @@ lifetime.ApplicationStopping.Register(() =>
 });
 
 app.Run();
+
+/// <summary>
+/// Partial Program class to enable WebApplicationFactory for integration testing.
+/// </summary>
+public partial class Program { }

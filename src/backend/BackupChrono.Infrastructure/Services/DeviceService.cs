@@ -180,10 +180,11 @@ public class DeviceService : IDeviceService
         }
 
         // Delete device file
-        var filePath = GetDeviceFilePath(device.Name);
-        if (File.Exists(filePath))
+        var relativePath = GetDeviceFilePath(device.Name);
+        var fullPath = Path.Combine(_gitConfigService.RepositoryPath, relativePath);
+        if (File.Exists(fullPath))
         {
-            File.Delete(filePath);
+            File.Delete(fullPath);
         }
 
         // TODO: Delete associated shares when ShareService is implemented

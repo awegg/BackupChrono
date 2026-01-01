@@ -141,7 +141,7 @@ public class ResticService : IResticService
     public Task<Backup> GetBackup(string backupId)
     {
         // TODO: Implement get backup by ID
-        throw new NotImplementedException();
+        return Task.FromException<Backup>(new NotImplementedException("GetBackup is not yet implemented"));
     }
 
     public async Task<IEnumerable<FileEntry>> BrowseBackup(string backupId, string path = "/")

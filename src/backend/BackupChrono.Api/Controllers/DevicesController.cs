@@ -97,6 +97,11 @@ public class DevicesController : ControllerBase
             _logger.LogWarning(ex, "Invalid device creation request");
             return BadRequest(new ErrorResponse { Error = "Invalid device data", Detail = ex.Message });
         }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "Invalid device creation request");
+            return BadRequest(new ErrorResponse { Error = "Invalid device data", Detail = ex.Message });
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating device");
@@ -195,11 +200,7 @@ public class DevicesController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error testing connection for device {DeviceId}", deviceId);
-            return Ok(new ConnectionTestResult
-            {
-                Success = false,
-                Message = $"Connection test failed: {ex.Message}"
-            });
+            return StatusCode(500, new ErrorResponse { Error = "Failed to test connection", Detail = ex.Message });
         }
     }
 

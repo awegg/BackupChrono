@@ -72,11 +72,16 @@ public class MappingService : IMappingService
 
     public Device ToDevice(DeviceCreateDto dto)
     {
+        if (!Enum.TryParse<ProtocolType>(dto.Protocol, ignoreCase: true, out var protocol))
+        {
+            throw new ArgumentException($"Invalid protocol '{dto.Protocol}'. Must be one of: {string.Join(", ", Enum.GetNames<ProtocolType>())}", nameof(dto.Protocol));
+        }
+
         return new Device
         {
             Id = Guid.NewGuid(),
             Name = dto.Name,
-            Protocol = Enum.Parse<ProtocolType>(dto.Protocol, ignoreCase: true),
+            Protocol = protocol,
             Host = dto.Host,
             Port = dto.Port,
             Username = dto.Username,
@@ -94,7 +99,14 @@ public class MappingService : IMappingService
     public void ApplyUpdate(Device device, DeviceUpdateDto dto)
     {
         if (dto.Name != null) device.Name = dto.Name;
-        if (dto.Protocol != null) device.Protocol = Enum.Parse<ProtocolType>(dto.Protocol, ignoreCase: true);
+        if (dto.Protocol != null)
+        {
+            if (!Enum.TryParse<ProtocolType>(dto.Protocol, ignoreCase: true, out var protocol))
+            {
+                throw new ArgumentException($"Invalid protocol '{dto.Protocol}'. Must be one of: {string.Join(", ", Enum.GetNames<ProtocolType>())}", nameof(dto.Protocol));
+            }
+            device.Protocol = protocol;
+        }
         if (dto.Host != null) device.Host = dto.Host;
         if (dto.Port.HasValue) device.Port = dto.Port.Value;
         if (dto.Username != null) device.Username = dto.Username;

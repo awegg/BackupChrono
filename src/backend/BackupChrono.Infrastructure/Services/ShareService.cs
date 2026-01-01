@@ -1,6 +1,7 @@
 using BackupChrono.Core.Entities;
 using BackupChrono.Core.Interfaces;
 using BackupChrono.Infrastructure.Git;
+using Microsoft.Extensions.Logging;
 
 namespace BackupChrono.Infrastructure.Services;
 
@@ -11,11 +12,13 @@ public class ShareService : IShareService
 {
     private readonly GitConfigService _gitConfigService;
     private readonly IDeviceService _deviceService;
+    private readonly ILogger<ShareService> _logger;
 
-    public ShareService(GitConfigService gitConfigService, IDeviceService deviceService)
+    public ShareService(GitConfigService gitConfigService, IDeviceService deviceService, ILogger<ShareService> logger)
     {
         _gitConfigService = gitConfigService;
         _deviceService = deviceService;
+        _logger = logger;
     }
 
     public async Task<Share> CreateShare(Share share)
@@ -101,8 +104,7 @@ public class ShareService : IShareService
             }
             catch (Exception ex)
             {
-                // Log error but continue processing other files
-                Console.WriteLine($"Failed to read share file {file}: {ex.Message}");
+                _logger.LogError(ex, "Failed to read share file {ShareFile}", file);
             }
         }
 
@@ -135,8 +137,7 @@ public class ShareService : IShareService
                 }
                 catch (Exception ex)
                 {
-                    // Log error but continue processing other files
-                    Console.WriteLine($"Failed to read share file {file}: {ex.Message}");
+                    _logger.LogError(ex, "Failed to read share file {ShareFile}", file);
                 }
             }
         }

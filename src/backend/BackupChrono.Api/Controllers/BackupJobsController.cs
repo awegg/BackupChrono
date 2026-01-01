@@ -98,10 +98,16 @@ public class BackupJobsController : ControllerBase
     [HttpPost]
     [ProducesResponseType(StatusCodes.Status202Accepted)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> TriggerBackup([FromBody] TriggerBackupRequest request)
+    public async Task<IActionResult> TriggerBackup([FromBody] TriggerBackupRequest? request)
     {
         try
         {
+            // Validate that request exists and DeviceId is provided
+            if (request == null || request.DeviceId == Guid.Empty)
+            {
+                return BadRequest(new ErrorResponse { Error = "Invalid backup request", Detail = "DeviceId is required" });
+            }
+
             _logger.LogInformation(
                 "Triggering manual backup for device {DeviceId}, share {ShareId}",
                 request.DeviceId,

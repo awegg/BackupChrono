@@ -12,7 +12,7 @@ namespace BackupChrono.Infrastructure.Scheduling;
 /// </summary>
 public class QuartzSchedulerService : IQuartzSchedulerService
 {
-    private readonly IScheduler _scheduler;
+    private IScheduler? _scheduler;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<QuartzSchedulerService> _logger;
 
@@ -22,10 +22,29 @@ public class QuartzSchedulerService : IQuartzSchedulerService
     {
         _scopeFactory = scopeFactory;
         _logger = logger;
+    }
 
-        // Create scheduler
+    /// <summary>
+    /// Initializes the scheduler asynchronously.
+    /// </summary>
+    private async Task InitializeScheduler()
+    {
+        if (_scheduler != null)
+        {
+            return;
+        }
+
         var schedulerFactory = new StdSchedulerFactory();
-        _scheduler = schedulerFactory.GetScheduler().Result;
+        _scheduler = await schedulerFactory.GetScheduler();
+    }
+
+    /// <summary>
+    /// Gets the scheduler, ensuring it's initialized.
+    /// </summary>
+    private async Task<IScheduler> GetSchedulerAsync()
+    {
+        await InitializeScheduler();
+        return _scheduler ?? throw new InvalidOperationException("Scheduler failed to initialize");
     }
 
     /// <summary>
@@ -34,6 +53,13 @@ public class QuartzSchedulerService : IQuartzSchedulerService
     public async Task Start()
     {
         _logger.LogInformation("Starting Quartz scheduler...");
+        
+        await InitializeScheduler();
+        if (_scheduler == null)
+        {
+            throw new InvalidOperationException("Failed to initialize scheduler");
+        }
+
         await _scheduler.Start();
 
         // Schedule all devices and shares
@@ -47,6 +73,12 @@ public class QuartzSchedulerService : IQuartzSchedulerService
     /// </summary>
     public async Task Stop()
     {
+        if (_scheduler == null)
+        {
+            _logger.LogInformation("Scheduler not initialized, nothing to stop");
+            return;
+        }
+
         _logger.LogInformation("Stopping Quartz scheduler...");
         await _scheduler.Shutdown(waitForJobsToComplete: true);
         _logger.LogInformation("Quartz scheduler stopped");
@@ -58,6 +90,7 @@ public class QuartzSchedulerService : IQuartzSchedulerService
     public async Task ScheduleAllBackups()
     {
         _logger.LogInformation("Scheduling all backups...");
+        var scheduler = await GetSchedulerAsync();
 
         using var scope = _scopeFactory.CreateScope();
         var deviceService = scope.ServiceProvider.GetRequiredService<IDeviceService>();
@@ -96,13 +129,14 @@ public class QuartzSchedulerService : IQuartzSchedulerService
     /// </summary>
     public async Task ScheduleDeviceBackup(Device device, Core.ValueObjects.Schedule schedule)
     {
+        var scheduler = await GetSchedulerAsync();
         var jobKey = new JobKey($"device-{device.Id}", "backups");
         var triggerKey = new TriggerKey($"device-{device.Id}-trigger", "backups");
 
         // Remove existing job if any
-        if (await _scheduler.CheckExists(jobKey))
+        if (await scheduler.CheckExists(jobKey))
         {
-            await _scheduler.DeleteJob(jobKey);
+            await scheduler.DeleteJob(jobKey);
         }
 
         // Create job
@@ -119,7 +153,7 @@ public class QuartzSchedulerService : IQuartzSchedulerService
             .WithCronSchedule(schedule.CronExpression)
             .Build();
 
-        await _scheduler.ScheduleJob(job, trigger);
+        await scheduler.ScheduleJob(job, trigger);
 
         _logger.LogInformation(
             "Scheduled device-level backup for '{DeviceName}' with cron: {Cron}",
@@ -132,13 +166,14 @@ public class QuartzSchedulerService : IQuartzSchedulerService
     /// </summary>
     public async Task ScheduleShareBackup(Device device, Share share, Core.ValueObjects.Schedule schedule)
     {
+        var scheduler = await GetSchedulerAsync();
         var jobKey = new JobKey($"share-{share.Id}", "backups");
         var triggerKey = new TriggerKey($"share-{share.Id}-trigger", "backups");
 
         // Remove existing job if any
-        if (await _scheduler.CheckExists(jobKey))
+        if (await scheduler.CheckExists(jobKey))
         {
-            await _scheduler.DeleteJob(jobKey);
+            await scheduler.DeleteJob(jobKey);
         }
 
         // Create job
@@ -157,7 +192,7 @@ public class QuartzSchedulerService : IQuartzSchedulerService
             .WithCronSchedule(schedule.CronExpression)
             .Build();
 
-        await _scheduler.ScheduleJob(job, trigger);
+        await scheduler.ScheduleJob(job, trigger);
 
         _logger.LogInformation(
             "Scheduled share-level backup for '{DeviceName}/{ShareName}' with cron: {Cron}",
@@ -171,10 +206,11 @@ public class QuartzSchedulerService : IQuartzSchedulerService
     /// </summary>
     public async Task UnscheduleDeviceBackup(Guid deviceId)
     {
+        var scheduler = await GetSchedulerAsync();
         var jobKey = new JobKey($"device-{deviceId}", "backups");
-        if (await _scheduler.CheckExists(jobKey))
+        if (await scheduler.CheckExists(jobKey))
         {
-            await _scheduler.DeleteJob(jobKey);
+            await scheduler.DeleteJob(jobKey);
             _logger.LogInformation("Unscheduled device backup for device ID: {DeviceId}", deviceId);
         }
     }
@@ -184,10 +220,11 @@ public class QuartzSchedulerService : IQuartzSchedulerService
     /// </summary>
     public async Task UnscheduleShareBackup(Guid shareId)
     {
+        var scheduler = await GetSchedulerAsync();
         var jobKey = new JobKey($"share-{shareId}", "backups");
-        if (await _scheduler.CheckExists(jobKey))
+        if (await scheduler.CheckExists(jobKey))
         {
-            await _scheduler.DeleteJob(jobKey);
+            await scheduler.DeleteJob(jobKey);
             _logger.LogInformation("Unscheduled share backup for share ID: {ShareId}", shareId);
         }
     }
@@ -197,6 +234,7 @@ public class QuartzSchedulerService : IQuartzSchedulerService
     /// </summary>
     public async Task TriggerImmediateBackup(Guid deviceId, Guid? shareId = null)
     {
+        var scheduler = await GetSchedulerAsync();
         var jobKey = shareId.HasValue
             ? new JobKey($"manual-share-{shareId.Value}", "manual-backups")
             : new JobKey($"manual-device-{deviceId}", "manual-backups");
@@ -218,9 +256,9 @@ public class QuartzSchedulerService : IQuartzSchedulerService
             .Build();
 
         // Ensure the job exists in the scheduler before triggering
-        await _scheduler.AddJob(job, replace: true);
+        await scheduler.AddJob(job, replace: true);
 
-        await _scheduler.TriggerJob(jobKey, jobData);
+        await scheduler.TriggerJob(jobKey, jobData);
 
         _logger.LogInformation(
             "Triggered immediate backup for device {DeviceId}, share {ShareId}",

@@ -31,6 +31,7 @@ public class BackupJob : IJob
         var jobTypeStr = dataMap.GetString("JobType") ?? "Scheduled";
         var deviceName = dataMap.GetString("DeviceName");
         var shareName = dataMap.GetString("ShareName");
+        var retryAttemptStr = dataMap.GetString("RetryAttempt");
 
         if (string.IsNullOrEmpty(deviceIdStr) || !Guid.TryParse(deviceIdStr, out var deviceId))
         {
@@ -42,6 +43,12 @@ public class BackupJob : IJob
         {
             _logger.LogWarning("Invalid JobType '{JobType}', defaulting to Scheduled", jobTypeStr);
             jobType = BackupJobType.Scheduled;
+        }
+
+        int retryAttempt = 0;
+        if (!string.IsNullOrEmpty(retryAttemptStr) && int.TryParse(retryAttemptStr, out var parsedRetryAttempt))
+        {
+            retryAttempt = parsedRetryAttempt;
         }
 
         Guid? shareId = null;
@@ -76,6 +83,12 @@ public class BackupJob : IJob
                     deviceName ?? deviceId.ToString());
 
                 backupJob = await orchestrator.ExecuteDeviceBackup(deviceId, jobType);
+            }
+
+            // Set retry attempt on the backup job if this is a retry
+            if (retryAttempt > 0)
+            {
+                backupJob.RetryAttempt = retryAttempt;
             }
 
             // Log result
