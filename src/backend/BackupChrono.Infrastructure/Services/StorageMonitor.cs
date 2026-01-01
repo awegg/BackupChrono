@@ -43,8 +43,7 @@ public class StorageMonitor : IStorageMonitor
             var totalBytes = driveInfo.TotalSize;
             var availableBytes = driveInfo.AvailableFreeSpace;
             var usedBytes = totalBytes - availableBytes;
-            var usedPercentage = (double)usedBytes / totalBytes * 100;
-
+            var usedPercentage = totalBytes > 0 ? (double)usedBytes / totalBytes * 100 : 0;
             var thresholdLevel = DetermineThresholdLevel(usedPercentage);
 
             var status = new StorageStatus

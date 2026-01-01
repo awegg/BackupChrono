@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+using System.Security.Cryptography;
 using BackupChrono.Core.Entities;
 using BackupChrono.Core.Interfaces;
 using BackupChrono.Core.ValueObjects;
@@ -17,10 +19,9 @@ public class BackupOrchestrator : IBackupOrchestrator
     private readonly IResticService _resticService;
     private readonly IStorageMonitor _storageMonitor;
     private readonly ILogger<BackupOrchestrator> _logger;
-    private readonly Dictionary<Guid, BackupJob> _activeJobs = new();
-    private readonly Dictionary<Guid, CancellationTokenSource> _jobCancellationTokens = new();
-    private readonly Dictionary<Guid, (BackupJob Job, DateTime ExpiresAt)> _completedJobs = new();
-    private readonly SemaphoreSlim _jobLock = new(1, 1);
+    private readonly ConcurrentDictionary<Guid, BackupJob> _activeJobs = new();
+    private readonly ConcurrentDictionary<Guid, CancellationTokenSource> _jobCancellationTokens = new();
+    private readonly ConcurrentDictionary<Guid, (BackupJob Job, DateTime ExpiresAt)> _completedJobs = new();
     private static readonly TimeSpan CompletedJobRetention = TimeSpan.FromHours(1);
 
     public BackupOrchestrator(
@@ -221,61 +222,47 @@ public class BackupOrchestrator : IBackupOrchestrator
         return job;
     }
 
-    public async Task<BackupJob?> GetJobStatus(Guid jobId)
+    public Task<BackupJob?> GetJobStatus(Guid jobId)
     {
-        await _jobLock.WaitAsync();
-        try
+        // Check active jobs first
+        if (_activeJobs.TryGetValue(jobId, out var job))
         {
-            // Check active jobs first
-            if (_activeJobs.TryGetValue(jobId, out var job))
-            {
-                return job;
-            }
-
-            // Check completed jobs (with TTL cleanup)
-            CleanupExpiredCompletedJobs();
-            if (_completedJobs.TryGetValue(jobId, out var completedEntry))
-            {
-                return completedEntry.Job;
-            }
-
-            return null;
+            return Task.FromResult<BackupJob?>(job);
         }
-        finally
+
+        // Check completed jobs (with TTL cleanup)
+        CleanupExpiredCompletedJobs();
+        if (_completedJobs.TryGetValue(jobId, out var completedEntry))
         {
-            _jobLock.Release();
+            return Task.FromResult<BackupJob?>(completedEntry.Job);
         }
+
+        return Task.FromResult<BackupJob?>(null);
     }
 
-    public async Task CancelJob(Guid jobId)
+    public Task CancelJob(Guid jobId)
     {
-        await _jobLock.WaitAsync();
-        try
+        if (_activeJobs.TryGetValue(jobId, out var job) && 
+            _jobCancellationTokens.TryGetValue(jobId, out var cts))
         {
-            if (_activeJobs.TryGetValue(jobId, out var job) && 
-                _jobCancellationTokens.TryGetValue(jobId, out var cts))
-            {
-                _logger.LogInformation("Cancelling backup job {JobId}", jobId);
-                
-                // Trigger cancellation
-                cts.Cancel();
-                
-                // Update job status immediately
-                job.Status = BackupJobStatus.Cancelled;
-                job.CompletedAt = DateTime.UtcNow;
-                job.ErrorMessage = "Backup cancelled by user";
-                
-                _logger.LogInformation("Backup job {JobId} cancellation requested", jobId);
-            }
-            else
-            {
-                _logger.LogWarning("Cannot cancel job {JobId} - job not found or already completed", jobId);
-            }
+            _logger.LogInformation("Cancelling backup job {JobId}", jobId);
+            
+            // Trigger cancellation
+            cts.Cancel();
+            
+            // Update job status immediately
+            job.Status = BackupJobStatus.Cancelled;
+            job.CompletedAt = DateTime.UtcNow;
+            job.ErrorMessage = "Backup cancelled by user";
+            
+            _logger.LogInformation("Backup job {JobId} cancellation requested", jobId);
         }
-        finally
+        else
         {
-            _jobLock.Release();
+            _logger.LogWarning("Cannot cancel job {JobId} - job not found or already completed", jobId);
         }
+
+        return Task.CompletedTask;
     }
 
     public async Task<BackupJob> RetryFailedJob(Guid jobId)
@@ -302,20 +289,12 @@ public class BackupOrchestrator : IBackupOrchestrator
         }
     }
 
-    public async Task<IEnumerable<BackupJob>> ListJobs()
+    public Task<IEnumerable<BackupJob>> ListJobs()
     {
-        await _jobLock.WaitAsync();
-        try
-        {
-            CleanupExpiredCompletedJobs();
-            var active = _activeJobs.Values;
-            var completed = _completedJobs.Values.Select(c => c.Job);
-            return active.Concat(completed).ToList();
-        }
-        finally
-        {
-            _jobLock.Release();
-        }
+        CleanupExpiredCompletedJobs();
+        var active = _activeJobs.Values;
+        var completed = _completedJobs.Values.Select(c => c.Job);
+        return Task.FromResult(active.Concat(completed).ToList().AsEnumerable());
     }
 
     private async Task<Backup> ExecuteShareBackupInternal(Device device, Share share, BackupJob job, CancellationToken cancellationToken)
@@ -374,7 +353,7 @@ public class BackupOrchestrator : IBackupOrchestrator
                 _logger.LogInformation("Initializing new restic repository for '{DeviceName}/{ShareName}' at {RepositoryPath}", 
                     device.Name, share.Name, repositoryPath);
                 
-                var password = GetRepositoryPassword(device, share);
+                var password = await GetRepositoryPassword(device, share);
                 await _resticService.InitializeRepository(repositoryPath, password);
                 
                 _logger.LogInformation("Repository initialized successfully");
@@ -451,57 +430,41 @@ public class BackupOrchestrator : IBackupOrchestrator
         };
     }
 
-    private async Task TrackJob(BackupJob job, CancellationTokenSource cts)
+    private Task TrackJob(BackupJob job, CancellationTokenSource cts)
     {
-        await _jobLock.WaitAsync();
-        try
-        {
-            _activeJobs[job.Id] = job;
-            _jobCancellationTokens[job.Id] = cts;
-        }
-        finally
-        {
-            _jobLock.Release();
-        }
+        _activeJobs[job.Id] = job;
+        _jobCancellationTokens[job.Id] = cts;
+        return Task.CompletedTask;
     }
 
-    private async Task UntrackJob(Guid jobId)
+    private Task UntrackJob(Guid jobId)
     {
-        await _jobLock.WaitAsync();
-        try
+        if (_activeJobs.TryRemove(jobId, out var job))
         {
-            if (_activeJobs.TryGetValue(jobId, out var job))
+            // Move completed/failed jobs to completed store with TTL
+            if (job.Status == BackupJobStatus.Completed || 
+                job.Status == BackupJobStatus.Failed || 
+                job.Status == BackupJobStatus.Cancelled ||
+                job.Status == BackupJobStatus.PartiallyCompleted)
             {
-                // Move completed/failed jobs to completed store with TTL
-                if (job.Status == BackupJobStatus.Completed || 
-                    job.Status == BackupJobStatus.Failed || 
-                    job.Status == BackupJobStatus.Cancelled)
-                {
-                    var expiresAt = DateTime.UtcNow.Add(CompletedJobRetention);
-                    _completedJobs[jobId] = (job, expiresAt);
-                    _logger.LogDebug("Job {JobId} moved to completed store, expires at {ExpiresAt}", 
-                        jobId, expiresAt);
-                }
-                
-                _activeJobs.Remove(jobId);
-            }
-            
-            // Clean up and dispose the cancellation token source
-            if (_jobCancellationTokens.TryGetValue(jobId, out var cts))
-            {
-                _jobCancellationTokens.Remove(jobId);
-                cts.Dispose();
+                var expiresAt = DateTime.UtcNow.Add(CompletedJobRetention);
+                _completedJobs[jobId] = (job, expiresAt);
+                _logger.LogDebug("Job {JobId} moved to completed store, expires at {ExpiresAt}", 
+                    jobId, expiresAt);
             }
         }
-        finally
+        
+        // Clean up and dispose the cancellation token source
+        if (_jobCancellationTokens.TryRemove(jobId, out var cts))
         {
-            _jobLock.Release();
+            cts.Dispose();
         }
+
+        return Task.CompletedTask;
     }
 
     /// <summary>
     /// Removes expired completed jobs from the completed jobs store.
-    /// Must be called while holding _jobLock.
     /// </summary>
     private void CleanupExpiredCompletedJobs()
     {
@@ -513,26 +476,66 @@ public class BackupOrchestrator : IBackupOrchestrator
 
         foreach (var jobId in expiredJobIds)
         {
-            _completedJobs.Remove(jobId);
+            _completedJobs.TryRemove(jobId, out _);
             _logger.LogDebug("Removed expired completed job {JobId}", jobId);
         }
     }
 
     private string GetRepositoryPath(Device device, Share share)
     {
-        // TODO: Make repository base path configurable
-        // For now, use a local path structure
+        // Path hard coded by design. It will be used in a docker container which mounts
+        // the host directory as /repositories.
         return Path.Combine("./repositories", device.Id.ToString(), share.Id.ToString());
     }
 
-    private string GetRepositoryPassword(Device device, Share share)
+    private async Task<string> GetRepositoryPassword(Device device, Share share)
     {
-        // Password comes from the device configuration
-        if (device.Password == null)
+        // Prefer explicit repository credential when provided
+        if (share.RepositoryPassword != null)
         {
-            throw new InvalidOperationException($"No password configured for device '{device.Name}'");
+            var explicitPassword = share.RepositoryPassword.GetPlaintext();
+            if (!string.IsNullOrWhiteSpace(explicitPassword))
+            {
+                return explicitPassword;
+            }
         }
-        
-        return device.Password.GetPlaintext();
+
+        var devicePassword = device.Password?.GetPlaintext();
+        if (string.IsNullOrWhiteSpace(devicePassword))
+        {
+            throw new InvalidOperationException(
+                $"No repository password configured for share '{share.Name}' and no device credential available to derive one for device '{device.Name}'.");
+        }
+
+        var salt = EnsureRepositorySalt(share);
+        var derivedPassword = DeriveRepositoryKey(devicePassword, salt);
+
+        // Persist the derived credential encrypted to avoid plaintext storage
+        share.RepositoryPassword = new EncryptedCredential(derivedPassword);
+        share.RepositoryKeySalt = salt;
+        await _shareService.UpdateShare(share);
+
+        return derivedPassword;
+    }
+
+    private static string EnsureRepositorySalt(Share share)
+    {
+        if (!string.IsNullOrWhiteSpace(share.RepositoryKeySalt))
+        {
+            return share.RepositoryKeySalt;
+        }
+
+        var saltBytes = RandomNumberGenerator.GetBytes(32);
+        var salt = Convert.ToBase64String(saltBytes);
+        share.RepositoryKeySalt = salt;
+        return salt;
+    }
+
+    private static string DeriveRepositoryKey(string devicePassword, string saltBase64)
+    {
+        var saltBytes = Convert.FromBase64String(saltBase64);
+        using var pbkdf2 = new Rfc2898DeriveBytes(devicePassword, saltBytes, 150_000, HashAlgorithmName.SHA256);
+        var key = pbkdf2.GetBytes(32); // 256-bit key
+        return Convert.ToBase64String(key);
     }
 }

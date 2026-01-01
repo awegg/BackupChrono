@@ -132,7 +132,7 @@ public class DevicesController : ControllerBase
             
             return Ok(responseDto);
         }
-        catch (InvalidOperationException ex)
+        catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
         {
             _logger.LogWarning(ex, "Invalid device update request for device {DeviceId}", deviceId);
             return BadRequest(new ErrorResponse { Error = "Invalid device data", Detail = ex.Message });

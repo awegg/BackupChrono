@@ -106,7 +106,7 @@ public class BackupJob : IJob
                     backupJob.ErrorMessage);
 
                 // Schedule retry with exponential backoff
-                await ScheduleRetry(context, backupJob, deviceId, shareId);
+                await ScheduleRetry(context, backupJob, deviceId, shareId, deviceName, shareName);
             }
         }
         catch (Exception ex)
@@ -120,7 +120,9 @@ public class BackupJob : IJob
         IJobExecutionContext context,
         Core.Entities.BackupJob failedJob,
         Guid deviceId,
-        Guid? shareId)
+        Guid? shareId,
+        string? deviceName,
+        string? shareName)
     {
         // Exponential backoff: 5min, 15min, 45min
         var retryDelays = new[] { 5, 15, 45 };
@@ -151,12 +153,21 @@ public class BackupJob : IJob
             .WithIdentity(retryJobKey)
             .UsingJobData("DeviceId", deviceId.ToString())
             .UsingJobData("JobType", "Retry")
-            .UsingJobData("RetryAttempt", failedJob.RetryAttempt + 1)
+            .UsingJobData("RetryAttempt", (failedJob.RetryAttempt + 1).ToString())
             .Build();
+        // Preserve device and share names for better logging on retry
+        if (!string.IsNullOrEmpty(deviceName))
+        {
+            retryJob.JobDataMap.Add("DeviceName", deviceName);
+        }
 
         if (shareId.HasValue)
         {
             retryJob.JobDataMap.Add("ShareId", shareId.Value.ToString());
+            if (!string.IsNullOrEmpty(shareName))
+            {
+                retryJob.JobDataMap.Add("ShareName", shareName);
+            }
         }
 
         var retryTrigger = TriggerBuilder.Create()

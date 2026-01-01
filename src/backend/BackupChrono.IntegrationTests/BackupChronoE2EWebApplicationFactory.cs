@@ -60,11 +60,9 @@ public class BackupChronoE2EWebApplicationFactory : WebApplicationFactory<Progra
         {
             throw new InvalidOperationException($"Failed to initialize test Git repository at {_testRepositoryPath}", ex);
         }
-
-        await Task.CompletedTask;
     }
 
-    public new async Task DisposeAsync()
+    public override async ValueTask DisposeAsync()
     {
         // Dispose Git repository
         _gitRepo?.Dispose();
@@ -89,8 +87,12 @@ public class BackupChronoE2EWebApplicationFactory : WebApplicationFactory<Progra
         {
             // Ignore cleanup errors
         }
+        await base.DisposeAsync().ConfigureAwait(false);
+    }
 
-        await base.DisposeAsync();
+    async Task IAsyncLifetime.DisposeAsync()
+    {
+        await DisposeAsync();
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)

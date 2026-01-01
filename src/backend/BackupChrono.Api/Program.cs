@@ -150,52 +150,56 @@ app.MapControllers();
 var lifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
 lifetime.ApplicationStopping.Register(() =>
 {
-    app.Logger.LogInformation("Application shutdown requested - stopping scheduler and checking for running backups");
-    
-    // Get the scheduler service
-    var schedulerService = app.Services.GetRequiredService<IQuartzSchedulerService>();    
-    // Stop the scheduler (prevents new jobs from starting)
-    schedulerService.Stop().GetAwaiter().GetResult();
-    
-    app.Logger.LogInformation("Scheduler stopped - no new backups will start");
-    
-    // Check for active jobs but don't wait long (Docker typically gives 10s before SIGKILL)
-    var orchestrator = app.Services.GetRequiredService<IBackupOrchestrator>();
-    var timeout = TimeSpan.FromSeconds(8); // Conservative timeout for Docker containers
-    var waitStart = DateTime.UtcNow;
-    
-    while (DateTime.UtcNow - waitStart < timeout)
+    // Wrap async shutdown logic in Task.Run to avoid sync-over-async deadlocks
+    Task.Run(async () =>
     {
-        var activeJobs = orchestrator.ListJobs().GetAwaiter().GetResult();
-        var runningCount = activeJobs.Count(j => j.Status == BackupJobStatus.Running);
+        app.Logger.LogInformation("Application shutdown requested - stopping scheduler and checking for running backups");
         
-        if (runningCount == 0)
+        // Get the scheduler service
+        var schedulerService = app.Services.GetRequiredService<IQuartzSchedulerService>();    
+        // Stop the scheduler (prevents new jobs from starting)
+        await schedulerService.Stop().ConfigureAwait(false);
+        
+        app.Logger.LogInformation("Scheduler stopped - no new backups will start");
+        
+        // Check for active jobs but don't wait long (Docker typically gives 10s before SIGKILL)
+        var orchestrator = app.Services.GetRequiredService<IBackupOrchestrator>();
+        var timeout = TimeSpan.FromSeconds(8); // Conservative timeout for Docker containers
+        var waitStart = DateTime.UtcNow;
+        
+        while (DateTime.UtcNow - waitStart < timeout)
         {
-            app.Logger.LogInformation("All backup jobs completed successfully");
-            break;
+            var activeJobs = await orchestrator.ListJobs().ConfigureAwait(false);
+            var runningCount = activeJobs.Count(j => j.Status == BackupJobStatus.Running);
+            
+            if (runningCount == 0)
+            {
+                app.Logger.LogInformation("All backup jobs completed successfully");
+                break;
+            }
+            
+            app.Logger.LogWarning(
+                "Waiting for {Count} backup job(s) to complete... ({Elapsed}s elapsed)", 
+                runningCount, 
+                (DateTime.UtcNow - waitStart).TotalSeconds);
+            await Task.Delay(1000).ConfigureAwait(false); // Check every second
         }
         
-        app.Logger.LogWarning(
-            "Waiting for {Count} backup job(s) to complete... ({Elapsed}s elapsed)", 
-            runningCount, 
-            (DateTime.UtcNow - waitStart).TotalSeconds);
-        Thread.Sleep(1000); // Check every second
-    }
-    
-    var finalJobs = orchestrator.ListJobs().GetAwaiter().GetResult();
-    var stillRunning = finalJobs.Count(j => j.Status == BackupJobStatus.Running);
-    
-    if (stillRunning > 0)
-    {
-        app.Logger.LogWarning(
-            "Graceful shutdown timeout - {Count} backup job(s) still running. " +
-            "Jobs will be marked as cancelled. Consider increasing Docker stop timeout if needed.",
-            stillRunning);
-    }
-    else
-    {
-        app.Logger.LogInformation("Graceful shutdown complete - all jobs finished");
-    }
+        var finalJobs = await orchestrator.ListJobs().ConfigureAwait(false);
+        var stillRunning = finalJobs.Count(j => j.Status == BackupJobStatus.Running);
+        
+        if (stillRunning > 0)
+        {
+            app.Logger.LogWarning(
+                "Graceful shutdown timeout - {Count} backup job(s) still running. " +
+                "Jobs will be marked as cancelled. Consider increasing Docker stop timeout if needed.",
+                stillRunning);
+        }
+        else
+        {
+            app.Logger.LogInformation("Graceful shutdown complete - all jobs finished");
+        }
+    }).GetAwaiter().GetResult();
 });
 
 app.Run();

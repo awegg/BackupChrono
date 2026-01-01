@@ -1,3 +1,4 @@
+using System.Threading;
 using BackupChrono.Core.Entities;
 using BackupChrono.Core.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,6 +16,7 @@ public class QuartzSchedulerService : IQuartzSchedulerService
     private IScheduler? _scheduler;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<QuartzSchedulerService> _logger;
+    private readonly SemaphoreSlim _schedulerLock = new(1, 1);
 
     public QuartzSchedulerService(
         IServiceScopeFactory scopeFactory,
@@ -34,8 +36,19 @@ public class QuartzSchedulerService : IQuartzSchedulerService
             return;
         }
 
-        var schedulerFactory = new StdSchedulerFactory();
-        _scheduler = await schedulerFactory.GetScheduler();
+        await _schedulerLock.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            if (_scheduler == null)
+            {
+                var schedulerFactory = new StdSchedulerFactory();
+                _scheduler = await schedulerFactory.GetScheduler().ConfigureAwait(false);
+            }
+        }
+        finally
+        {
+            _schedulerLock.Release();
+        }
     }
 
     /// <summary>
@@ -81,6 +94,7 @@ public class QuartzSchedulerService : IQuartzSchedulerService
 
         _logger.LogInformation("Stopping Quartz scheduler...");
         await _scheduler.Shutdown(waitForJobsToComplete: true);
+        _schedulerLock.Dispose();
         _logger.LogInformation("Quartz scheduler stopped");
     }
 

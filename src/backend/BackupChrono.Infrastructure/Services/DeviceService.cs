@@ -63,10 +63,8 @@ public class DeviceService : IDeviceService
         }
         else
         {
-            // Keep existing ID but update timestamps
             device.UpdatedAt = now;
         }
-
         // Save and commit atomically to YAML/Git
         var filePath = GetDeviceFilePath(device.Name);
         await _gitConfigService.WriteAndCommitYamlFile(filePath, device, $"Add device: {device.Name}");
@@ -148,9 +146,19 @@ public class DeviceService : IDeviceService
             {
                 throw new InvalidOperationException($"Device with name '{device.Name}' already exists.");
             }
+        }
 
-            // Delete old file
-            var oldFilePath = GetDeviceFilePath(existing.Name);
+        // Update timestamp
+        device.UpdatedAt = DateTime.UtcNow;
+        var filePath = GetDeviceFilePath(device.Name);
+        var oldFilePath = existing.Name != device.Name ? GetDeviceFilePath(existing.Name) : null;
+
+        // Stage new content
+        await _gitConfigService.WriteYamlFile(filePath, device);
+
+        // Stage deletion of the old file when renaming
+        if (oldFilePath != null)
+        {
             var fullOldPath = Path.Combine(_gitConfigService.RepositoryPath, oldFilePath);
             if (File.Exists(fullOldPath))
             {
@@ -158,15 +166,12 @@ public class DeviceService : IDeviceService
             }
         }
 
-        // Update timestamp
-        device.UpdatedAt = DateTime.UtcNow;
-
-        // Save and commit atomically to YAML/Git
-        var filePath = GetDeviceFilePath(device.Name);
-        var message = existing.Name != device.Name
-            ? $"Update device: {existing.Name} → {device.Name}"
+        var message = oldFilePath != null
+            ? $"Update device: {existing.Name} -> {device.Name}"
             : $"Update device: {device.Name}";
-        await _gitConfigService.WriteAndCommitYamlFile(filePath, device, message);
+
+        // Single commit containing both add/update and delete (if any)
+        await _gitConfigService.CommitChanges(message);
 
         return device;
     }

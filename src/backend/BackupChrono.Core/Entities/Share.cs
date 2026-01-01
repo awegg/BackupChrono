@@ -45,6 +45,16 @@ public class Share
     public RetentionPolicy? RetentionPolicy { get; set; }
 
     /// <summary>
+    /// Optional repository encryption password, stored encrypted. If absent, a derived password will be generated.
+    /// </summary>
+    public EncryptedCredential? RepositoryPassword { get; set; }
+
+    /// <summary>
+    /// Per-repository salt (Base64) used when deriving a repository key from the device credential.
+    /// </summary>
+    public string? RepositoryKeySalt { get; set; }
+
+    /// <summary>
     /// Share-level include/exclude rules override. If null, inherits from device.
     /// If defined (even as empty array), completely replaces device+global patterns.
     /// </summary>

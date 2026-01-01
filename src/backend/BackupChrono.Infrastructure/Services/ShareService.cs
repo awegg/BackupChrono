@@ -41,26 +41,21 @@ public class ShareService : IShareService
 
         // Create new share with generated ID and timestamps if needed
         var now = DateTime.UtcNow;
-        if (share.Id == Guid.Empty)
+        share = new Share
         {
-            share = new Share
-            {
-                Id = Guid.NewGuid(),
-                DeviceId = share.DeviceId,
-                Name = share.Name,
-                Path = share.Path,
-                Enabled = share.Enabled,
-                Schedule = share.Schedule,
-                RetentionPolicy = share.RetentionPolicy,
-                IncludeExcludeRules = share.IncludeExcludeRules,
-                CreatedAt = now,
-                UpdatedAt = now
-            };
-        }
-        else
-        {
-            share.UpdatedAt = now;
-        }
+            Id = share.Id == Guid.Empty ? Guid.NewGuid() : share.Id,
+            DeviceId = share.DeviceId,
+            Name = share.Name,
+            Path = share.Path,
+            Enabled = share.Enabled,
+            Schedule = share.Schedule,
+            RetentionPolicy = share.RetentionPolicy,
+            IncludeExcludeRules = share.IncludeExcludeRules,
+            RepositoryPassword = share.RepositoryPassword,
+            RepositoryKeySalt = share.RepositoryKeySalt,
+            CreatedAt = share.Id == Guid.Empty ? now : share.CreatedAt,
+            UpdatedAt = now
+        };
 
         // Save and commit atomically to YAML/Git
         var filePath = GetShareFilePath(device.Name, share.Name);
@@ -188,12 +183,19 @@ public class ShareService : IShareService
             fullOldPath = Path.Combine(_gitConfigService.RepositoryPath, oldFilePath);
         }
 
+        // Preserve existing repo secrets if caller did not provide them
+        share.RepositoryPassword ??= existing.RepositoryPassword;
+        share.RepositoryKeySalt ??= existing.RepositoryKeySalt;
+
         // Update timestamp
         share.UpdatedAt = DateTime.UtcNow;
 
         var filePath = GetShareFilePath(device.Name, share.Name);
 
-        // Delete old file after validations when path changed (before commit)
+        // Stage new content first
+        await _gitConfigService.WriteYamlFile(filePath, share);
+
+        // Stage deletion of the old file after the new content exists
         if (nameOrDeviceChanged && fullOldPath != null && !string.Equals(fullOldPath, Path.Combine(_gitConfigService.RepositoryPath, filePath), StringComparison.OrdinalIgnoreCase))
         {
             if (File.Exists(fullOldPath))
@@ -202,11 +204,12 @@ public class ShareService : IShareService
             }
         }
 
-        // Commit to Git atomically with the write above
         var message = existing.DeviceId != share.DeviceId || existing.Name != share.Name
-            ? $"Update share: {oldDevice.Name}/{existing.Name} → {device.Name}/{share.Name}"
+            ? $"Update share: {oldDevice.Name}/{existing.Name} -> {device.Name}/{share.Name}"
             : $"Update share: {device.Name}/{share.Name}";
-        await _gitConfigService.WriteAndCommitYamlFile(filePath, share, message);
+
+        // Single commit containing both add/update and delete (if any)
+        await _gitConfigService.CommitChanges(message);
 
         return share;
     }
@@ -270,17 +273,53 @@ public class ShareService : IShareService
 
     private string GetShareFilePath(string deviceName, string shareName)
     {
-        // Sanitize inputs to prevent path traversal
-        if (deviceName.Contains("..") || deviceName.Contains(Path.DirectorySeparatorChar) || 
-            deviceName.Contains(Path.AltDirectorySeparatorChar))
-        {
-            throw new ArgumentException("Invalid device name", nameof(deviceName));
-        }
-        if (shareName.Contains("..") || shareName.Contains(Path.DirectorySeparatorChar) || 
-            shareName.Contains(Path.AltDirectorySeparatorChar))
-        {
-            throw new ArgumentException("Invalid share name", nameof(shareName));
-        }
+        // Comprehensive path traversal validation
+        ValidatePathComponent(deviceName, nameof(deviceName));
+        ValidatePathComponent(shareName, nameof(shareName));
         
         return Path.Combine("shares", deviceName, $"{shareName}.yaml");
-    }}
+    }
+
+    private static void ValidatePathComponent(string component, string paramName)
+    {
+        if (string.IsNullOrWhiteSpace(component))
+        {
+            throw new ArgumentException("Path component cannot be empty", paramName);
+        }
+
+        // Check for path traversal
+        if (component.Contains("..", StringComparison.Ordinal))
+        {
+            throw new ArgumentException("Path traversal detected", paramName);
+        }
+
+        // Check for path separators
+        if (component.Contains(Path.DirectorySeparatorChar) || 
+            component.Contains(Path.AltDirectorySeparatorChar) ||
+            component.Contains('/'))
+        {
+            throw new ArgumentException("Path separators not allowed", paramName);
+        }
+
+        // Check for null bytes
+        if (component.Contains('\0'))
+        {
+            throw new ArgumentException("Null bytes not allowed", paramName);
+        }
+
+        // Check for leading/trailing whitespace or dots
+        if (component != component.Trim() || component.StartsWith('.') || component.EndsWith('.'))
+        {
+            throw new ArgumentException("Invalid leading/trailing characters", paramName);
+        }
+
+        // Check for reserved Windows names (CON, PRN, AUX, NUL, COM1-9, LPT1-9)
+        var upperName = component.ToUpperInvariant();
+        string[] reservedNames = { "CON", "PRN", "AUX", "NUL" };
+        if (reservedNames.Contains(upperName) || 
+            (upperName.Length == 4 && (upperName.StartsWith("COM") || upperName.StartsWith("LPT")) && char.IsDigit(upperName[3])))
+        {
+            throw new ArgumentException("Reserved system name not allowed", paramName);
+        }
+    }
+}

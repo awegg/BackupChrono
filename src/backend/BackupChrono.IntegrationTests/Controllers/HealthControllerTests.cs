@@ -8,11 +8,11 @@ public class HealthControllerTests : IAsyncLifetime
     private BackupChronoWebApplicationFactory _factory = null!;
     private HttpClient _httpClient = null!;
 
-    public async Task InitializeAsync()
+    public Task InitializeAsync()
     {
         _factory = new BackupChronoWebApplicationFactory();
         _httpClient = _factory.CreateClient();
-        await Task.CompletedTask;
+        return Task.CompletedTask;
     }
 
     public async Task DisposeAsync()

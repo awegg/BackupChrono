@@ -222,7 +222,7 @@ public class HealthController : ControllerBase
     {
         try
         {
-            var process = Process.GetCurrentProcess();
+            using var process = Process.GetCurrentProcess();
             var memoryMB = process.WorkingSet64 / 1024 / 1024;
             var cpuTime = process.TotalProcessorTime;
             

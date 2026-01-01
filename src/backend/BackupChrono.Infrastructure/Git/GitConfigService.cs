@@ -244,14 +244,47 @@ public class GitConfigService
         await _gitLock.WaitAsync();
         try
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
-            await File.WriteAllTextAsync(fullPath, yaml);
+            var directory = Path.GetDirectoryName(fullPath)!;
+            Directory.CreateDirectory(directory);
+
+            // Write to a temp file in the same directory and atomically replace the target
+            var tempPath = Path.Combine(directory, $"{Path.GetFileName(fullPath)}.{Guid.NewGuid():N}.tmp");
+            string? backupPath = null;
+
+            try
+            {
+                await File.WriteAllTextAsync(tempPath, yaml);
+
+                // If destination exists, keep a short-lived backup to guard against rare replace failures
+                if (File.Exists(fullPath))
+                {
+                    backupPath = Path.Combine(directory, $"{Path.GetFileName(fullPath)}.bak.{Guid.NewGuid():N}");
+                    File.Replace(tempPath, fullPath, backupPath, ignoreMetadataErrors: true);
+                }
+                else
+                {
+                    // No destination yet; move atomically into place
+                    File.Move(tempPath, fullPath);
+                }
+
+                if (backupPath != null && File.Exists(backupPath))
+                {
+                    File.Delete(backupPath);
+                }
+            }
+            catch
+            {
+                // Clean up temp/backup but never disturb the original file on failure
+                TryDeleteFile(tempPath);
+                TryDeleteFile(backupPath);
+                throw;
+            }
 
             // Stage and commit only the specific file written
             await Task.Run(() =>
             {
                 using var repo = new LibGit2Sharp.Repository(_repositoryPath);
-                Commands.Stage(repo, fullPath);
+                Commands.Stage(repo, relativePath);
 
                 var status = repo.RetrieveStatus();
                 if (!status.IsDirty)
@@ -264,6 +297,50 @@ public class GitConfigService
         finally
         {
             _gitLock.Release();
+        }
+    }
+
+    /// <summary>
+    /// Writes an object to a YAML file (relative to repository root) without committing.
+    /// This is intended for multi-step operations (e.g., rename) that batch multiple changes into a single commit.
+    /// Caller is responsible for invoking CommitChanges afterward.
+    /// </summary>
+    public async Task WriteYamlFile<T>(string relativePath, T data)
+    {
+        var fullPath = Path.Combine(_repositoryPath, relativePath);
+        var yaml = _yamlSerializer.Serialize(data);
+
+        var directory = Path.GetDirectoryName(fullPath)!;
+        Directory.CreateDirectory(directory);
+
+        // Write to a temp file in the same directory and atomically replace the target
+        var tempPath = Path.Combine(directory, $"{Path.GetFileName(fullPath)}.{Guid.NewGuid():N}.tmp");
+        string? backupPath = null;
+
+        try
+        {
+            await File.WriteAllTextAsync(tempPath, yaml);
+
+            if (File.Exists(fullPath))
+            {
+                backupPath = Path.Combine(directory, $"{Path.GetFileName(fullPath)}.bak.{Guid.NewGuid():N}");
+                File.Replace(tempPath, fullPath, backupPath, ignoreMetadataErrors: true);
+            }
+            else
+            {
+                File.Move(tempPath, fullPath);
+            }
+
+            if (backupPath != null && File.Exists(backupPath))
+            {
+                File.Delete(backupPath);
+            }
+        }
+        catch
+        {
+            TryDeleteFile(tempPath);
+            TryDeleteFile(backupPath);
+            throw;
         }
     }
 
@@ -325,5 +402,23 @@ public class GitConfigService
             var signature = new Signature("BackupChrono", "backupchrono@system", DateTimeOffset.Now);
             repo.Commit(message, signature, signature);
         });
+    }
+
+    private static void TryDeleteFile(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return;
+
+        try
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+        catch
+        {
+            // Swallow cleanup errors; temp/backup files are best-effort
+        }
     }
 }

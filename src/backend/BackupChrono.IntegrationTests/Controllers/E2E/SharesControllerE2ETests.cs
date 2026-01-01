@@ -196,7 +196,6 @@ public class SharesControllerE2ETests : IAsyncLifetime
     {
         // ARRANGE - Create device
         var device = await CreateDeviceViaService($"concurrent-shares-{Guid.NewGuid()}", "SMB", "192.168.1.80");
-        var shareIds = new List<Guid>();
 
         // Create multiple shares concurrently
         var tasks = Enumerable.Range(0, 5)

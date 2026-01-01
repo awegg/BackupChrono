@@ -1,3 +1,4 @@
+using BackupChrono.Core.Interfaces;
 using BackupChrono.Infrastructure.Restic;
 using BackupChrono.Infrastructure.Services;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -12,14 +13,32 @@ public class StorageMonitorTests
     {
         // Arrange
         var tempPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
-        var resticClient = new ResticClient("restic", tempPath, "password");
-        var monitor = new StorageMonitor(new NullLogger<StorageMonitor>(), resticClient);
+        try
+        {
+            var resticClient = new ResticClient("restic", tempPath, "password");
+            var monitor = new StorageMonitor(new NullLogger<StorageMonitor>(), resticClient);
 
-        // Act
-        var result = await monitor.GetAllRepositoryStorageStatus();
+            // Act
+            var result = await monitor.GetAllRepositoryStorageStatus();
 
-        // Assert
-        Assert.Empty(result);
+            // Assert
+            Assert.Empty(result);
+        }
+        finally
+        {
+            // Cleanup in case directory was created
+            if (Directory.Exists(tempPath))
+            {
+                try
+                {
+                    Directory.Delete(tempPath, recursive: true);
+                }
+                catch
+                {
+                    // ignore cleanup failures in tests
+                }
+            }
+        }
     }
 
     [Fact]
@@ -38,7 +57,13 @@ public class StorageMonitorTests
 
             // Assert
             Assert.Single(result);
-            Assert.Equal(tempPath, result[0].Path);
+            var status = result[0];
+            Assert.Equal(tempPath, status.Path);
+            Assert.True(status.TotalBytes >= 0, "TotalBytes should be non-negative");
+            Assert.True(status.AvailableBytes >= 0, "AvailableBytes should be non-negative");
+            Assert.True(status.UsedBytes >= 0, "UsedBytes should be non-negative");
+            // ThresholdLevel is a value type (enum), so it's always non-null
+            Assert.True(Enum.IsDefined(typeof(StorageThresholdLevel), status.ThresholdLevel));
         }
         finally
         {

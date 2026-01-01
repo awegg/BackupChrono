@@ -30,11 +30,7 @@ public class BackupJobsControllerTests : IAsyncLifetime
     [Fact]
     public async Task ListBackupJobs_ReturnsEmptyList_WhenNoJobs()
     {
-        // Arrange
-        var backupJobRepoMock = new Mock<IBackupJobRepository>();
-        backupJobRepoMock
-            .Setup(x => x.ListJobs())
-            .ReturnsAsync(new List<BackupJob>());
+        // Arrange - done in factory mock setup
 
         // Act
         var response = await _httpClient.GetAsync("api/backup-jobs");
@@ -106,16 +102,20 @@ public class BackupJobsControllerTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task ListBackupJobs_RespectLimit()
+    public async Task ListBackupJobs_RespectsLimit()
     {
         // Arrange
-        var limit = 10;
+        var limit = 5;
 
         // Act
         var response = await _httpClient.GetAsync($"api/backup-jobs?limit={limit}");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadAsStringAsync();
+        var json = JsonDocument.Parse(content);
+        var jobs = json.RootElement.EnumerateArray().ToList();
+        jobs.Should().HaveCountLessThanOrEqualTo(limit, "returned jobs should not exceed the specified limit");
     }
 
     [Fact]
