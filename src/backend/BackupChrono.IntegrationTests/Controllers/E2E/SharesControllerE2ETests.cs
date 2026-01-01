@@ -67,7 +67,7 @@ public class SharesControllerE2ETests : IAsyncLifetime
         var shareId = Guid.Parse(response.Headers.Location?.ToString().Split('/').Last() ?? "");
 
         // VERIFY - Share persisted in Git
-        var sharePath = $"shares/{device.Name}/{shareDto.Name.ToLower()}.yaml";
+        var sharePath = $"shares/{device.Name}/{shareDto.Name}.yaml";
         var persistedShare = await _gitConfigService.ReadYamlFile<Share>(sharePath);
 
         persistedShare.Should().NotBeNull();
