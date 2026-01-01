@@ -1,8 +1,14 @@
 using BackupChrono.Api.Middleware;
+using BackupChrono.Api.Services;
+using BackupChrono.Core.Entities;
 using BackupChrono.Core.Interfaces;
 using BackupChrono.Infrastructure.Git;
 using BackupChrono.Infrastructure.Plugins;
+using BackupChrono.Infrastructure.Protocols;
+using BackupChrono.Infrastructure.Repositories;
 using BackupChrono.Infrastructure.Restic;
+using BackupChrono.Infrastructure.Scheduling;
+using BackupChrono.Infrastructure.Services;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -58,7 +64,6 @@ builder.Services.AddCors(options =>
 });
 
 // Register application services
-builder.Services.AddSingleton<PluginLoader>();
 builder.Services.AddSingleton<GitConfigService>(sp => 
     new GitConfigService(builder.Configuration["ConfigRepository:Path"] ?? "./config"));
 builder.Services.AddSingleton<ResticClient>(sp => 
@@ -88,20 +93,42 @@ builder.Services.AddSingleton<ResticClient>(sp =>
 });
 builder.Services.AddSingleton<IResticService, ResticService>();
 
-// TODO: Register missing service implementations (Phase 3 - User Story 1)
-// These interfaces exist but implementations are not yet created:
-// - IDeviceService implementation needed (T051 - DeviceService)
-// - IShareService implementation needed (T052 - ShareService)
-// - IBackupOrchestrator implementation needed (T053 - BackupOrchestrator)
-// builder.Services.AddScoped<IDeviceService, DeviceService>();
-// builder.Services.AddScoped<IShareService, ShareService>();
-// builder.Services.AddScoped<IBackupOrchestrator, BackupOrchestrator>();
+// Register application services (Phase 3 - User Story 1)
+builder.Services.AddSingleton<IMappingService, MappingService>();
+
+// Protocol plugin loader (discovers and instantiates plugins)
+builder.Services.AddSingleton<IProtocolPluginLoader, ProtocolPluginLoader>();
+
+// Device and Share services
+builder.Services.AddScoped<IDeviceService, DeviceService>();
+builder.Services.AddScoped<IShareService, ShareService>();
+
+// Backup orchestration
+builder.Services.AddScoped<IBackupOrchestrator, BackupOrchestrator>();
+
+// Storage monitoring
+builder.Services.AddSingleton<IStorageMonitor, StorageMonitor>();
+
+// Repositories
+builder.Services.AddSingleton<IBackupJobRepository, BackupJobRepository>(sp =>
+{
+    var gitConfig = sp.GetRequiredService<GitConfigService>();
+    return new BackupJobRepository(gitConfig.RepositoryPath);
+});
+
+// Quartz Scheduler
+builder.Services.AddSingleton<IQuartzSchedulerService, QuartzSchedulerService>();
 
 var app = builder.Build();
 
-// Initialize PluginLoader to register all protocol plugins
-var pluginLoader = app.Services.GetRequiredService<PluginLoader>();
-app.Logger.LogInformation("Loaded {PluginCount} protocol plugins", pluginLoader.GetAllPlugins().Count());
+// Start the Quartz scheduler
+var schedulerService = app.Services.GetRequiredService<IQuartzSchedulerService>();
+await schedulerService.Start();
+app.Logger.LogInformation("Quartz scheduler started");
+
+// Schedule all backups based on device/share configurations
+await schedulerService.ScheduleAllBackups();
+app.Logger.LogInformation("All backups scheduled");
 
 // Configure the HTTP request pipeline
 app.UseMiddleware<ErrorHandlingMiddleware>();
@@ -121,5 +148,57 @@ app.UseCors("AllowFrontend");
 // app.UseAuthentication();
 // app.UseAuthorization();
 app.MapControllers();
+
+// Register graceful shutdown
+var lifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
+lifetime.ApplicationStopping.Register(() =>
+{
+    app.Logger.LogInformation("Application shutdown requested - stopping scheduler and checking for running backups");
+    
+    // Get the scheduler service
+    var schedulerService = app.Services.GetRequiredService<IQuartzSchedulerService>();    
+    // Stop the scheduler (prevents new jobs from starting)
+    schedulerService.Stop().GetAwaiter().GetResult();
+    
+    app.Logger.LogInformation("Scheduler stopped - no new backups will start");
+    
+    // Check for active jobs but don't wait long (Docker typically gives 10s before SIGKILL)
+    var orchestrator = app.Services.GetRequiredService<IBackupOrchestrator>();
+    var timeout = TimeSpan.FromSeconds(8); // Conservative timeout for Docker containers
+    var waitStart = DateTime.UtcNow;
+    
+    while (DateTime.UtcNow - waitStart < timeout)
+    {
+        var activeJobs = orchestrator.ListJobs().GetAwaiter().GetResult();
+        var runningCount = activeJobs.Count(j => j.Status == BackupJobStatus.Running);
+        
+        if (runningCount == 0)
+        {
+            app.Logger.LogInformation("All backup jobs completed successfully");
+            break;
+        }
+        
+        app.Logger.LogWarning(
+            "Waiting for {Count} backup job(s) to complete... ({Elapsed}s elapsed)", 
+            runningCount, 
+            (DateTime.UtcNow - waitStart).TotalSeconds);
+        Thread.Sleep(1000); // Check every second
+    }
+    
+    var finalJobs = orchestrator.ListJobs().GetAwaiter().GetResult();
+    var stillRunning = finalJobs.Count(j => j.Status == BackupJobStatus.Running);
+    
+    if (stillRunning > 0)
+    {
+        app.Logger.LogWarning(
+            "Graceful shutdown timeout - {Count} backup job(s) still running. " +
+            "Jobs will be marked as cancelled. Consider increasing Docker stop timeout if needed.",
+            stillRunning);
+    }
+    else
+    {
+        app.Logger.LogInformation("Graceful shutdown complete - all jobs finished");
+    }
+});
 
 app.Run();

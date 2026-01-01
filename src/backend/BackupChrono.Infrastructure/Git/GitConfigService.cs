@@ -16,6 +16,8 @@ public class GitConfigService
     private readonly IDeserializer _yamlDeserializer;
     private static readonly SemaphoreSlim _gitLock = new SemaphoreSlim(1, 1);
 
+    public string RepositoryPath => _repositoryPath;
+
     public GitConfigService(string repositoryPath)
     {
         _repositoryPath = repositoryPath;
@@ -228,6 +230,85 @@ public class GitConfigService
                     : Array.Empty<string>()
             })
             .ToList();
+    }
+
+    /// <summary>
+    /// Writes an object to a YAML file (relative to repository root).
+    /// Acquires the Git lock to ensure thread-safe file writes when used with CommitChanges.
+    /// </summary>
+    public async Task WriteAndCommitYamlFile<T>(string relativePath, T data, string commitMessage)
+    {
+        var fullPath = Path.Combine(_repositoryPath, relativePath);
+        var yaml = _yamlSerializer.Serialize(data);
+
+        await _gitLock.WaitAsync();
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
+            await File.WriteAllTextAsync(fullPath, yaml);
+
+            // Stage and commit all changes (covers writes and any prior deletions)
+            await Task.Run(() =>
+            {
+                using var repo = new LibGit2Sharp.Repository(_repositoryPath);
+                Commands.Stage(repo, "*");
+
+                var status = repo.RetrieveStatus();
+                if (!status.IsDirty)
+                    return;
+
+                var signature = new Signature("BackupChrono", "backupchrono@system", DateTimeOffset.Now);
+                repo.Commit(commitMessage, signature, signature);
+            });
+        }
+        finally
+        {
+            _gitLock.Release();
+        }
+    }
+
+    /// <summary>
+    /// Reads an object from a YAML file (relative to repository root).
+    /// </summary>
+    public async Task<T?> ReadYamlFile<T>(string relativePath) where T : class
+    {
+        var fullPath = Path.Combine(_repositoryPath, relativePath);
+        
+        if (!File.Exists(fullPath))
+            return null;
+
+        var yaml = await File.ReadAllTextAsync(fullPath);
+        return _yamlDeserializer.Deserialize<T>(yaml);
+    }
+
+    /// <summary>
+    /// Commits all changes in the repository with the given message.
+    /// </summary>
+    public async Task CommitChanges(string message)
+    {
+        await _gitLock.WaitAsync();
+        try
+        {
+            await Task.Run(() =>
+            {
+                using var repo = new LibGit2Sharp.Repository(_repositoryPath);
+                
+                // Stage all changes
+                Commands.Stage(repo, "*");
+
+                // Check if there are changes to commit
+                var status = repo.RetrieveStatus();
+                if (!status.IsDirty)
+                    return;
+
+                var signature = new Signature("BackupChrono", "backupchrono@system", DateTimeOffset.Now);
+                repo.Commit(message, signature, signature);
+            });
+        }
+        finally
+        {
+            _gitLock.Release();
+        }
     }
 
     /// <summary>
