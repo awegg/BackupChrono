@@ -39,4 +39,9 @@ public interface IBackupOrchestrator
     /// Retries a failed backup job with exponential backoff.
     /// </summary>
     Task<BackupJob> RetryFailedJob(Guid jobId);
+
+    /// <summary>
+    /// Lists all tracked backup jobs (active and recent).
+    /// </summary>
+    Task<IEnumerable<BackupJob>> ListJobs();
 }

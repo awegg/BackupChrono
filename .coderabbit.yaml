@@ -1,0 +1,7 @@
+reviews:
+  path_instructions:
+    - path: "**/*.cs"
+      instructions: |
+        This is an internal backup management system that is not publicly accessible. 
+        Exception details (ex.Message, exception.Message) are intentionally exposed for debugging and observability.
+        Do not flag these as security issues unless they expose truly sensitive data like passwords or API keys.

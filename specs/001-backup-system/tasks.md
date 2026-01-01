@@ -123,27 +123,27 @@ This document organizes implementation tasks by **user story** to enable indepen
 
 ### Implementation Tasks
 
-- [ ] T051 [US1] Implement DeviceService in src/backend/BackupChrono.Infrastructure/Services/DeviceService.cs for CRUD operations on devices with YAML persistence via GitConfigService
-- [ ] T052 [US1] Implement ShareService in src/backend/BackupChrono.Infrastructure/Services/ShareService.cs for CRUD operations on shares with YAML persistence via GitConfigService
-- [ ] T053 [US1] Implement BackupOrchestrator in src/backend/BackupChrono.Infrastructure/Services/BackupOrchestrator.cs to coordinate device wake, protocol mounting, restic execution, unmounting
-- [ ] T054 [US1] Implement QuartzSchedulerService in src/backend/BackupChrono.Infrastructure/Scheduling/QuartzSchedulerService.cs to schedule backup jobs based on device/share schedules
-- [ ] T055 [US1] Implement BackupJob Quartz job in src/backend/BackupChrono.Infrastructure/Scheduling/BackupJob.cs that calls BackupOrchestrator
-- [ ] T056 [US1] Create DevicesController in BackupChrono.Api/Controllers/DevicesController.cs with GET /devices, POST /devices, GET /devices/{id}, PUT /devices/{id}, DELETE /devices/{id} per openapi.yaml
-- [ ] T057 [US1] Create SharesController in BackupChrono.Api/Controllers/SharesController.cs with GET /devices/{deviceId}/shares, POST, GET, PUT, DELETE per openapi.yaml
-- [ ] T058 [US1] Implement POST /devices/{deviceId}/test-connection endpoint in DevicesController to test connectivity before creating device
-- [ ] T059 [US1] Implement POST /devices/{deviceId}/wake endpoint in DevicesController for Wake-on-LAN
-- [ ] T060 [US1] Create BackupJobsController in BackupChrono.Api/Controllers/BackupJobsController.cs with GET /backup-jobs, POST /backup-jobs (manual trigger), GET /backup-jobs/{id}
-- [ ] T061 [US1] Implement repository initialization logic in ResticService.InitializeRepository when first backup runs
-- [ ] T062 [US1] Implement configuration cascade logic in BackupOrchestrator (global → device → share) per data-model.md semantics
-- [ ] T063 [US1] Implement retry logic with exponential backoff (5min, 15min, 45min) in BackupOrchestrator for failed backups
-- [ ] T064 [US1] Create DeviceServiceTests in BackupChrono.Infrastructure.Tests/Services/DeviceServiceTests.cs for device CRUD operations
-- [ ] T065 [US1] Create BackupOrchestratorTests in BackupChrono.Infrastructure.Tests/Services/BackupOrchestratorTests.cs for backup workflow
-- [ ] T066 [US1] Create ResticBackupTests in BackupChrono.Infrastructure.Restic.Tests/ResticBackupTests.cs for backup operations against test repository
-- [ ] T067 [US1] Create end-to-end backup test in BackupChrono.Integration.Tests/BackupFlowTests.cs using TestContainers
-- [ ] T180 [US1] Add health check logic to HealthController for repository integrity, backup job status, storage capacity
-- [ ] T181 [US1] Implement storage capacity monitoring with alerts when repository disk usage exceeds threshold
-- [ ] T182 [US1] Add backup operation pause logic when repository storage exhausted
-- [ ] T195 [US1] Add graceful shutdown handling in BackupChrono.Api/Program.cs to complete running backups before exit
+- [X] T051 [US1] Implement DeviceService in src/backend/BackupChrono.Infrastructure/Services/DeviceService.cs for CRUD operations on devices with YAML persistence via GitConfigService
+- [X] T052 [US1] Implement ShareService in src/backend/BackupChrono.Infrastructure/Services/ShareService.cs for CRUD operations on shares with YAML persistence via GitConfigService
+- [X] T053 [US1] Implement BackupOrchestrator in src/backend/BackupChrono.Infrastructure/Services/BackupOrchestrator.cs to coordinate device wake, protocol mounting, restic execution, unmounting
+- [X] T054 [US1] Implement QuartzSchedulerService in src/backend/BackupChrono.Infrastructure/Scheduling/QuartzSchedulerService.cs to schedule backup jobs based on device/share schedules
+- [X] T055 [US1] Implement BackupJob Quartz job in src/backend/BackupChrono.Infrastructure/Scheduling/BackupJob.cs that calls BackupOrchestrator
+- [X] T056 [US1] Create DevicesController in BackupChrono.Api/Controllers/DevicesController.cs with GET /devices, POST /devices, GET /devices/{id}, PUT /devices/{id}, DELETE /devices/{id} per openapi.yaml
+- [X] T057 [US1] Create SharesController in BackupChrono.Api/Controllers/SharesController.cs with GET /devices/{deviceId}/shares, POST, GET, PUT, DELETE per openapi.yaml
+- [X] T058 [US1] Implement POST /devices/{deviceId}/test-connection endpoint in DevicesController to test connectivity before creating device
+- [X] T059 [US1] Implement POST /devices/{deviceId}/wake endpoint in DevicesController for Wake-on-LAN
+- [X] T060 [US1] Create BackupJobsController in BackupChrono.Api/Controllers/BackupJobsController.cs with GET /backup-jobs, POST /backup-jobs (manual trigger), GET /backup-jobs/{id}
+- [X] T061 [US1] Implement repository initialization logic in ResticService.InitializeRepository when first backup runs
+- [X] T062 [US1] Implement configuration cascade logic in BackupOrchestrator (global → device → share) per data-model.md semantics
+- [X] T063 [US1] Implement retry logic with exponential backoff (5min, 15min, 45min) in BackupOrchestrator for failed backups
+- [X] T064 [US1] Create DeviceServiceTests in BackupChrono.Infrastructure.Tests/Services/DeviceServiceTests.cs for device CRUD operations
+- [X] T065 [US1] Create BackupOrchestratorTests in BackupChrono.Infrastructure.Tests/Services/BackupOrchestratorTests.cs for backup workflow
+- [X] T066 [US1] Create ResticBackupTests in BackupChrono.Infrastructure.Restic.Tests/ResticBackupTests.cs for backup operations against test repository
+- [X] T067 [US1] Create end-to-end backup test in BackupChrono.Integration.Tests/BackupFlowTests.cs using TestContainers
+- [X] T180 [US1] Add health check logic to HealthController for repository integrity, backup job status, storage capacity
+- [X] T181 [US1] Implement storage capacity monitoring with alerts when repository disk usage exceeds threshold
+- [X] T182 [US1] Add backup operation pause logic when repository storage exhausted
+- [X] T195 [US1] Add graceful shutdown handling in BackupChrono.Api/Program.cs to complete running backups before exit
 
 **Checkpoint**: Can create device with shares, trigger manual backup via API, verify backup in repository with restic CLI, scheduled backups execute automatically, health checks validate system state, graceful shutdown prevents data loss.
 

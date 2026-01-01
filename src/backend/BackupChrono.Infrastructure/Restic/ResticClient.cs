@@ -13,6 +13,8 @@ public class ResticClient
     private readonly string _repositoryPath;
     private readonly string _password;
 
+    public string RepositoryPath => _repositoryPath;
+
     public ResticClient(string resticPath, string repositoryPath, string password)
     {
         if (string.IsNullOrWhiteSpace(resticPath))
