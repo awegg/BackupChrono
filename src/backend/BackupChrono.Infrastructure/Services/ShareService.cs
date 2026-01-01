@@ -264,6 +264,8 @@ public class ShareService : IShareService
             Schedule = share.Schedule,
             RetentionPolicy = share.RetentionPolicy,
             IncludeExcludeRules = share.IncludeExcludeRules,
+            RepositoryPassword = share.RepositoryPassword,
+            RepositoryKeySalt = share.RepositoryKeySalt,
             CreatedAt = share.CreatedAt,
             UpdatedAt = DateTime.UtcNow
         };

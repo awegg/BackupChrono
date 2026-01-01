@@ -105,6 +105,7 @@ public class BackupChronoE2EWebApplicationFactory : WebApplicationFactory<Progra
                 d.ServiceType == typeof(ResticClient) ||
                 d.ServiceType == typeof(IDeviceService) ||
                 d.ServiceType == typeof(IShareService) ||
+                d.ServiceType == typeof(IProtocolPluginLoader) ||
                 d.ServiceType == typeof(IBackupOrchestrator) ||
                 d.ServiceType == typeof(IQuartzSchedulerService)
             ).ToList();
@@ -121,6 +122,9 @@ public class BackupChronoE2EWebApplicationFactory : WebApplicationFactory<Progra
             // Register actual service implementations for device/share management
             services.AddSingleton<IDeviceService, DeviceService>();
             services.AddSingleton<IShareService, ShareService>();
+
+            // Register protocol plugin loader and plugins
+            services.AddSingleton<IProtocolPluginLoader, ProtocolPluginLoader>();
             
             // Register protocol plugins (needed by ProtocolPluginLoader)
             services.AddSingleton<SmbPlugin>();

@@ -67,7 +67,7 @@ public class QuartzSchedulerServiceTests : IAsyncLifetime
     {
         // Arrange
         _mockDeviceService.Setup(x => x.ListDevices()).ReturnsAsync(new List<Device>());
-        _mockShareService.Setup(x => x.ListAllShares()).ReturnsAsync(new List<Share>());
+        _mockShareService.Setup(x => x.ListShares(It.IsAny<Guid>())).ReturnsAsync(new List<Share>());
         await _schedulerService.Start();
 
         // Act
@@ -119,7 +119,7 @@ public class QuartzSchedulerServiceTests : IAsyncLifetime
     {
         // Arrange
         _mockDeviceService.Setup(x => x.ListDevices()).ReturnsAsync(new List<Device>());
-        _mockShareService.Setup(x => x.ListAllShares()).ReturnsAsync(new List<Share>());
+        _mockShareService.Setup(x => x.ListShares(It.IsAny<Guid>())).ReturnsAsync(new List<Share>());
         await _schedulerService.Start();
 
         var device = CreateTestDevice("test-device");

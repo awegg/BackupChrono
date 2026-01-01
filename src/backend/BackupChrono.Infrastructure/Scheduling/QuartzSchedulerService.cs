@@ -94,7 +94,6 @@ public class QuartzSchedulerService : IQuartzSchedulerService
 
         _logger.LogInformation("Stopping Quartz scheduler...");
         await _scheduler.Shutdown(waitForJobsToComplete: true);
-        _schedulerLock.Dispose();
         _logger.LogInformation("Quartz scheduler stopped");
     }
 

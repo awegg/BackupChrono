@@ -100,8 +100,8 @@ builder.Services.AddSingleton<IMappingService, MappingService>();
 builder.Services.AddSingleton<IProtocolPluginLoader, ProtocolPluginLoader>();
 
 // Device and Share services
-builder.Services.AddScoped<IDeviceService, DeviceService>();
-builder.Services.AddScoped<IShareService, ShareService>();
+builder.Services.AddSingleton<IDeviceService, DeviceService>();
+builder.Services.AddSingleton<IShareService, ShareService>();
 
 // Backup orchestration - Singleton to preserve job state during shutdown
 builder.Services.AddSingleton<IBackupOrchestrator, BackupOrchestrator>();
