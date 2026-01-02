@@ -193,8 +193,9 @@ public class DeviceService : IDeviceService
         }
 
         // Delete associated shares for this device
-        var sharesDirectory = Path.Combine(_gitConfigService.RepositoryPath, "shares", device.Name);        if (Directory.Exists(sharesDirectory))
-        {
+        var sharesDirectory = Path.Combine(_gitConfigService.RepositoryPath, "shares", device.Name);
+        if (Directory.Exists(sharesDirectory))
+        {            
             Directory.Delete(sharesDirectory, recursive: true);
         }
 

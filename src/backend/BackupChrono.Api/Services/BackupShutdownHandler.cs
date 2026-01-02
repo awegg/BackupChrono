@@ -36,7 +36,7 @@ public class BackupShutdownHandler : IHostedService
                 await _orchestrator.CancelAllJobs();
                 
                 // Give processes a moment to terminate
-                await Task.Delay(1000, CancellationToken.None);
+                await Task.Delay(1000, cancellationToken);
                 
                 _logger.LogInformation("All backup jobs cancelled successfully");
             }

@@ -47,7 +47,7 @@ public class DeviceShareBackupWorkflowE2ETests : IClassFixture<BackupChronoE2EWe
         var createdDevice = await createDeviceResponse.Content.ReadFromJsonAsync<DeviceDto>();
         createdDevice.Should().NotBeNull();
         createdDevice!.Id.Should().NotBeEmpty();
-        createdDevice.Name.Should().Be(deviceName);
+        createdDevice!.Name.Should().Be(deviceName);
         
         var deviceId = createdDevice.Id;
 
@@ -159,7 +159,9 @@ public class DeviceShareBackupWorkflowE2ETests : IClassFixture<BackupChronoE2EWe
         };
 
         var createDeviceResponse = await _client.PostAsJsonAsync("/api/devices", createDeviceDto);
+        createDeviceResponse.StatusCode.Should().Be(HttpStatusCode.Created);
         var createdDevice = await createDeviceResponse.Content.ReadFromJsonAsync<DeviceDto>();
+        createdDevice.Should().NotBeNull();
         var deviceId = createdDevice!.Id;
 
         // ACT - Create multiple shares
@@ -188,8 +190,11 @@ public class DeviceShareBackupWorkflowE2ETests : IClassFixture<BackupChronoE2EWe
         };
 
         var share1Response = await _client.PostAsJsonAsync($"/api/devices/{deviceId}/shares", share1Dto);
+        share1Response.StatusCode.Should().Be(HttpStatusCode.Created);
         var share2Response = await _client.PostAsJsonAsync($"/api/devices/{deviceId}/shares", share2Dto);
+        share2Response.StatusCode.Should().Be(HttpStatusCode.Created);
         var share3Response = await _client.PostAsJsonAsync($"/api/devices/{deviceId}/shares", share3Dto);
+        share3Response.StatusCode.Should().Be(HttpStatusCode.Created);
 
         var share1 = await share1Response.Content.ReadFromJsonAsync<ShareDto>();
         var share2 = await share2Response.Content.ReadFromJsonAsync<ShareDto>();
@@ -219,10 +224,12 @@ public class DeviceShareBackupWorkflowE2ETests : IClassFixture<BackupChronoE2EWe
         // The important part is that the trigger requests are accepted
 
         // CLEANUP - Delete shares one by one
-        await _client.DeleteAsync($"/api/devices/{deviceId}/shares/{share1.Id}");
-        await _client.DeleteAsync($"/api/devices/{deviceId}/shares/{share2.Id}");
-        await _client.DeleteAsync($"/api/devices/{deviceId}/shares/{share3!.Id}");
-
+        var delete1 = await _client.DeleteAsync($"/api/devices/{deviceId}/shares/{share1.Id}");
+        delete1.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        var delete2 = await _client.DeleteAsync($"/api/devices/{deviceId}/shares/{share2.Id}");
+        delete2.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        var delete3 = await _client.DeleteAsync($"/api/devices/{deviceId}/shares/{share3!.Id}");
+        delete3.StatusCode.Should().Be(HttpStatusCode.NoContent);
         // Verify all shares deleted
         var sharesAfterDelete = await (await _client.GetAsync($"/api/devices/{deviceId}/shares"))
             .Content.ReadFromJsonAsync<List<ShareDto>>();
@@ -248,7 +255,9 @@ public class DeviceShareBackupWorkflowE2ETests : IClassFixture<BackupChronoE2EWe
         };
 
         var deviceResponse = await _client.PostAsJsonAsync("/api/devices", deviceDto);
+        deviceResponse.StatusCode.Should().Be(HttpStatusCode.Created);
         var device = await deviceResponse.Content.ReadFromJsonAsync<DeviceDto>();
+        device.Should().NotBeNull();
 
         var shareDto = new ShareCreateDto
         {
@@ -258,6 +267,7 @@ public class DeviceShareBackupWorkflowE2ETests : IClassFixture<BackupChronoE2EWe
         };
 
         var shareResponse = await _client.PostAsJsonAsync($"/api/devices/{device!.Id}/shares", shareDto);
+        shareResponse.StatusCode.Should().Be(HttpStatusCode.Created);
         var share = await shareResponse.Content.ReadFromJsonAsync<ShareDto>();
 
         // ACT - Update share

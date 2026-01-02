@@ -143,6 +143,7 @@ public class BackupJobsControllerE2ETests : IClassFixture<BackupChronoE2EWebAppl
         };
 
         var deviceResponse = await _client.PostAsJsonAsync("/api/devices", deviceRequest);
+        deviceResponse.StatusCode.Should().Be(HttpStatusCode.Created);
         var device = await deviceResponse.Content.ReadFromJsonAsync<DeviceDto>();
 
         var triggerRequest = new TriggerBackupRequest

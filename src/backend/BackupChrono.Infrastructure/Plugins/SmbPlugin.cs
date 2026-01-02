@@ -14,10 +14,8 @@ namespace BackupChrono.Infrastructure.Plugins;
 /// </summary>
 public class SmbPlugin : IProtocolPlugin
 {
-    private readonly Dictionary<string, string> _mountedPaths = new();
-    private readonly Dictionary<string, string> _mountCredentials = new();
+    private static readonly Dictionary<string, string> _mountedPaths = new();
     private static readonly object _mountLock = new object();
-
     public string ProtocolName => "SMB";
 
     public bool SupportsWakeOnLan => true;
@@ -56,7 +54,7 @@ public class SmbPlugin : IProtocolPlugin
         }
     }
 
-    public Task<string> MountShare(Device device, Share share)
+    public async Task<string> MountShare(Device device, Share share)
     {
         var uncPath = BuildUncPath(device, share);
         var password = device.Password.GetPlaintext();
@@ -66,31 +64,34 @@ public class SmbPlugin : IProtocolPlugin
             // Check if already mounted
             if (_mountedPaths.ContainsKey(uncPath))
             {
-                return Task.FromResult(_mountedPaths[uncPath]);
+                return _mountedPaths[uncPath];
             }
-
-            string mountPoint;
-
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
-                mountPoint = MountShareWindows(device, share, uncPath, password);
-            }
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-            {
-                mountPoint = MountShareLinux(device, share, uncPath, password);
-            }
-            else
-            {
-                throw new PlatformNotSupportedException($"SMB mounting not supported on {RuntimeInformation.OSDescription}");
-            }
-
-            _mountedPaths[uncPath] = mountPoint;
-            _mountCredentials[uncPath] = $"{device.Username}:{password}";
-            return Task.FromResult(mountPoint);
         }
+
+        string mountPoint;
+
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            mountPoint = await MountShareWindows(device, share, uncPath, password);
+        }
+        else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        {
+            mountPoint = await MountShareLinux(device, share, uncPath, password);
+        }
+        else
+        {
+            throw new PlatformNotSupportedException($"SMB mounting not supported on {RuntimeInformation.OSDescription}");
+        }
+
+        lock (_mountLock)
+        {
+            _mountedPaths[uncPath] = mountPoint;
+        }
+
+        return mountPoint;
     }
 
-    private string MountShareWindows(Device device, Share share, string uncPath, string password)
+    private async Task<string> MountShareWindows(Device device, Share share, string uncPath, string password)
     {
         // Find an available drive letter
         var driveLetter = FindAvailableDriveLetter();
@@ -118,9 +119,13 @@ public class SmbPlugin : IProtocolPlugin
         try
         {
             process.Start();
-            var output = process.StandardOutput.ReadToEnd();
-            var error = process.StandardError.ReadToEnd();
+            var outputTask = process.StandardOutput.ReadToEndAsync();
+            var errorTask = process.StandardError.ReadToEndAsync();
+            await Task.WhenAll(outputTask, errorTask);
             process.WaitForExit();
+
+            var output = outputTask.Result;
+            var error = errorTask.Result;
 
             if (process.ExitCode != 0)
             {
@@ -136,7 +141,7 @@ public class SmbPlugin : IProtocolPlugin
         }
     }
 
-    private string MountShareLinux(Device device, Share share, string uncPath, string password)
+    private async Task<string> MountShareLinux(Device device, Share share, string uncPath, string password)
     {
         // Create a temporary mount point
         var mountPoint = Path.Combine("/tmp", $"backupchrono-smb-{Guid.NewGuid()}");
@@ -177,9 +182,13 @@ public class SmbPlugin : IProtocolPlugin
             };
 
             process.Start();
-            var output = process.StandardOutput.ReadToEnd();
-            var error = process.StandardError.ReadToEnd();
+            var outputTask = process.StandardOutput.ReadToEndAsync();
+            var errorTask = process.StandardError.ReadToEndAsync();
+            await Task.WhenAll(outputTask, errorTask);
             process.WaitForExit();
+
+            var output = outputTask.Result;
+            var error = errorTask.Result;
 
             if (process.ExitCode != 0)
             {
@@ -202,30 +211,27 @@ public class SmbPlugin : IProtocolPlugin
 
     public async Task UnmountShare(string mountPath)
     {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            await UnmountShareWindows(mountPath);
+        }
+        else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        {
+            await UnmountShareLinux(mountPath);
+        }
+
         lock (_mountLock)
         {
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
-                UnmountShareWindows(mountPath);
-            }
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-            {
-                UnmountShareLinux(mountPath);
-            }
-
             // Remove from tracking (even if unmount failed, don't track it)
             var entry = _mountedPaths.FirstOrDefault(x => x.Value == mountPath);
             if (entry.Key != null)
             {
                 _mountedPaths.Remove(entry.Key);
-                _mountCredentials.Remove(entry.Key);
             }
         }
-
-        await Task.CompletedTask;
     }
 
-    private void UnmountShareWindows(string mountPath)
+    private async Task UnmountShareWindows(string mountPath)
     {
         var process = new Process
         {
@@ -243,11 +249,16 @@ public class SmbPlugin : IProtocolPlugin
         try
         {
             process.Start();
+            var outputTask = process.StandardOutput.ReadToEndAsync();
+            var errorTask = process.StandardError.ReadToEndAsync();
+            await Task.WhenAll(outputTask, errorTask);
             process.WaitForExit();
+
+            var output = outputTask.Result;
+            var error = errorTask.Result;
 
             if (process.ExitCode != 0)
             {
-                var error = process.StandardError.ReadToEnd();
                 throw new InvalidOperationException(
                     $"Failed to unmount SMB share at '{mountPath}'. Exit code: {process.ExitCode}. Error: {error}");
             }
@@ -258,7 +269,7 @@ public class SmbPlugin : IProtocolPlugin
         }
     }
 
-    private void UnmountShareLinux(string mountPath)
+    private async Task UnmountShareLinux(string mountPath)
     {
         var process = new Process
         {
@@ -276,11 +287,16 @@ public class SmbPlugin : IProtocolPlugin
         try
         {
             process.Start();
+            var outputTask = process.StandardOutput.ReadToEndAsync();
+            var errorTask = process.StandardError.ReadToEndAsync();
+            await Task.WhenAll(outputTask, errorTask);
             process.WaitForExit();
+
+            var output = outputTask.Result;
+            var error = errorTask.Result;
 
             if (process.ExitCode != 0)
             {
-                var error = process.StandardError.ReadToEnd();
                 throw new InvalidOperationException(
                     $"Failed to unmount SMB share at '{mountPath}'. Exit code: {process.ExitCode}. Error: {error}");
             }
@@ -317,7 +333,6 @@ public class SmbPlugin : IProtocolPlugin
     private string BuildUncPath(Device device, Share? share)
     {
         var host = device.Host;
-        var port = device.Port ?? 445;
         
         // UNC path format: \\host\sharepath
         if (share == null)

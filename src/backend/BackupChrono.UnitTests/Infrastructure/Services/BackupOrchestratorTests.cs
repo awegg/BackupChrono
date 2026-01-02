@@ -4,6 +4,7 @@ using BackupChrono.Core.ValueObjects;
 using BackupChrono.Infrastructure.Services;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
 
@@ -30,6 +31,11 @@ public class BackupOrchestratorTests
         _mockBackupJobRepository = new Mock<IBackupJobRepository>();
         _mockLogger = new Mock<ILogger<BackupOrchestrator>>();
 
+        var resticOptions = Options.Create(new ResticOptions
+        {
+            RepositoryBasePath = Path.Combine(Path.GetTempPath(), "test-repositories")
+        });
+
         _orchestrator = new BackupOrchestrator(
             _mockDeviceService.Object,
             _mockShareService.Object,
@@ -37,7 +43,8 @@ public class BackupOrchestratorTests
             _mockResticService.Object,
             _mockStorageMonitor.Object,
             _mockBackupJobRepository.Object,
-            _mockLogger.Object
+            _mockLogger.Object,
+            resticOptions
         );
     }
 

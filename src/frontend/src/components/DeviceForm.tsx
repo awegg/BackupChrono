@@ -92,9 +92,9 @@ export default function DeviceForm({ device, onSuccess, onCancel }: DeviceFormPr
             type="number"
             required
             value={formData.port}
-            onChange={(e) => setFormData({ ...formData, port: parseInt(e.target.value) })}
+            onChange={(e) => setFormData({ ...formData, port: parseInt(e.target.value, 10) || 0 })}
             className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+          />        
         </div>
       </div>
 

@@ -269,18 +269,18 @@ This document organizes implementation tasks by **user story** to enable indepen
 - [ ] T083 [US9] Create ConfigurationController in BackupChrono.Api/Controllers/ConfigurationController.cs with GET /configuration/global, PUT /configuration/global per openapi.yaml
 - [ ] T084 [US9] Implement GET /configuration/history endpoint in ConfigurationController to list commits using LibGit2Sharp
 - [ ] T085 [US9] Implement GET /configuration/history/{commitHash} endpoint to view specific commit details and diff
-- [ ] T268 [US9] Implement GET /configuration/diff endpoint with fromCommit and toCommit parameters for side-by-side comparison
-- [ ] T269 [US9] Implement GET /configuration/blame/{filePath} endpoint showing line-by-line change history
-- [ ] T086 [US9] Implement POST /configuration/rollback endpoint to checkout previous commit and apply configuration
-- [ ] T270 [US9] Add configuration change webhook/notification integration (triggers notification on commit)
-- [ ] T087 [US9] Implement global configuration YAML read/write in GitConfigService for config/global.yaml
-- [ ] T088 [US9] Add validation to rollback endpoint: prevent rollback if uncommitted changes exist
-- [ ] T265 [US9] Implement POST /configuration/export endpoint creating tar.gz of entire config/ directory
-- [ ] T266 [US9] Implement POST /configuration/import endpoint with validation and rollback on failure
-- [ ] T267 [US9] Add GET /configuration/disaster-recovery endpoint for minimal config import mode
-- [ ] T089 [US9] Create GitConfigServiceTests in BackupChrono.Infrastructure.Tests/Git/GitConfigServiceTests.cs for commit, history, rollback operations
-- [ ] T090 [US9] Create end-to-end configuration test in BackupChrono.Integration.Tests/ConfigurationFlowTests.cs verifying Git commits on CRUD operations
-- [ ] T271 [US9] Create integration test for export/import workflow
+- [ ] T086 [US9] Implement GET /configuration/diff endpoint with fromCommit and toCommit parameters for side-by-side comparison
+- [ ] T087 [US9] Implement GET /configuration/blame/{filePath} endpoint showing line-by-line change history
+- [ ] T088 [US9] Implement POST /configuration/rollback endpoint to checkout previous commit and apply configuration
+- [ ] T089 [US9] Add configuration change webhook/notification integration (triggers notification on commit)
+- [ ] T090 [US9] Implement global configuration YAML read/write in GitConfigService for config/global.yaml
+- [ ] T091 [US9] Add validation to rollback endpoint: prevent rollback if uncommitted changes exist
+- [ ] T092 [US9] Implement POST /configuration/export endpoint creating tar.gz of entire config/ directory
+- [ ] T093 [US9] Implement POST /configuration/import endpoint with validation and rollback on failure
+- [ ] T094 [US9] Add GET /configuration/disaster-recovery endpoint for minimal config import mode
+- [ ] T095 [US9] Create GitConfigServiceTests in BackupChrono.Infrastructure.Tests/Git/GitConfigServiceTests.cs for commit, history, rollback operations
+- [ ] T096 [US9] Create end-to-end configuration test in BackupChrono.Integration.Tests/ConfigurationFlowTests.cs verifying Git commits on CRUD operations
+- [ ] T097 [US9] Create integration test for export/import workflow
 
 **Checkpoint**: Git commits auto-created with good messages, visual diff/blame available via API, one-click rollback working, export/import functional, change notifications sent.
 
@@ -301,14 +301,14 @@ This document organizes implementation tasks by **user story** to enable indepen
 
 ### Implementation Tasks
 
-- [ ] T091 [US6] Enhance RsyncProtocolPlugin.MountShare in src/backend/BackupChrono.Infrastructure/Protocols/RsyncProtocolPlugin.cs to spawn rsync process and sync to temp directory
-- [ ] T092 [US6] Implement rsync progress parsing in RsyncProtocolPlugin for file transfer status
-- [ ] T093 [US6] Implement rsync over SSH authentication using SSH.NET credentials from Device entity
-- [ ] T094 [US6] Implement rsync daemon protocol support (rsync://host/module) with username/password auth
-- [ ] T095 [US6] Add cleanup logic to RsyncProtocolPlugin.UnmountShare to remove staging directory after backup completes
-- [ ] T096 [US6] Add error handling for rsync process failures (connection refused, auth failure, permission denied)
-- [ ] T097 [US6] Create RsyncProtocolPluginTests in BackupChrono.Infrastructure.Tests/Protocols/RsyncProtocolPluginTests.cs for rsync operations
-- [ ] T098 [US6] Create integration test in BackupChrono.Integration.Tests/RsyncBackupTests.cs with rsync daemon container
+- [ ] T098 [US6] Enhance RsyncProtocolPlugin.MountShare in src/backend/BackupChrono.Infrastructure/Protocols/RsyncProtocolPlugin.cs to spawn rsync process and sync to temp directory
+- [ ] T099 [US6] Implement rsync progress parsing in RsyncProtocolPlugin for file transfer status
+- [ ] T100 [US6] Implement rsync over SSH authentication using SSH.NET credentials from Device entity
+- [ ] T101 [US6] Implement rsync daemon protocol support (rsync://host/module) with username/password auth
+- [ ] T102 [US6] Add cleanup logic to RsyncProtocolPlugin.UnmountShare to remove staging directory after backup completes
+- [ ] T103 [US6] Add error handling for rsync process failures (connection refused, auth failure, permission denied)
+- [ ] T104 [US6] Create RsyncProtocolPluginTests in BackupChrono.Infrastructure.Tests/Protocols/RsyncProtocolPluginTests.cs for rsync operations
+- [ ] T105 [US6] Create integration test in BackupChrono.Integration.Tests/RsyncBackupTests.cs with rsync daemon container
 
 **Checkpoint**: Can create rsync device, trigger backup, verify files synced to staging then backed up to repository, staging cleaned up.
 
@@ -330,18 +330,18 @@ This document organizes implementation tasks by **user story** to enable indepen
 
 ### Implementation Tasks
 
-- [ ] T224 [US1B] Create HookConfiguration value object in BackupChrono.Core/ValueObjects/HookConfiguration.cs with script path, timeout, environment variables
-- [ ] T225 [US1B] Add PreBackupHook and PostBackupHook properties to Device and Share entities
-- [ ] T226 [US1B] Create IHookExecutor interface in BackupChrono.Core/Interfaces/IHookExecutor.cs with ExecuteHook method
-- [ ] T227 [US1B] Implement HookExecutor in src/backend/BackupChrono.Infrastructure/Hooks/HookExecutor.cs for spawning shell scripts
-- [ ] T228 [US1B] Add hook environment variable population (BACKUPCHRONO_DEVICE, BACKUPCHRONO_SHARE, BACKUPCHRONO_STATUS, BACKUPCHRONO_JOB_ID)
-- [ ] T229 [US1B] Update BackupOrchestrator to execute pre-backup hook before mounting share
-- [ ] T230 [US1B] Update BackupOrchestrator to execute post-backup hook after unmounting share (always runs)
-- [ ] T231 [US1B] Add hook timeout configuration (default 5 minutes) and force-kill on timeout
-- [ ] T232 [US1B] Add hook failure handling: abort backup on pre-hook failure, log post-hook failures
-- [ ] T233 [US1B] Add hook execution logging to logs/hook-executions.jsonl
-- [ ] T234 [US1B] Create HookExecutorTests in BackupChrono.Infrastructure.Tests/Hooks/HookExecutorTests.cs
-- [ ] T235 [US1B] Create integration test in BackupChrono.Integration.Tests/HookExecutionTests.cs with sample scripts
+- [ ] T106 [US1B] Create HookConfiguration value object in BackupChrono.Core/ValueObjects/HookConfiguration.cs with script path, timeout, environment variables
+- [ ] T107 [US1B] Add PreBackupHook and PostBackupHook properties to Device and Share entities
+- [ ] T108 [US1B] Create IHookExecutor interface in BackupChrono.Core/Interfaces/IHookExecutor.cs with ExecuteHook method
+- [ ] T109 [US1B] Implement HookExecutor in src/backend/BackupChrono.Infrastructure/Hooks/HookExecutor.cs for spawning shell scripts
+- [ ] T110 [US1B] Add hook environment variable population (BACKUPCHRONO_DEVICE, BACKUPCHRONO_SHARE, BACKUPCHRONO_STATUS, BACKUPCHRONO_JOB_ID)
+- [ ] T111 [US1B] Update BackupOrchestrator to execute pre-backup hook before mounting share
+- [ ] T112 [US1B] Update BackupOrchestrator to execute post-backup hook after unmounting share (always runs)
+- [ ] T113 [US1B] Add hook timeout configuration (default 5 minutes) and force-kill on timeout
+- [ ] T114 [US1B] Add hook failure handling: abort backup on pre-hook failure, log post-hook failures
+- [ ] T115 [US1B] Add hook execution logging to logs/hook-executions.jsonl
+- [ ] T116 [US1B] Create HookExecutorTests in BackupChrono.Infrastructure.Tests/Hooks/HookExecutorTests.cs
+- [ ] T117 [US1B] Create integration test in BackupChrono.Integration.Tests/HookExecutionTests.cs with sample scripts
 
 **Checkpoint**: Can configure pre/post hooks, hooks execute with environment variables, pre-hook failure aborts backup, timeout prevents hangs, execution logged.
 
@@ -366,24 +366,24 @@ This document organizes implementation tasks by **user story** to enable indepen
 
 ### Implementation Tasks
 
-- [ ] T099 [US3] Implement GET /devices endpoint enhancement in DevicesController to include lastBackupTime, lastBackupStatus, nextScheduledBackup
-- [ ] T100 [US3] Implement ResticService.GetStats to query repository statistics (total size, unique size, deduplication savings)
-- [ ] T101 [US3] Create RepositoryController in BackupChrono.Api/Controllers/RepositoryController.cs with GET /repository/stats endpoint
-- [ ] T102 [US3] Create BackupProgressHub SignalR hub in BackupChrono.Api/Hubs/BackupProgressHub.cs for real-time backup status broadcasts
-- [ ] T103 [US3] Update BackupOrchestrator to broadcast progress events via BackupProgressHub during backup execution
-- [ ] T104 [US3] Implement GET /backup-jobs endpoint enhancement to support filtering by status (pending, running, failed) and date range
-- [ ] T105 [US3] Implement GET /backup-jobs/upcoming endpoint to query next scheduled jobs from Quartz scheduler
-- [ ] T106 [US3] Add logging to BackupJob for structured logging with device name, share name, duration, status to logs/backup-jobs.jsonl
-- [ ] T252 [US3] Add GET /metrics/backup-success-rate endpoint with 7/30/90 day trend analysis
-- [ ] T253 [US3] Implement storage growth prediction based on backup history (linear regression)
-- [ ] T254 [US3] Add GET /metrics/bandwidth endpoint showing transfer rates per device
-- [ ] T255 [US3] Create GET /metrics/device-matrix endpoint for heatmap data (device x date grid)
-- [ ] T256 [US3] Add GET /backup-jobs/timeline endpoint for Gantt chart visualization
-- [ ] T257 [US3] Implement Prometheus metrics endpoint at /metrics (backup_duration, backup_size, backup_success_total, etc.)
-- [ ] T258 [US3] Create Grafana dashboard template in docs/grafana/ for common visualizations
-- [ ] T107 [US3] Create BackupProgressHubTests in BackupChrono.Api.Tests/Hubs/BackupProgressHubTests.cs for SignalR messaging
-- [ ] T108 [US3] Create end-to-end dashboard test in BackupChrono.Integration.Tests/DashboardTests.cs verifying backup status display
-- [ ] T259 [US3] Create MetricsControllerTests in BackupChrono.Api.Tests/Controllers/MetricsControllerTests.cs
+- [ ] T118 [US3] Implement GET /devices endpoint enhancement in DevicesController to include lastBackupTime, lastBackupStatus, nextScheduledBackup
+- [ ] T119 [US3] Implement ResticService.GetStats to query repository statistics (total size, unique size, deduplication savings)
+- [ ] T120 [US3] Create RepositoryController in BackupChrono.Api/Controllers/RepositoryController.cs with GET /repository/stats endpoint
+- [ ] T121 [US3] Create BackupProgressHub SignalR hub in BackupChrono.Api/Hubs/BackupProgressHub.cs for real-time backup status broadcasts
+- [ ] T122 [US3] Update BackupOrchestrator to broadcast progress events via BackupProgressHub during backup execution
+- [ ] T123 [US3] Implement GET /backup-jobs endpoint enhancement to support filtering by status (pending, running, failed) and date range
+- [ ] T124 [US3] Implement GET /backup-jobs/upcoming endpoint to query next scheduled jobs from Quartz scheduler
+- [ ] T125 [US3] Add logging to BackupJob for structured logging with device name, share name, duration, status to logs/backup-jobs.jsonl
+- [ ] T126 [US3] Add GET /metrics/backup-success-rate endpoint with 7/30/90 day trend analysis
+- [ ] T127 [US3] Implement storage growth prediction based on backup history (linear regression)
+- [ ] T128 [US3] Add GET /metrics/bandwidth endpoint showing transfer rates per device
+- [ ] T129 [US3] Create GET /metrics/device-matrix endpoint for heatmap data (device x date grid)
+- [ ] T130 [US3] Add GET /backup-jobs/timeline endpoint for Gantt chart visualization
+- [ ] T131 [US3] Implement Prometheus metrics endpoint at /metrics (backup_duration, backup_size, backup_success_total, etc.)
+- [ ] T132 [US3] Create Grafana dashboard template in docs/grafana/ for common visualizations
+- [ ] T133 [US3] Create BackupProgressHubTests in BackupChrono.Api.Tests/Hubs/BackupProgressHubTests.cs for SignalR messaging
+- [ ] T134 [US3] Create end-to-end dashboard test in BackupChrono.Integration.Tests/DashboardTests.cs verifying backup status display
+- [ ] T135 [US3] Create MetricsControllerTests in BackupChrono.Api.Tests/Controllers/MetricsControllerTests.cs
 
 **Checkpoint**: Comprehensive metrics available via API, Prometheus endpoint functional, trend analysis working, Grafana dashboard template provided, real-time progress via SignalR.
 
@@ -405,22 +405,22 @@ This document organizes implementation tasks by **user story** to enable indepen
 
 ### Implementation Tasks
 
-- [ ] T109 [US7] Create NotificationSettings entity in BackupChrono.Core/Entities/NotificationSettings.cs with fields for Email, Discord, Gotify per data-model.md
-- [ ] T110 [US7] Create INotificationService interface in BackupChrono.Core/Interfaces/INotificationService.cs with SendNotification, TestConnection methods
-- [ ] T111 [US7] Implement EmailNotificationService in src/backend/BackupChrono.Infrastructure/Notifications/EmailNotificationService.cs using MailKit for SMTP
-- [ ] T218 [US7] Implement DiscordNotificationService in src/backend/BackupChrono.Infrastructure/Notifications/DiscordNotificationService.cs using webhook API
-- [ ] T219 [US7] Implement GotifyNotificationService in src/backend/BackupChrono.Infrastructure/Notifications/GotifyNotificationService.cs using Gotify REST API
-- [ ] T220 [US7] Create NotificationChannelType enum in BackupChrono.Core/Entities/NotificationChannelType.cs (Email, Discord, Gotify)
-- [ ] T112 [US7] Implement notification templates in src/backend/BackupChrono.Infrastructure/Notifications/Templates/ for failure, success, daily summary (multi-channel)
-- [ ] T113 [US7] Update BackupOrchestrator to call INotificationService after backup completion (success or failure)
-- [ ] T114 [US7] Implement DailySummaryJob Quartz job in src/backend/BackupChrono.Infrastructure/Scheduling/DailySummaryJob.cs to send summary at configured time
-- [ ] T115 [US7] Create NotificationsController in BackupChrono.Api/Controllers/NotificationsController.cs with GET /notifications, PUT /notifications, POST /notifications/test per openapi.yaml
-- [ ] T221 [US7] Add POST /notifications/test/{channel} endpoint to test individual channels (email, discord, gotify)
-- [ ] T116 [US7] Implement notification settings YAML persistence via GitConfigService at config/notifications.yaml
-- [ ] T117 [US7] Add notification sending to background queue to avoid blocking backup operations
-- [ ] T222 [US7] Implement notification retry logic with exponential backoff for failed deliveries
-- [ ] T118 [US7] Create NotificationServiceTests in BackupChrono.Infrastructure.Tests/Notifications/NotificationServiceTests.cs for all channels
-- [ ] T119 [US7] Create integration test in BackupChrono.Integration.Tests/NotificationTests.cs with mock servers for each channel
+- [ ] T136 [US7] Create NotificationSettings entity in BackupChrono.Core/Entities/NotificationSettings.cs with fields for Email, Discord, Gotify per data-model.md
+- [ ] T137 [US7] Create INotificationService interface in BackupChrono.Core/Interfaces/INotificationService.cs with SendNotification, TestConnection methods
+- [ ] T138 [US7] Implement EmailNotificationService in src/backend/BackupChrono.Infrastructure/Notifications/EmailNotificationService.cs using MailKit for SMTP
+- [ ] T139 [US7] Implement DiscordNotificationService in src/backend/BackupChrono.Infrastructure/Notifications/DiscordNotificationService.cs using webhook API
+- [ ] T140 [US7] Implement GotifyNotificationService in src/backend/BackupChrono.Infrastructure/Notifications/GotifyNotificationService.cs using Gotify REST API
+- [ ] T141 [US7] Create NotificationChannelType enum in BackupChrono.Core/Entities/NotificationChannelType.cs (Email, Discord, Gotify)
+- [ ] T142 [US7] Implement notification templates in src/backend/BackupChrono.Infrastructure/Notifications/Templates/ for failure, success, daily summary (multi-channel)
+- [ ] T143 [US7] Update BackupOrchestrator to call INotificationService after backup completion (success or failure)
+- [ ] T144 [US7] Implement DailySummaryJob Quartz job in src/backend/BackupChrono.Infrastructure/Scheduling/DailySummaryJob.cs to send summary at configured time
+- [ ] T145 [US7] Create NotificationsController in BackupChrono.Api/Controllers/NotificationsController.cs with GET /notifications, PUT /notifications, POST /notifications/test per openapi.yaml
+- [ ] T146 [US7] Add POST /notifications/test/{channel} endpoint to test individual channels (email, discord, gotify)
+- [ ] T147 [US7] Implement notification settings YAML persistence via GitConfigService at config/notifications.yaml
+- [ ] T148 [US7] Add notification sending to background queue to avoid blocking backup operations
+- [ ] T149 [US7] Implement notification retry logic with exponential backoff for failed deliveries
+- [ ] T150 [US7] Create NotificationServiceTests in BackupChrono.Infrastructure.Tests/Notifications/NotificationServiceTests.cs for all channels
+- [ ] T151 [US7] Create integration test in BackupChrono.Integration.Tests/NotificationTests.cs with mock servers for each channel
 
 **Checkpoint**: Discord, Gotify, and Email configurable via API, test endpoints work for each channel, backup events trigger notifications, daily summary sent to all enabled channels.
 
@@ -441,15 +441,15 @@ This document organizes implementation tasks by **user story** to enable indepen
 
 ### Implementation Tasks
 
-- [ ] T120 [US8] Enhance IProtocolPlugin interface to add MountShareWritable method in BackupChrono.Core/Interfaces/IProtocolPlugin.cs
-- [ ] T121 [US8] Implement SmbProtocolPlugin.MountShareWritable for write-enabled SMB mounting using SMBLibrary
-- [ ] T122 [US8] Implement SshProtocolPlugin.MountShareWritable for SFTP write access using SSH.NET
-- [ ] T123 [US8] Implement RsyncProtocolPlugin.MountShareWritable for rsync write operations
-- [ ] T124 [US8] Implement POST /backups/{backupId}/restore-to-source endpoint in BackupsController with shareId, filePaths parameters
-- [ ] T125 [US8] Implement BackupOrchestrator.RestoreToSource method to mount share, restore files via ResticService, unmount
-- [ ] T126 [US8] Add error handling for write permission failures during restore-to-source
-- [ ] T127 [US8] Update RestoreProgressHub to support restore-to-source progress broadcasts
-- [ ] T128 [US8] Create end-to-end restore-to-source test in BackupChrono.Integration.Tests/RestoreToSourceTests.cs verifying files on source device
+- [ ] T152 [US8] Enhance IProtocolPlugin interface to add MountShareWritable method in BackupChrono.Core/Interfaces/IProtocolPlugin.cs
+- [ ] T153 [US8] Implement SmbProtocolPlugin.MountShareWritable for write-enabled SMB mounting using SMBLibrary
+- [ ] T154 [US8] Implement SshProtocolPlugin.MountShareWritable for SFTP write access using SSH.NET
+- [ ] T155 [US8] Implement RsyncProtocolPlugin.MountShareWritable for rsync write operations
+- [ ] T156 [US8] Implement POST /backups/{backupId}/restore-to-source endpoint in BackupsController with shareId, filePaths parameters
+- [ ] T157 [US8] Implement BackupOrchestrator.RestoreToSource method to mount share, restore files via ResticService, unmount
+- [ ] T158 [US8] Add error handling for write permission failures during restore-to-source
+- [ ] T159 [US8] Update RestoreProgressHub to support restore-to-source progress broadcasts
+- [ ] T160 [US8] Create end-to-end restore-to-source test in BackupChrono.Integration.Tests/RestoreToSourceTests.cs verifying files on source device
 
 **Checkpoint**: Can trigger restore-to-source via API, files restored to original device location, progress tracked via SignalR, cleanup completes.
 
@@ -470,30 +470,30 @@ This document organizes implementation tasks by **user story** to enable indepen
 
 ### Implementation Tasks
 
-- [ ] T129 [P] [US4] Initialize React 18 project in src/frontend/ with Vite, TypeScript, Tailwind CSS
-- [ ] T130 [P] [US4] Install frontend dependencies: react-router-dom, axios, @tanstack/react-query, react-hook-form, zod, lucide-react
-- [ ] T131 [P] [US4] Create API client in src/frontend/src/services/api.ts with axios instance configured for backend base URL
-- [ ] T132 [P] [US4] Create TypeScript interfaces in src/frontend/src/types/ matching OpenAPI schemas (Device, Share, Schedule, RetentionPolicy, etc.)
-- [ ] T133 [P] [US4] Create deviceService.ts in src/frontend/src/services/ with CRUD methods calling backend API
-- [ ] T134 [P] [US4] Create shareService.ts in src/frontend/src/services/ with CRUD methods
-- [ ] T135 [US4] Create Dashboard page in src/frontend/src/pages/Dashboard.tsx displaying device list with status
-- [ ] T136 [US4] Create DeviceList component in src/frontend/src/components/devices/DeviceList.tsx
-- [ ] T137 [US4] Create DeviceCard component in src/frontend/src/components/devices/DeviceCard.tsx showing device name, status, last backup
-- [ ] T138 [US4] Create DeviceForm component in src/frontend/src/components/devices/DeviceForm.tsx with react-hook-form for create/edit
-- [ ] T139 [US4] Create ShareForm component in src/frontend/src/components/shares/ShareForm.tsx for share configuration
-- [ ] T140 [US4] Create ScheduleEditor component in src/frontend/src/components/common/ScheduleEditor.tsx with cron expression builder
-- [ ] T141 [US4] Create RetentionPolicyEditor component in src/frontend/src/components/common/RetentionPolicyEditor.tsx
-- [ ] T142 [US4] Create IncludeExcludeEditor component in src/frontend/src/components/common/IncludeExcludeEditor.tsx for pattern management
-- [ ] T143 [US4] Implement GET /devices/{deviceId}/shares/{shareId}/effective-config endpoint in SharesController
-- [ ] T144 [US4] Create EffectiveConfigView component in src/frontend/src/components/shares/EffectiveConfigView.tsx showing inherited vs overridden settings
-- [ ] T145 [US4] Create DeviceDetail page in src/frontend/src/pages/DeviceDetail.tsx with device info and share list
-- [ ] T146 [US4] Create DeviceSettings page in src/frontend/src/pages/DeviceSettings.tsx for device configuration
-- [ ] T147 [US4] Create ShareSettings page in src/frontend/src/pages/ShareSettings.tsx for share configuration
-- [ ] T148 [US4] Implement routing in src/frontend/src/App.tsx using react-router-dom
-- [ ] T149 [US4] Create layout components in src/frontend/src/components/layout/: Sidebar, Header, Navigation
-- [ ] T150 [US4] Add form validation using zod schemas matching backend validation rules
-- [ ] T151 [US4] Create component tests in src/frontend/tests/unit/components/ using Vitest + React Testing Library
-- [ ] T152 [US4] Create Playwright e2e test in src/frontend/tests/e2e/configuration.spec.ts for device/share CRUD workflow
+- [ ] T161 [P] [US4] Initialize React 18 project in src/frontend/ with Vite, TypeScript, Tailwind CSS
+- [ ] T162 [P] [US4] Install frontend dependencies: react-router-dom, axios, @tanstack/react-query, react-hook-form, zod, lucide-react
+- [ ] T163 [P] [US4] Create API client in src/frontend/src/services/api.ts with axios instance configured for backend base URL
+- [ ] T164 [P] [US4] Create TypeScript interfaces in src/frontend/src/types/ matching OpenAPI schemas (Device, Share, Schedule, RetentionPolicy, etc.)
+- [ ] T165 [P] [US4] Create deviceService.ts in src/frontend/src/services/ with CRUD methods calling backend API
+- [ ] T166 [P] [US4] Create shareService.ts in src/frontend/src/services/ with CRUD methods
+- [ ] T167 [US4] Create Dashboard page in src/frontend/src/pages/Dashboard.tsx displaying device list with status
+- [ ] T168 [US4] Create DeviceList component in src/frontend/src/components/devices/DeviceList.tsx
+- [ ] T169 [US4] Create DeviceCard component in src/frontend/src/components/devices/DeviceCard.tsx showing device name, status, last backup
+- [ ] T170 [US4] Create DeviceForm component in src/frontend/src/components/devices/DeviceForm.tsx with react-hook-form for create/edit
+- [ ] T171 [US4] Create ShareForm component in src/frontend/src/components/shares/ShareForm.tsx for share configuration
+- [ ] T172 [US4] Create ScheduleEditor component in src/frontend/src/components/common/ScheduleEditor.tsx with cron expression builder
+- [ ] T173 [US4] Create RetentionPolicyEditor component in src/frontend/src/components/common/RetentionPolicyEditor.tsx
+- [ ] T174 [US4] Create IncludeExcludeEditor component in src/frontend/src/components/common/IncludeExcludeEditor.tsx for pattern management
+- [ ] T175 [US4] Implement GET /devices/{deviceId}/shares/{shareId}/effective-config endpoint in SharesController
+- [ ] T176 [US4] Create EffectiveConfigView component in src/frontend/src/components/shares/EffectiveConfigView.tsx showing inherited vs overridden settings
+- [ ] T177 [US4] Create DeviceDetail page in src/frontend/src/pages/DeviceDetail.tsx with device info and share list
+- [ ] T178 [US4] Create DeviceSettings page in src/frontend/src/pages/DeviceSettings.tsx for device configuration
+- [ ] T179 [US4] Create ShareSettings page in src/frontend/src/pages/ShareSettings.tsx for share configuration
+- [ ] T180 [US4] Implement routing in src/frontend/src/App.tsx using react-router-dom
+- [ ] T181 [US4] Create layout components in src/frontend/src/components/layout/: Sidebar, Header, Navigation
+- [ ] T182 [US4] Add form validation using zod schemas matching backend validation rules
+- [ ] T183 [US4] Create component tests in src/frontend/tests/unit/components/ using Vitest + React Testing Library
+- [ ] T184 [US4] Create Playwright e2e test in src/frontend/tests/e2e/configuration.spec.ts for device/share CRUD workflow
 
 **Checkpoint**: Frontend displays devices, can create/edit device, can create/edit shares, effective config view shows inheritance, e2e tests pass.
 
@@ -514,15 +514,15 @@ This document organizes implementation tasks by **user story** to enable indepen
 
 ### Implementation Tasks
 
-- [ ] T153 [US5] Implement GET /backups/files/history endpoint in BackupsController with deviceName, filePath query parameters per openapi.yaml
-- [ ] T154 [US5] Implement ResticService.GetFileHistory to query file across all backups using restic find and restic ls
-- [ ] T155 [US5] Implement file version diff logic in BackupsController comparing two file versions by hash
-- [ ] T156 [US5] Create FileHistory page in src/frontend/src/pages/FileHistory.tsx with search input and timeline view
-- [ ] T157 [US5] Create FileVersionTimeline component in src/frontend/src/components/files/FileVersionTimeline.tsx displaying versions chronologically
-- [ ] T158 [US5] Create FileVersionDiff component in src/frontend/src/components/files/FileVersionDiff.tsx showing side-by-side diff
-- [ ] T159 [US5] Add file search autocomplete in FileHistory page querying backend for file paths
-- [ ] T160 [US5] Implement GET /backups/{id}/files/{path}/diff endpoint in BackupsController for file content diff
-- [ ] T161 [US5] Create end-to-end file history test in BackupChrono.Integration.Tests/FileHistoryTests.cs verifying version tracking
+- [ ] T185 [US5] Implement GET /backups/files/history endpoint in BackupsController with deviceName, filePath query parameters per openapi.yaml
+- [ ] T186 [US5] Implement ResticService.GetFileHistory to query file across all backups using restic find and restic ls
+- [ ] T187 [US5] Implement file version diff logic in BackupsController comparing two file versions by hash
+- [ ] T188 [US5] Create FileHistory page in src/frontend/src/pages/FileHistory.tsx with search input and timeline view
+- [ ] T189 [US5] Create FileVersionTimeline component in src/frontend/src/components/files/FileVersionTimeline.tsx displaying versions chronologically
+- [ ] T190 [US5] Create FileVersionDiff component in src/frontend/src/components/files/FileVersionDiff.tsx showing side-by-side diff
+- [ ] T191 [US5] Add file search autocomplete in FileHistory page querying backend for file paths
+- [ ] T192 [US5] Implement GET /backups/{id}/files/{path}/diff endpoint in BackupsController for file content diff
+- [ ] T193 [US5] Create end-to-end file history test in BackupChrono.Integration.Tests/FileHistoryTests.cs verifying version tracking
 
 **Checkpoint**: Can search for file, view version history, compare versions, download specific version via UI.
 
@@ -543,21 +543,21 @@ This document organizes implementation tasks by **user story** to enable indepen
 
 ### Implementation Tasks
 
-- [ ] T162 [P] [US10] Create User entity in BackupChrono.Core/Entities/User.cs with username, passwordHash, role fields
-- [ ] T163 [P] [US10] Create UserRole enum in BackupChrono.Core/Entities/UserRole.cs (Admin, Operator, Viewer)
-- [ ] T164 [P] [US10] Create IAuthService interface in BackupChrono.Core/Interfaces/IAuthService.cs with Login, CreateUser, ValidateToken methods
-- [ ] T165 [US10] Implement AuthService in src/backend/BackupChrono.Infrastructure/Auth/AuthService.cs using JWT tokens and BCrypt password hashing
-- [ ] T166 [US10] Implement user storage in YAML files at config/users/{username}.yaml with encrypted passwords
-- [ ] T167 [US10] Create AuthController in BackupChrono.Api/Controllers/AuthController.cs with POST /auth/login, POST /auth/register endpoints
-- [ ] T168 [US10] Implement JWT authentication middleware in BackupChrono.Api/Middleware/JwtAuthMiddleware.cs
-- [ ] T169 [US10] Add [Authorize] attributes to controllers with role-based restrictions (Admin, Operator, Viewer)
-- [ ] T170 [US10] Implement authorization policies in BackupChrono.Api/Program.cs for role-based access control
-- [ ] T171 [US10] Create Login page in src/frontend/src/pages/Login.tsx with form for username/password
-- [ ] T172 [US10] Implement auth context in src/frontend/src/context/AuthContext.tsx for storing JWT token
-- [ ] T173 [US10] Add axios interceptor in src/frontend/src/services/api.ts to include JWT token in requests
-- [ ] T174 [US10] Add role-based UI visibility in frontend (hide admin features for Operators/Viewers)
-- [ ] T175 [US10] Create AuthServiceTests in BackupChrono.Infrastructure.Tests/Auth/AuthServiceTests.cs for login, registration, token validation
-- [ ] T176 [US10] Create authorization integration test in BackupChrono.Api.Tests/AuthorizationTests.cs verifying role-based access
+- [ ] T194 [P] [US10] Create User entity in BackupChrono.Core/Entities/User.cs with username, passwordHash, role fields
+- [ ] T195 [P] [US10] Create UserRole enum in BackupChrono.Core/Entities/UserRole.cs (Admin, Operator, Viewer)
+- [ ] T196 [P] [US10] Create IAuthService interface in BackupChrono.Core/Interfaces/IAuthService.cs with Login, CreateUser, ValidateToken methods
+- [ ] T197 [US10] Implement AuthService in src/backend/BackupChrono.Infrastructure/Auth/AuthService.cs using JWT tokens and BCrypt password hashing
+- [ ] T198 [US10] Implement user storage in YAML files at config/users/{username}.yaml with encrypted passwords
+- [ ] T199 [US10] Create AuthController in BackupChrono.Api/Controllers/AuthController.cs with POST /auth/login, POST /auth/register endpoints
+- [ ] T200 [US10] Implement JWT authentication middleware in BackupChrono.Api/Middleware/JwtAuthMiddleware.cs
+- [ ] T201 [US10] Add [Authorize] attributes to controllers with role-based restrictions (Admin, Operator, Viewer)
+- [ ] T202 [US10] Implement authorization policies in BackupChrono.Api/Program.cs for role-based access control
+- [ ] T203 [US10] Create Login page in src/frontend/src/pages/Login.tsx with form for username/password
+- [ ] T204 [US10] Implement auth context in src/frontend/src/context/AuthContext.tsx for storing JWT token
+- [ ] T205 [US10] Add axios interceptor in src/frontend/src/services/api.ts to include JWT token in requests
+- [ ] T206 [US10] Add role-based UI visibility in frontend (hide admin features for Operators/Viewers)
+- [ ] T207 [US10] Create AuthServiceTests in BackupChrono.Infrastructure.Tests/Auth/AuthServiceTests.cs for login, registration, token validation
+- [ ] T208 [US10] Create authorization integration test in BackupChrono.Api.Tests/AuthorizationTests.cs verifying role-based access
 
 **Checkpoint**: Can create users, login returns JWT, role-based access enforced on API endpoints, UI adapts to user role.
 
@@ -572,33 +572,44 @@ This document organizes implementation tasks by **user story** to enable indepen
 **Independent Test Criteria**:
 - Can scan network for SMB shares (NetBIOS/SMB enumeration)
 - Can scan network for SSH devices (banner grabbing)
-- Discovered devices show in UI with detected capabilities
+- Can configure discovery rules (IP ranges, excluded hosts, required protocols)
+- Discovered devices show in staging area with suggested configuration
 - Can "Add to Backups" with one click from discovered devices
+- Can bulk-add multiple discovered devices simultaneously
 - Device fingerprinting prevents duplicate additions
 - Discovery respects network boundaries (subnet configuration)
+- Discovery runs on schedule or on-demand
+- Can auto-detect share names on SMB devices
 - Periodic re-scan option for network changes
 
 ### Implementation Tasks
 
-- [ ] T236 [US11] Create DiscoveredDevice entity in BackupChrono.Core/Entities/DiscoveredDevice.cs with hostname, IP, protocol, capabilities
-- [ ] T237 [US11] Create IDeviceDiscovery interface in BackupChrono.Core/Interfaces/IDeviceDiscovery.cs with ScanNetwork, GetDiscovered methods
-- [ ] T238 [US11] Implement SmbDiscoveryService in src/backend/BackupChrono.Infrastructure/Discovery/SmbDiscoveryService.cs using NetBIOS/SMB probes
-- [ ] T239 [US11] Implement SshDiscoveryService in src/backend/BackupChrono.Infrastructure/Discovery/SshDiscoveryService.cs using SSH banner detection
-- [ ] T240 [US11] Add network range configuration (CIDR notation) for scan boundaries
-- [ ] T241 [US11] Implement device fingerprinting using MAC address + hostname hash to prevent duplicates
-- [ ] T242 [US11] Create DiscoveryController in BackupChrono.Api/Controllers/DiscoveryController.cs with POST /discovery/scan, GET /discovery/devices
-- [ ] T243 [US11] Implement POST /discovery/devices/{id}/add endpoint to convert discovered device to managed device
-- [ ] T244 [US11] Add background discovery job (optional, configurable schedule) for periodic scanning
-- [ ] T245 [US11] Store discovered devices in memory cache with TTL (24 hours default)
-- [ ] T246 [US11] Add discovery exclusion list (IP ranges to ignore)
-- [ ] T247 [US11] Create DiscoveryServiceTests in BackupChrono.Infrastructure.Tests/Discovery/DiscoveryServiceTests.cs
-- [ ] T248 [US11] Create integration test in BackupChrono.Integration.Tests/DiscoveryTests.cs with mock network devices
+- [ ] T209 [US11] Create DiscoveredDevice entity in BackupChrono.Core/Entities/DiscoveredDevice.cs with hostname, IP, protocol, capabilities, detected shares, suggested config
+- [ ] T210 [US11] Create IDeviceDiscovery interface in BackupChrono.Core/Interfaces/IDeviceDiscovery.cs with ScanNetwork, GetDiscoveredDevices methods
+- [ ] T211 [US11] Implement SmbDiscoveryService in src/backend/BackupChrono.Infrastructure/Discovery/SmbDiscoveryService.cs using NetBIOS/SMB probes and nmap for share enumeration
+- [ ] T212 [US11] Implement SshDiscoveryService in src/backend/BackupChrono.Infrastructure/Discovery/SshDiscoveryService.cs using SSH banner detection
+- [ ] T213 [US11] Create DiscoveryRule entity in BackupChrono.Core/Entities/DiscoveryRule.cs with IP ranges, port scans, protocol filters, exclusion lists
+- [ ] T214 [US11] Implement DiscoveryRuleRepository in src/backend/BackupChrono.Infrastructure/Repositories/DiscoveryRuleRepository.cs for config/discovery-rules.yaml
+- [ ] T215 [US11] Add network range configuration (CIDR notation) for scan boundaries
+- [ ] T216 [US11] Implement device fingerprinting using MAC address + hostname hash to prevent duplicates
+- [ ] T217 [US11] Implement DiscoveryStagingService in src/backend/BackupChrono.Infrastructure/Discovery/DiscoveryStagingService.cs to manage staging area with in-memory cache (TTL 24 hours default)
+- [ ] T218 [US11] Create DiscoveryController in BackupChrono.Api/Controllers/DiscoveryController.cs with:
+  - POST /discovery/scan - trigger network scan
+  - GET /discovery/devices - list discovered devices
+  - GET /discovery/staged - list devices in staging area
+  - POST /discovery/devices/{id}/add - convert single discovered device to managed device
+  - POST /discovery/bulk-add - bulk-add multiple discovered devices
+- [ ] T219 [US11] Implement scheduled discovery job using Quartz.NET (runs daily at 2 AM by default, configurable)
+- [ ] T220 [US11] Add discovery exclusion list (IP ranges to ignore) with validation
+- [ ] T221 [US11] Add network scan logging to logs/discovery.jsonl with scan results and errors
+- [ ] T222 [US11] Create DiscoveryServiceTests in BackupChrono.Infrastructure.Tests/Discovery/DiscoveryServiceTests.cs for SMB/SSH discovery, fingerprinting, staging
+- [ ] T223 [US11] Create integration test in BackupChrono.Integration.Tests/DiscoveryTests.cs with mock network devices verifying full workflow
 
-**Checkpoint**: Network scan discovers SMB/SSH devices, discovered devices listed via API, one-click add functional, fingerprinting prevents duplicates, exclusions respected.
+**Checkpoint**: Network scans discover SMB/SSH devices, staging area shows suggested configurations with auto-detected shares, can bulk-add discovered devices, fingerprinting prevents duplicates, discovery runs on schedule, exclusions respected.
 
 ---
 
-## Phase 12.7: User Story 14 - Snapshot Shares (P4) ⭐ **UNIQUE FEATURE**
+## Phase 12.7: User Story 13 - Snapshot Shares via SMB/NFS (P4) ⭐ **UNIQUE FEATURE**
 
 **Story Goal**: As a homelab admin, I want to mount backup snapshots as network shares (SMB/NFS), so I can browse and restore files using Windows Explorer or Finder without the CLI.
 
@@ -606,30 +617,39 @@ This document organizes implementation tasks by **user story** to enable indepen
 
 **Independent Test Criteria**:
 - Can mount a restic snapshot as read-only FUSE filesystem
+- Can mount specific snapshot as SMB share on-demand
 - Can expose mounted snapshot via SMB share (Windows-accessible)
 - Can expose mounted snapshot via NFS share (Unix-accessible)
-- Mounted snapshots auto-unmount after inactivity timeout
+- Mounted share appears as read-only network drive in Windows Explorer / macOS Finder
+- Can browse full file tree and copy files directly from mounted share to local system
 - Multiple snapshots can be mounted simultaneously
-- Share URLs returned via API for easy access
+- Automatic unmount after configurable idle timeout (default 2 hours)
+- Share URLs/paths returned via API for easy access
 - Clean unmount on BackupChrono shutdown
+- Support both SMB and NFS export protocols
 
 ### Implementation Tasks
 
-- [ ] T272 [US14] Create MountedSnapshot entity in BackupChrono.Core/Entities/MountedSnapshot.cs with snapshotId, mountPath, protocol, expiresAt
-- [ ] T273 [US14] Create ISnapshotMountService interface in BackupChrono.Core/Interfaces/ISnapshotMountService.cs with Mount, Unmount, List methods
-- [ ] T274 [US14] Implement ResticFuseMount in src/backend/BackupChrono.Infrastructure/Restic/ResticFuseMount.cs using restic mount command
-- [ ] T275 [US14] Implement SambaShareService in src/backend/BackupChrono.Infrastructure/Shares/SambaShareService.cs for SMB export (config generation)
-- [ ] T276 [US14] Implement NfsShareService in src/backend/BackupChrono.Infrastructure/Shares/NfsShareService.cs for NFS export (exportfs)
-- [ ] T277 [US14] Create SnapshotSharesController in BackupChrono.Api/Controllers/SnapshotSharesController.cs with POST /snapshots/{id}/mount, DELETE /snapshots/{id}/unmount
-- [ ] T278 [US14] Implement GET /snapshots/mounted endpoint listing all active mounts with share URLs
-- [ ] T279 [US14] Add inactivity timeout tracking (default 2 hours) and auto-unmount background job
-- [ ] T280 [US14] Add mount limit configuration (max simultaneous mounts, default 5)
-- [ ] T281 [US14] Implement graceful unmount on application shutdown (cleanup all mounts)
-- [ ] T282 [US14] Add access logging for mounted shares (who accessed what)
-- [ ] T283 [US14] Create SnapshotMountServiceTests in BackupChrono.Infrastructure.Tests/Shares/SnapshotMountServiceTests.cs
-- [ ] T284 [US14] Create integration test in BackupChrono.Integration.Tests/SnapshotShareTests.cs verifying mount/unmount workflow
+- [ ] T224 [US13] Create MountedSnapshot entity in BackupChrono.Core/Entities/MountedSnapshot.cs with snapshotId, mountPath, protocol, expiresAt, createdAt
+- [ ] T225 [US13] Create ISnapshotMountService interface in BackupChrono.Core/Interfaces/ISnapshotMountService.cs with MountSnapshot, UnmountSnapshot, ListActiveMounts, ExtendTimeout methods
+- [ ] T226 [US13] Implement ResticFuseMountService in src/backend/BackupChrono.Infrastructure/Restic/ResticFuseMountService.cs using `restic mount` command
+- [ ] T227 [US13] Implement SmbShareService in src/backend/BackupChrono.Infrastructure/Shares/SmbShareService.cs for creating SMB shares (Windows: net share, Linux: Samba config generation)
+- [ ] T228 [US13] Implement NfsShareService in src/backend/BackupChrono.Infrastructure/Shares/NfsShareService.cs for creating NFS exports (Linux: exportfs, /etc/exports)
+- [ ] T229 [US13] Create platform detection service (Windows/Linux) for appropriate share creation strategy
+- [ ] T230 [US13] Create SnapshotShareController in BackupChrono.Api/Controllers/SnapshotShareController.cs with:
+  - POST /snapshots/{snapshotId}/mount - mount as SMB/NFS share with protocol selection
+  - GET /snapshots/mounts - list all active mounts with share URLs/paths
+  - DELETE /snapshots/mounts/{mountId} - unmount specific share
+  - POST /snapshots/mounts/{mountId}/extend - extend timeout for active mount
+- [ ] T231 [US13] Implement inactivity timeout tracking (default 2 hours, configurable) with Quartz.NET background job for auto-unmount
+- [ ] T232 [US13] Add mount limit configuration (max simultaneous mounts, default 5) with validation
+- [ ] T233 [US13] Implement graceful unmount on application shutdown (cleanup all active mounts)
+- [ ] T234 [US13] Add access logging to logs/snapshot-access.jsonl for security auditing (who accessed what, when)
+- [ ] T235 [US13] Create SnapshotMountServiceTests in BackupChrono.Infrastructure.Tests/Restic/SnapshotMountServiceTests.cs for FUSE mounting, timeout, limits
+- [ ] T236 [US13] Create SmbShareServiceTests and NfsShareServiceTests for platform-specific share creation
+- [ ] T237 [US13] Create integration test in BackupChrono.Integration.Tests/SnapshotShareTests.cs verifying full mount/unmount workflow, timeout, multi-mount
 
-**Checkpoint**: Can mount snapshot via API, SMB/NFS shares accessible from Windows/Mac, auto-unmount after timeout, clean shutdown unmounts all, access logged.
+**Checkpoint**: Can mount snapshots via API as SMB/NFS shares, accessible from Windows/Mac file explorers, auto-unmount after timeout, clean shutdown unmounts all, access logged, mount limits enforced.
 
 ---
 
@@ -641,63 +661,31 @@ This document organizes implementation tasks by **user story** to enable indepen
 
 ### Tasks
 
-- [ ] T177 [P] Implement ResticRetentionTests in BackupChrono.Infrastructure.Restic.Tests/ResticRetentionTests.cs verifying retention policy application
-- [ ] T178 [P] Implement ResticService.Prune for garbage collection and space reclamation
-- [ ] T179 [P] Implement ResticService.VerifyIntegrity for repository integrity checks
-- [ ] T183 [P] Implement skip-if-running logic in BackupJob to prevent schedule overlaps
-- [ ] T184 [P] Add proper credential encryption/decryption in GitConfigService using repository passphrase
-- [ ] T185 [P] Create API documentation in docs/api/ using Swagger UI hosted at /swagger
-- [ ] T186 [P] Create deployment guide in docs/deployment/ with Docker setup, reverse proxy config, TLS termination
-- [ ] T187 [P] Create plugin development guide in src/plugins/README.md for IProtocolPlugin implementation
-- [ ] T188 [P] Add Prometheus metrics endpoint at /metrics (optional observability)
-- [ ] T189 [P] Create backup operation logging to logs/backup-jobs.jsonl in JSON Lines format
-- [ ] T190 [P] Create restore operation logging to logs/restore-jobs.jsonl
-- [ ] T191 [P] Implement log viewer in frontend at Configuration page for backup-jobs.jsonl and restore-jobs.jsonl
-- [ ] T192 [P] Add database-free verification tests in BackupChrono.Integration.Tests/ confirming no database dependency
-- [ ] T193 [P] Create repository format version validation in ResticService rejecting incompatible versions
-- [ ] T194 [P] Implement repository migration tool in src/backend/BackupChrono.Infrastructure/Restic/RepositoryMigration.cs for format upgrades
-- [ ] T196 [P] Create performance tests in BackupChrono.Performance.Tests/ for 1M+ files, 10+ concurrent backups
-- [ ] T197 Finalize README.md with complete setup instructions, architecture diagrams, contribution guidelines
-- [ ] T198 Create CHANGELOG.md documenting feature implementation and version history
-- [ ] T199 Add .editorconfig for consistent code formatting
+- [ ] T238 [P] Implement ResticRetentionTests in BackupChrono.Infrastructure.Restic.Tests/ResticRetentionTests.cs verifying retention policy application
+- [ ] T239 [P] Implement ResticService.Prune for garbage collection and space reclamation
+- [ ] T240 [P] Implement ResticService.VerifyIntegrity for repository integrity checks
+- [ ] T241 [P] Implement skip-if-running logic in BackupJob to prevent schedule overlaps
+- [ ] T242 [P] Add proper credential encryption/decryption in GitConfigService using repository passphrase
+- [ ] T243 [P] Create API documentation in docs/api/ using Swagger UI hosted at /swagger
+- [ ] T244 [P] Create deployment guide in docs/deployment/ with Docker setup, reverse proxy config, TLS termination
+- [ ] T245 [P] Create plugin development guide in src/plugins/README.md for IProtocolPlugin implementation
+- [ ] T246 [P] Add Prometheus metrics endpoint at /metrics (optional observability)
+- [ ] T247 [P] Create backup operation logging to logs/backup-jobs.jsonl in JSON Lines format
+- [ ] T248 [P] Create restore operation logging to logs/restore-jobs.jsonl
+- [ ] T249 [P] Implement log viewer in frontend at Configuration page for backup-jobs.jsonl and restore-jobs.jsonl
+- [ ] T250 [P] Add database-free verification tests in BackupChrono.Integration.Tests/ confirming no database dependency
+- [ ] T251 [P] Create repository format version validation in ResticService rejecting incompatible versions
+- [ ] T252 [P] Implement repository migration tool in src/backend/BackupChrono.Infrastructure/Restic/RepositoryMigration.cs for format upgrades
+- [ ] T253 [P] Create performance tests in BackupChrono.Performance.Tests/ for 1M+ files, 10+ concurrent backups
+- [ ] T254 Finalize README.md with complete setup instructions, architecture diagrams, contribution guidelines
+- [ ] T255 Create CHANGELOG.md documenting feature implementation and version history
+- [ ] T256 Add .editorconfig for consistent code formatting
 
 **Checkpoint**: All production features implemented, tests passing, documentation complete, Docker images published.
 
 ---
 
-## Phase 14: User Story 11 - Device Auto-Discovery (P2) 🎯 **NEW**
-
-**Story Goal**: As a homelab admin, I want to automatically discover devices on my network, so I don't have to manually add every NAS, server, or workstation.
-
-**Effort Estimate**: 4-5 days
-
-**Independent Test Criteria**:
-- Network scan discovers devices with SMB shares
-- Can configure discovery rules (IP ranges, excluded hosts, required protocols)
-- Discovered devices appear in staging area with suggested configuration
-- Can bulk-add discovered devices with one click
-- Discovery runs on schedule or on-demand
-- Can auto-detect share names on SMB devices
-
-### Implementation Tasks
-
-- [ ] T260 [US11] Create DeviceDiscoveryService interface in BackupChrono.Core/Interfaces/IDeviceDiscoveryService.cs with ScanNetwork, GetDiscoveredDevices methods
-- [ ] T261 [US11] Implement SmbDiscoveryService in src/backend/BackupChrono.Infrastructure/Discovery/SmbDiscoveryService.cs using nmap or custom SMB scanner
-- [ ] T262 [US11] Create DiscoveryRule entity in BackupChrono.Core/Entities/DiscoveryRule.cs with IP ranges, port scans, protocol filters
-- [ ] T263 [US11] Implement DiscoveryRuleRepository in src/backend/BackupChrono.Infrastructure/Repositories/DiscoveryRuleRepository.cs for config/discovery-rules.yaml
-- [ ] T264 [US11] Create DiscoveredDevice entity in BackupChrono.Core/Entities/DiscoveredDevice.cs with hostname, IP, detected shares, suggested config
-- [ ] T265 [US11] Implement DiscoveryStagingService in src/backend/BackupChrono.Infrastructure/Discovery/DiscoveryStagingService.cs to manage staging area
-- [ ] T266 [US11] Create DiscoveryController in BackupChrono.Api/Controllers/DiscoveryController.cs with POST /discovery/scan, GET /discovery/staged, POST /discovery/bulk-add endpoints
-- [ ] T267 [US11] Implement scheduled discovery job using Quartz.NET (runs daily at 2 AM by default)
-- [ ] T268 [US11] Add network scan logging to logs/discovery.jsonl
-- [ ] T269 [US11] Create DiscoveryServiceTests in BackupChrono.Infrastructure.Tests/Discovery/DiscoveryServiceTests.cs
-- [ ] T270 [US11] Create integration test in BackupChrono.Integration.Tests/DiscoveryTests.cs with mock network devices
-
-**Checkpoint**: Network scans discover SMB devices, staging area shows suggested configurations, can bulk-add discovered devices, discovery runs on schedule.
-
----
-
-## Phase 15: User Story 12 - Git Configuration Enhancements (P2) 🎯 **EXPANDED**
+## Phase 14: User Story 12 - Git Configuration Enhancements (P2) 🎯 **EXPANDED**
 
 **Story Goal**: As a homelab admin, I want advanced Git features (diff viewer, blame, rollback), so I can understand configuration changes and quickly recover from mistakes.
 
@@ -713,59 +701,23 @@ This document organizes implementation tasks by **user story** to enable indepen
 
 ### Implementation Tasks
 
-- [ ] T271 [US12] Add GetFileDiff method to IGitConfigService interface in BackupChrono.Core/Interfaces/IGitConfigService.cs
-- [ ] T272 [US12] Implement LibGit2Sharp diff generation in GitConfigService with unified and side-by-side formats
-- [ ] T273 [US12] Add GetFileBlame method to IGitConfigService returning line-by-line authorship
-- [ ] T274 [US12] Add RollbackToCommit method to IGitConfigService for restoring configuration to specific commit
-- [ ] T275 [US12] Implement GetCommitHistory method returning paginated commit log with messages, authors, timestamps
-- [ ] T276 [US12] Create ConfigHistoryController in BackupChrono.Api/Controllers/ConfigHistoryController.cs with:
+- [ ] T257 [US12] Add GetFileDiff method to IGitConfigService interface in BackupChrono.Core/Interfaces/IGitConfigService.cs
+- [ ] T258 [US12] Implement LibGit2Sharp diff generation in GitConfigService with unified and side-by-side formats
+- [ ] T259 [US12] Add GetFileBlame method to IGitConfigService returning line-by-line authorship
+- [ ] T260 [US12] Add RollbackToCommit method to IGitConfigService for restoring configuration to specific commit
+- [ ] T261 [US12] Implement GetCommitHistory method returning paginated commit log with messages, authors, timestamps
+- [ ] T262 [US12] Create ConfigHistoryController in BackupChrono.Api/Controllers/ConfigHistoryController.cs with:
   - GET /config/history - paginated commit log
   - GET /config/diff/{commitId} - diff view
   - GET /config/blame/{filePath} - blame view
   - POST /config/rollback/{commitId} - rollback action
   - GET /config/export/{commitId} - export as ZIP
-- [ ] T277 [US12] Add validation to prevent rollback during active backups
-- [ ] T278 [US12] Create audit log entry for rollback operations in logs/config-audit.jsonl
-- [ ] T279 [US12] Create GitConfigServiceTests in BackupChrono.Infrastructure.Tests/Git/GitConfigServiceTests.cs for diff, blame, rollback
-- [ ] T280 [US12] Create integration test in BackupChrono.Integration.Tests/GitConfigTests.cs verifying full workflow
+- [ ] T263 [US12] Add validation to prevent rollback during active backups
+- [ ] T264 [US12] Create audit log entry for rollback operations in logs/config-audit.jsonl
+- [ ] T265 [US12] Create GitConfigServiceTests in BackupChrono.Infrastructure.Tests/Git/GitConfigServiceTests.cs for diff, blame, rollback
+- [ ] T266 [US12] Create integration test in BackupChrono.Integration.Tests/GitConfigTests.cs verifying full workflow
 
 **Checkpoint**: Can view diffs and blame, rollback works with validation, commit history browsable, audit log tracks rollbacks.
-
----
-
-## Phase 16: User Story 13 - Snapshot Shares via SMB/NFS (P3) 🎯 **NEW**
-
-**Story Goal**: As a homelab admin, I want to mount backup snapshots as read-only network shares, so I can browse and restore files using standard file explorer without API calls.
-
-**Effort Estimate**: 5-6 days
-
-**Independent Test Criteria**:
-- Can mount specific snapshot as SMB share on-demand
-- Mounted share appears as read-only network drive
-- Can browse full file tree using Windows Explorer / macOS Finder
-- Can copy files directly from mounted share to local system
-- Automatic unmount after configurable idle timeout (default 1 hour)
-- Support both SMB and NFS export protocols
-
-### Implementation Tasks
-
-- [ ] T281 [US13] Create ISnapshotMountService interface in BackupChrono.Core/Interfaces/ISnapshotMountService.cs with MountSnapshot, UnmountSnapshot, ListActiveMounts methods
-- [ ] T282 [US13] Implement ResticFuseMountService in src/backend/BackupChrono.Infrastructure/Restic/ResticFuseMountService.cs using `restic mount` command
-- [ ] T283 [US13] Create SnapshotMount entity in BackupChrono.Core/Entities/SnapshotMount.cs with mount point, snapshot ID, protocol type, expiry time
-- [ ] T284 [US13] Implement SmbShareService in src/backend/BackupChrono.Infrastructure/Shares/SmbShareService.cs for creating SMB shares (Windows: net share, Linux: Samba)
-- [ ] T285 [US13] Implement NfsShareService in src/backend/BackupChrono.Infrastructure/Shares/NfsShareService.cs for creating NFS exports (Linux: /etc/exports)
-- [ ] T286 [US13] Create SnapshotShareController in BackupChrono.Api/Controllers/SnapshotShareController.cs with:
-  - POST /snapshots/{snapshotId}/mount - mount as SMB/NFS share
-  - GET /snapshots/mounts - list active mounts
-  - DELETE /snapshots/mounts/{mountId} - unmount share
-  - POST /snapshots/mounts/{mountId}/extend - extend timeout
-- [ ] T287 [US13] Implement idle timeout monitoring job using Quartz.NET to auto-unmount expired shares
-- [ ] T288 [US13] Add access logging to logs/snapshot-access.jsonl for security auditing
-- [ ] T289 [US13] Create platform detection (Windows/Linux) for share creation strategy
-- [ ] T290 [US13] Create SnapshotMountServiceTests in BackupChrono.Infrastructure.Tests/Restic/SnapshotMountServiceTests.cs
-- [ ] T291 [US13] Create integration test in BackupChrono.Integration.Tests/SnapshotShareTests.cs verifying mount/unmount, timeout
-
-**Checkpoint**: Can mount snapshots as SMB/NFS shares, browse via file explorer, auto-unmount on timeout, access logged for auditing.
 
 ---
 

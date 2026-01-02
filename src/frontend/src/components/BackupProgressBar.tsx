@@ -1,6 +1,4 @@
-import { useState, useEffect } from 'react';
-import { BackupProgress, signalRService } from '../services/signalr';
-import { BackupJob } from '../types';
+import { useState, useEffect, useRef } from 'react';import { BackupProgress, signalRService } from '../services/signalr';import { BackupJob } from '../types';
 import { Loader, CheckCircle, XCircle, FileText } from 'lucide-react';
 
 interface BackupProgressBarProps {
@@ -15,6 +13,8 @@ export default function BackupProgressBar({ jobId, initialStatus, job }: BackupP
   const [transferRate, setTransferRate] = useState<number>(0);
   const [lastBytes, setLastBytes] = useState<{ bytes: number; timestamp: number } | null>(null);
 
+  const lastBytesRef = useRef<{ bytes: number; timestamp: number } | null>(null);
+
   useEffect(() => {
     const handleProgress = (p: BackupProgress) => {
       if (p.jobId === jobId) {
@@ -27,15 +27,15 @@ export default function BackupProgressBar({ jobId, initialStatus, job }: BackupP
         // Calculate transfer rate
         if (p.bytesProcessed !== undefined) {
           const now = Date.now();
-          if (lastBytes) {
-            const bytesDiff = p.bytesProcessed - lastBytes.bytes;
-            const timeDiff = (now - lastBytes.timestamp) / 1000; // Convert to seconds
+          if (lastBytesRef.current) {
+            const bytesDiff = p.bytesProcessed - lastBytesRef.current.bytes;
+            const timeDiff = (now - lastBytesRef.current.timestamp) / 1000; // Convert to seconds
             if (timeDiff > 0 && bytesDiff > 0) {
               const rate = bytesDiff / timeDiff;
               setTransferRate(rate);
             }
           }
-          setLastBytes({ bytes: p.bytesProcessed, timestamp: now });
+          lastBytesRef.current = { bytes: p.bytesProcessed, timestamp: now };
         }
       }
     };
@@ -45,8 +45,7 @@ export default function BackupProgressBar({ jobId, initialStatus, job }: BackupP
     return () => {
       signalRService.unsubscribe(jobId);
     };
-  }, [jobId, lastBytes]);
-
+  }, [jobId]);
   if (!progress && initialStatus !== 'Running') {
     return null;
   }

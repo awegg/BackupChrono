@@ -81,11 +81,26 @@ if (!Path.IsPathRooted(configPath))
 {
     configPath = Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, configPath));
 }
+
+// Configure ResticOptions
+builder.Services.Configure<BackupChrono.Infrastructure.Services.ResticOptions>(options =>
+{
+    var repositoryBasePath = builder.Configuration["Restic:RepositoryPath"] ?? "./repositories";
+    // Convert to absolute path if relative
+    options.RepositoryBasePath = Path.IsPathRooted(repositoryBasePath)
+        ? repositoryBasePath
+        : Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, repositoryBasePath));
+    
+    options.BinaryPath = builder.Configuration["Restic:BinaryPath"] ?? "restic";
+    options.Password = builder.Configuration["Restic:Password"];
+});
+
 builder.Services.AddSingleton<GitConfigService>(sp => 
     new GitConfigService(configPath));
 builder.Services.AddSingleton<ResticClient>(sp => 
 {
-    var resticPassword = builder.Configuration["Restic:Password"];
+    var resticOptions = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<BackupChrono.Infrastructure.Services.ResticOptions>>().Value;
+    var resticPassword = resticOptions.Password;
     
     if (string.IsNullOrWhiteSpace(resticPassword))
     {
@@ -103,17 +118,10 @@ builder.Services.AddSingleton<ResticClient>(sp =>
         }
     }
     
-    var repositoryBasePath = builder.Configuration["Restic:RepositoryPath"] ?? "./repositories";
-    // Convert to absolute path if relative
-    var absoluteRepositoryPath = Path.IsPathRooted(repositoryBasePath)
-        ? repositoryBasePath
-        : Path.GetFullPath(repositoryBasePath);
-    
     return new ResticClient(
-        builder.Configuration["Restic:BinaryPath"] ?? "restic",
-        absoluteRepositoryPath,
-        resticPassword);
-});
+        resticOptions.BinaryPath,
+        resticOptions.RepositoryBasePath,
+        resticPassword);});
 builder.Services.AddSingleton<IResticService, ResticService>();
 
 // Register application services (Phase 3 - User Story 1)

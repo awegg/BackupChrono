@@ -139,6 +139,12 @@ public class BackupJobsController : ControllerBase
     {
         try
         {
+            var job = await _backupJobRepository.GetJob(jobId);
+            if (job == null)
+            {
+                return NotFound(new ErrorResponse { Error = "Backup job not found", Detail = $"No job with ID {jobId}" });
+            }
+
             await _schedulerService.CancelJob(jobId);
             _logger.LogInformation("Cancelled backup job {JobId}", jobId);
             return NoContent();

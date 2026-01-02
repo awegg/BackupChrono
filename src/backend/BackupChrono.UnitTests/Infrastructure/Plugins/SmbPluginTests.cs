@@ -167,19 +167,4 @@ public class SmbPluginTests
         result.Should().BeFalse("connection to nonexistent server should fail gracefully");
     }
 
-    [Theory]
-    [InlineData("192.168.1.100", "share", "\\\\192.168.1.100\\share")]
-    [InlineData("server", "data", "\\\\server\\data")]
-    [InlineData("nas.local", "backup/files", "\\\\nas.local\\backup/files")]
-    public void BuildUncPath_ShouldFormatCorrectly(string host, string sharePath, string expectedUncPath)
-    {
-        // This test verifies the UNC path building logic indirectly
-        // Note: BuildUncPath is private, so we test via MountShare behavior
-        // For now, this is a placeholder for future reflection-based testing if needed
-        
-        // Assert
-        host.Should().NotBeNullOrEmpty();
-        sharePath.Should().NotBeNullOrEmpty();
-        expectedUncPath.Should().StartWith("\\\\");
-    }
 }

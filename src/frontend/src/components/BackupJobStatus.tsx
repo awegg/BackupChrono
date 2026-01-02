@@ -166,8 +166,8 @@ export default function BackupJobStatusList() {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {jobs.map((job) => (
-                <>
-                  <tr key={job.id}>
+                <React.Fragment key={job.id}>
+                  <tr>
                     <td className="px-3 py-3 whitespace-nowrap">
                       <div className="flex items-center">
                         {getStatusIcon(job.status)}
@@ -243,7 +243,7 @@ export default function BackupJobStatusList() {
                     </td>
                   </tr>
                   {job.commandLine && (
-                    <tr key={`${job.id}-cmd`} className="bg-gray-50">
+                    <tr className="bg-gray-50">
                       <td colSpan={8} className="px-3 py-2">
                         <div className="text-xs">
                           <button
@@ -266,8 +266,7 @@ export default function BackupJobStatusList() {
                       </td>
                     </tr>
                   )}
-                </>
-              ))}
+                </React.Fragment>              ))}
             </tbody>
           </table>
         </div>

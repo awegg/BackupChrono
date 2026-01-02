@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Microsoft.Extensions.DependencyInjection;
 using Quartz;
 using Quartz.Spi;
@@ -11,7 +12,7 @@ namespace BackupChrono.Infrastructure.Scheduling;
 public class MicrosoftDependencyInjectionJobFactory : IJobFactory
 {
     private readonly IServiceScopeFactory _serviceScopeFactory;
-    private readonly Dictionary<IJob, IServiceScope> _scopes = new();
+    private readonly ConcurrentDictionary<IJob, IServiceScope> _scopes = new();
 
     public MicrosoftDependencyInjectionJobFactory(IServiceScopeFactory serviceScopeFactory)
     {
@@ -41,12 +42,11 @@ public class MicrosoftDependencyInjectionJobFactory : IJobFactory
     /// </summary>
     public void ReturnJob(IJob job)
     {
-        if (_scopes.TryGetValue(job, out var scope))
+        // Dispose job first - it may use scoped services during cleanup
+        (job as IDisposable)?.Dispose();
+        
+        if (_scopes.TryRemove(job, out var scope))
         {
             scope.Dispose();
-            _scopes.Remove(job);
         }
-        
-        (job as IDisposable)?.Dispose();
-    }
-}
+    }}

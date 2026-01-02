@@ -5,6 +5,7 @@ using BackupChrono.Core.Interfaces;
 using BackupChrono.Core.ValueObjects;
 using BackupChrono.Core.DTOs;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace BackupChrono.Infrastructure.Services;
 
@@ -21,6 +22,7 @@ public class BackupOrchestrator : IBackupOrchestrator
     private readonly IStorageMonitor _storageMonitor;
     private readonly IBackupJobRepository _backupJobRepository;
     private readonly ILogger<BackupOrchestrator> _logger;
+    private readonly string _repositoryBasePath;
     private readonly ConcurrentDictionary<Guid, BackupJob> _activeJobs = new();
     private readonly ConcurrentDictionary<Guid, CancellationTokenSource> _jobCancellationTokens = new();
     private readonly ConcurrentDictionary<Guid, (BackupJob Job, DateTime ExpiresAt)> _completedJobs = new();
@@ -38,7 +40,8 @@ public class BackupOrchestrator : IBackupOrchestrator
         IResticService resticService,
         IStorageMonitor storageMonitor,
         IBackupJobRepository backupJobRepository,
-        ILogger<BackupOrchestrator> logger)
+        ILogger<BackupOrchestrator> logger,
+        IOptions<ResticOptions> resticOptions)
     {
         _deviceService = deviceService;
         _shareService = shareService;
@@ -47,6 +50,7 @@ public class BackupOrchestrator : IBackupOrchestrator
         _storageMonitor = storageMonitor;
         _backupJobRepository = backupJobRepository;
         _logger = logger;
+        _repositoryBasePath = resticOptions.Value.RepositoryBasePath;
     }
 
     private void RaiseProgressUpdate(BackupJob job, string? currentFile = null, double? percentComplete = null)
@@ -590,10 +594,9 @@ public class BackupOrchestrator : IBackupOrchestrator
 
     private string GetRepositoryPath(Device device, Share share)
     {
-        // Build repository path: repositories/{deviceId}/{shareId}
-        // Convert to absolute path to avoid issues with current directory changes
-        var relativePath = Path.Combine("./repositories", device.Id.ToString(), share.Id.ToString());
-        return Path.GetFullPath(relativePath);
+        // Build repository path: {RepositoryBasePath}/{deviceId}/{shareId}
+        // Use injected base path rather than relying on current working directory
+        return Path.Combine(_repositoryBasePath, device.Id.ToString(), share.Id.ToString());
     }
 
     private async Task<string> GetRepositoryPassword(Device device, Share share)
