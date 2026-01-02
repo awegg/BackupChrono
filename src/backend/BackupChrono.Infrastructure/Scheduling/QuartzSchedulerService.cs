@@ -278,17 +278,32 @@ public class QuartzSchedulerService : IQuartzSchedulerService
         var job = JobBuilder.Create<BackupJob>()
             .WithIdentity(jobKey)
             .SetJobData(jobData)
-            .StoreDurably()
+            // Non-durable: job will be removed when trigger completes
             .Build();
 
-        // Ensure the job exists in the scheduler before triggering
-        await scheduler.AddJob(job, replace: true);
+        // Create an immediate trigger
+        var trigger = TriggerBuilder.Create()
+            .WithIdentity($"{jobKey.Name}_trigger", jobKey.Group)
+            .ForJob(jobKey)
+            .StartNow()
+            .WithSimpleSchedule(x => x.WithMisfireHandlingInstructionFireNow())
+            .Build();
 
-        await scheduler.TriggerJob(jobKey, jobData);
+        // Schedule job with trigger atomically (no need for AddJob + TriggerJob)
+        // If job already exists, replace it
+        await scheduler.ScheduleJob(job, new[] { trigger }, replace: true);
 
         _logger.LogInformation(
             "Triggered immediate backup for device {DeviceId}, share {ShareId}",
             deviceId,
             shareId?.ToString() ?? "all");
+    }
+
+    public async Task CancelJob(Guid jobId)
+    {
+        // Delegate to BackupOrchestrator which manages the actual job execution and cancellation
+        using var scope = _scopeFactory.CreateScope();
+        var orchestrator = scope.ServiceProvider.GetRequiredService<IBackupOrchestrator>();
+        await orchestrator.CancelJob(jobId);
     }
 }

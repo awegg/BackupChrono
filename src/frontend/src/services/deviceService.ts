@@ -88,4 +88,12 @@ export const backupService = {
     const response = await apiClient.post('/api/backup-jobs', { deviceId, shareId });
     return response.data;
   },
+
+  deleteJob: async (id: string): Promise<void> => {
+    await apiClient.delete(`/api/backup-jobs/${id}`);
+  },
+
+  cancelJob: async (id: string): Promise<void> => {
+    await apiClient.post(`/api/backup-jobs/${id}/cancel`);
+  },
 };

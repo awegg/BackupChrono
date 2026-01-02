@@ -34,7 +34,7 @@ public class ResticClient
     /// <summary>
     /// Executes a restic command and returns the JSON output.
     /// </summary>
-    public async Task<string> ExecuteCommand(string[] args, CancellationToken cancellationToken = default, TimeSpan? timeout = null, Action<string>? onOutputLine = null)
+    public async Task<string> ExecuteCommand(string[] args, CancellationToken cancellationToken = default, TimeSpan? timeout = null, Action<string>? onOutputLine = null, string? repositoryPathOverride = null)
     {
         // Default timeout: 30 minutes for long-running operations
         var effectiveTimeout = timeout ?? TimeSpan.FromMinutes(30);
@@ -57,8 +57,9 @@ public class ResticClient
             startInfo.ArgumentList.Add(arg);
         }
 
-        // Set environment variables
-        startInfo.Environment["RESTIC_REPOSITORY"] = _repositoryPath;
+        // Set environment variables - use override if provided, otherwise use default
+        var effectiveRepositoryPath = repositoryPathOverride ?? _repositoryPath;
+        startInfo.Environment["RESTIC_REPOSITORY"] = effectiveRepositoryPath;
         startInfo.Environment["RESTIC_PASSWORD"] = _password;
 
         using var process = new Process { StartInfo = startInfo };

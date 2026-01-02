@@ -425,9 +425,18 @@ public class BackupOrchestrator : IBackupOrchestrator
             // Check cancellation before backup
             cancellationToken.ThrowIfCancellationRequested();
 
+            // Build command line for debugging (includes repository path, excludes password)
+            var includeExcludeArgs = string.Join(" ", rules.ExcludePatterns.Select(p => $"--exclude \"{p}\""));
+            job.CommandLine = $"RESTIC_REPOSITORY={repositoryPath}\nrestic backup \"{mountPath}\" --json {includeExcludeArgs}";
+            await _backupJobRepository.SaveJob(job);
+
             // Execute restic backup
             _logger.LogDebug("Starting restic backup for '{DeviceName}/{ShareName}'", device.Name, share.Name);
-            var backup = await _resticService.CreateBackup(device, share, mountPath, rules, progress =>
+            
+            // Track final progress values
+            BackupProgress? lastProgress = null;
+            
+            var backup = await _resticService.CreateBackup(repositoryPath, device, share, mountPath, rules, progress =>
             {
                 // Create a new progress object with the JobId set
                 var updatedProgress = new BackupProgress
@@ -444,8 +453,16 @@ public class BackupOrchestrator : IBackupOrchestrator
                     CurrentFile = progress.CurrentFile,
                     ErrorMessage = progress.ErrorMessage
                 };
+                lastProgress = updatedProgress;
                 RaiseProgressUpdate(updatedProgress);
-            });
+            }, cancellationToken);
+
+            // Save final statistics to job
+            if (lastProgress != null)
+            {
+                job.FilesProcessed = lastProgress.FilesProcessed;
+                job.BytesTransferred = lastProgress.BytesProcessed;
+            }
 
             _logger.LogInformation("Backup completed with snapshot ID: {SnapshotId}", backup.Id);
 
@@ -573,9 +590,10 @@ public class BackupOrchestrator : IBackupOrchestrator
 
     private string GetRepositoryPath(Device device, Share share)
     {
-        // Path hard coded by design. It will be used in a docker container which mounts
-        // the host directory as /repositories.
-        return Path.Combine("./repositories", device.Id.ToString(), share.Id.ToString());
+        // Build repository path: repositories/{deviceId}/{shareId}
+        // Convert to absolute path to avoid issues with current directory changes
+        var relativePath = Path.Combine("./repositories", device.Id.ToString(), share.Id.ToString());
+        return Path.GetFullPath(relativePath);
     }
 
     private async Task<string> GetRepositoryPassword(Device device, Share share)

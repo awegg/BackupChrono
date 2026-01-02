@@ -348,4 +348,5 @@ public class BackupJobsControllerTests : IAsyncLifetime
         returnedJob.DeviceName.Should().Be("FileServer");
         returnedJob.ShareName.Should().BeNull();
         returnedJob.Status.Should().Be("Running");
-    }}
+    }
+}

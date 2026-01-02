@@ -199,7 +199,8 @@ public class MappingService : IMappingService
             BytesTransferred = job.BytesTransferred,
             ErrorMessage = job.ErrorMessage,
             RetryAttempt = job.RetryAttempt,
-            NextRetryAt = job.NextRetryAt
+            NextRetryAt = job.NextRetryAt,
+            CommandLine = job.CommandLine
         };
     }
 

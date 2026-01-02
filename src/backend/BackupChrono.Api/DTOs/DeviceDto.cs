@@ -176,6 +176,7 @@ public class BackupJobDto
     public string? ErrorMessage { get; set; }
     public int RetryAttempt { get; set; }
     public DateTime? NextRetryAt { get; set; }
+    public string? CommandLine { get; set; }
 }
 
 public class BackupDto

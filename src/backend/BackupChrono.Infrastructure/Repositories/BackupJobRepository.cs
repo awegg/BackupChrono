@@ -35,9 +35,36 @@ public class BackupJobRepository : IBackupJobRepository
     public async Task<BackupJob> SaveJob(BackupJob job)
     {
         var filePath = GetJobFilePath(job.Id);
-        var yaml = _yamlSerializer.Serialize(job);
-        await File.WriteAllTextAsync(filePath, yaml);
-        return job;
+        var directory = Path.GetDirectoryName(filePath) ?? _jobsDirectory;
+        var tempPath = Path.Combine(directory, $"{job.Id}.tmp.{Guid.NewGuid():N}.yaml");
+        
+        try
+        {
+            // Serialize and write to temp file
+            var yaml = _yamlSerializer.Serialize(job);
+            await File.WriteAllTextAsync(tempPath, yaml);
+            
+            // Atomic replace
+            if (File.Exists(filePath))
+            {
+                File.Replace(tempPath, filePath, null);
+            }
+            else
+            {
+                File.Move(tempPath, filePath, overwrite: true);
+            }
+            
+            return job;
+        }
+        catch
+        {
+            // Clean up temp file on failure
+            if (File.Exists(tempPath))
+            {
+                try { File.Delete(tempPath); } catch { /* Ignore cleanup errors */ }
+            }
+            throw;
+        }
     }
 
     public async Task<BackupJob?> GetJob(Guid jobId)
@@ -124,6 +151,27 @@ public class BackupJobRepository : IBackupJobRepository
     {
         var allJobs = await ListJobs();
         return allJobs.Where(j => j.Status == status).ToList();
+    }
+
+    public Task<bool> DeleteJob(Guid jobId)
+    {
+        var filePath = GetJobFilePath(jobId);
+        if (!File.Exists(filePath))
+        {
+            return Task.FromResult(false);
+        }
+
+        try
+        {
+            File.Delete(filePath);
+            _logger.LogInformation("Deleted backup job {JobId}", jobId);
+            return Task.FromResult(true);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to delete job file {JobFile}", filePath);
+            throw;
+        }
     }
 
     private string GetJobFilePath(Guid jobId)

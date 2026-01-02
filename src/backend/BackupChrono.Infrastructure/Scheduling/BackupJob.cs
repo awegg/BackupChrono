@@ -118,8 +118,10 @@ public class BackupJob : IJob
             {
                 Id = Guid.NewGuid(),
                 DeviceId = deviceId,
-                ShareId = shareId,                DeviceName = deviceName,
-                ShareName = shareName,                Type = jobType,
+                ShareId = shareId,                
+                DeviceName = deviceName,
+                ShareName = shareName,                
+                Type = jobType,
                 Status = BackupJobStatus.Failed,
                 StartedAt = DateTime.UtcNow,
                 CompletedAt = DateTime.UtcNow,

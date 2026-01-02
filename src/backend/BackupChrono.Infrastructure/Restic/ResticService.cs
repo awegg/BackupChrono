@@ -14,7 +14,6 @@ public class ResticService : IResticService
 {
     private readonly ResticClient _client;
     private readonly ILogger<ResticService> _logger;
-    private DateTime _lastLogTime = DateTime.MinValue;
     private static readonly TimeSpan LogThrottleInterval = TimeSpan.FromSeconds(1);
 
     public ResticService(ResticClient client, ILogger<ResticService> logger)
@@ -27,7 +26,7 @@ public class ResticService : IResticService
     {
         try
         {
-            await _client.ExecuteCommand(new[] { "init" });
+            await _client.ExecuteCommand(new[] { "init" }, repositoryPathOverride: repositoryPath);
             return true;
         }
         catch (Exception ex) when (ex.Message.Contains("already initialized"))
@@ -42,7 +41,8 @@ public class ResticService : IResticService
     {
         try
         {
-            await _client.ExecuteCommand(new[] { "snapshots", "--json" });
+            var output = await _client.ExecuteCommand(new[] { "snapshots", "--json" }, repositoryPathOverride: repositoryPath);
+            _logger.LogInformation(output);
             return true;
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("Is there a repository at the following location?") || 
@@ -57,7 +57,7 @@ public class ResticService : IResticService
 
     public async Task<RepositoryStats> GetStats(string repositoryPath)
     {
-        var output = await _client.ExecuteCommand(new[] { "stats", "--json" });
+        var output = await _client.ExecuteCommand(new[] { "stats", "--json" }, repositoryPathOverride: repositoryPath);
         // TODO: Parse JSON output into RepositoryStats
         return new RepositoryStats
         {
@@ -70,15 +70,15 @@ public class ResticService : IResticService
 
     public async Task VerifyIntegrity(string repositoryPath)
     {
-        await _client.ExecuteCommand(new[] { "check" });
+        await _client.ExecuteCommand(new[] { "check" }, repositoryPathOverride: repositoryPath);
     }
 
     public async Task Prune(string repositoryPath)
     {
-        await _client.ExecuteCommand(new[] { "prune" });
+        await _client.ExecuteCommand(new[] { "prune" }, repositoryPathOverride: repositoryPath);
     }
 
-    public async Task<Backup> CreateBackup(Device device, Share? share, string sourcePath, IncludeExcludeRules rules, Action<BackupProgress>? onProgress = null)
+    public async Task<Backup> CreateBackup(string repositoryPath, Device device, Share? share, string sourcePath, IncludeExcludeRules rules, Action<BackupProgress>? onProgress = null, CancellationToken cancellationToken = default)
     {
         var args = new List<string> { "backup", sourcePath, "--json" };
 
@@ -89,7 +89,10 @@ public class ResticService : IResticService
             args.Add(pattern);
         }
 
-        var output = await _client.ExecuteCommand(args.ToArray(), onOutputLine: line =>
+        // Local throttle state for this backup job
+        var lastLogTime = DateTime.MinValue;
+
+        var output = await _client.ExecuteCommand(args.ToArray(), cancellationToken, onOutputLine: line =>
         {
             if (onProgress == null || string.IsNullOrWhiteSpace(line)) return;
             
@@ -98,8 +101,15 @@ public class ResticService : IResticService
                 using var doc = JsonDocument.Parse(line);
                 var root = doc.RootElement;
                 
-                if (root.TryGetProperty("message_type", out var messageType) && 
-                    messageType.GetString() == "status")
+                // Log all message types for debugging
+                if (root.TryGetProperty("message_type", out var messageType))
+                {
+                    var msgType = messageType.GetString();
+                    _logger.LogTrace("Restic message type: {MessageType}, Content: {Content}", msgType, line);
+                }
+                
+                if (root.TryGetProperty("message_type", out var statusMessageType) && 
+                    statusMessageType.GetString() == "status")
                 {
                     var progress = new BackupProgress
                     {
@@ -129,11 +139,11 @@ public class ResticService : IResticService
                     };
                     
                     var now = DateTime.UtcNow;
-                    if (now - _lastLogTime >= LogThrottleInterval)
+                    if (now - lastLogTime >= LogThrottleInterval)
                     {
                         _logger.LogDebug("Restic progress: {Percent}% - {Files}/{TotalFiles} files", 
                             progress.PercentComplete, progress.FilesProcessed, progress.TotalFiles);
-                        _lastLogTime = now;
+                        lastLogTime = now;
                     }
                     
                     onProgress(progress);
@@ -143,7 +153,7 @@ public class ResticService : IResticService
             {
                 // Ignore JSON parse errors for non-JSON output lines (restic outputs mixed text/JSON)
             }
-        });
+        }, repositoryPathOverride: repositoryPath);
         
         // TODO: Parse backup result from JSON
         return new Backup

@@ -113,3 +113,4 @@ _ReSharper*/
 *.restic-test/
 test-repos/
 test-results.xml
+src/backend/BackupChrono.Api/repositories

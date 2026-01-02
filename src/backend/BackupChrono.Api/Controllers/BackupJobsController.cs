@@ -128,4 +128,51 @@ public class BackupJobsController : ControllerBase
             return StatusCode(500, new ErrorResponse { Error = "Failed to trigger backup", Detail = ex.Message });
         }
     }
+
+    /// <summary>
+    /// Cancel a running backup job
+    /// </summary>
+    [HttpPost("{jobId:guid}/cancel")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> CancelBackupJob(Guid jobId)
+    {
+        try
+        {
+            await _schedulerService.CancelJob(jobId);
+            _logger.LogInformation("Cancelled backup job {JobId}", jobId);
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error cancelling backup job {JobId}", jobId);
+            return StatusCode(500, new ErrorResponse { Error = "Failed to cancel backup job", Detail = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Delete a backup job by ID
+    /// </summary>
+    [HttpDelete("{jobId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DeleteBackupJob(Guid jobId)
+    {
+        try
+        {
+            var deleted = await _backupJobRepository.DeleteJob(jobId);
+            if (!deleted)
+            {
+                return NotFound(new ErrorResponse { Error = "Backup job not found", Detail = $"No job with ID {jobId}" });
+            }
+
+            _logger.LogInformation("Deleted backup job {JobId}", jobId);
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting backup job {JobId}", jobId);
+            return StatusCode(500, new ErrorResponse { Error = "Failed to delete backup job", Detail = ex.Message });
+        }
+    }
 }

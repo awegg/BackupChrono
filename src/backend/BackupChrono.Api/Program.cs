@@ -103,9 +103,15 @@ builder.Services.AddSingleton<ResticClient>(sp =>
         }
     }
     
+    var repositoryBasePath = builder.Configuration["Restic:RepositoryPath"] ?? "./repositories";
+    // Convert to absolute path if relative
+    var absoluteRepositoryPath = Path.IsPathRooted(repositoryBasePath)
+        ? repositoryBasePath
+        : Path.GetFullPath(repositoryBasePath);
+    
     return new ResticClient(
         builder.Configuration["Restic:BinaryPath"] ?? "restic",
-        builder.Configuration["Restic:RepositoryPath"] ?? "/restic-repo",
+        absoluteRepositoryPath,
         resticPassword);
 });
 builder.Services.AddSingleton<IResticService, ResticService>();
@@ -149,6 +155,9 @@ builder.Services.AddTransient<BackupChrono.Infrastructure.Scheduling.BackupJob>(
 
 // BackupProgressBroadcaster - bridges BackupOrchestrator events to SignalR (must be after all dependencies)
 builder.Services.AddHostedService<BackupProgressBroadcaster>();
+
+// JobCleanupService - marks stale "Running" jobs as Failed on startup
+builder.Services.AddHostedService<JobCleanupService>();
 
 // BackupShutdownHandler - ensures graceful cancellation of running jobs on app shutdown
 builder.Services.AddHostedService<BackupShutdownHandler>();

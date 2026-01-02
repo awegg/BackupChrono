@@ -79,4 +79,9 @@ public class BackupJob
     /// Scheduled time for the next retry (if applicable).
     /// </summary>
     public DateTime? NextRetryAt { get; set; }
+
+    /// <summary>
+    /// The restic command line executed for this backup (for debugging).
+    /// </summary>
+    public string? CommandLine { get; set; }
 }

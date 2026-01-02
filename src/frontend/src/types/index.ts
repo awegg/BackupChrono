@@ -105,5 +105,6 @@ export interface BackupJob {
   errorMessage?: string;
   retryAttempt?: number;
   nextRetryAt?: string;
+  commandLine?: string;
 }
 

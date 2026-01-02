@@ -11,6 +11,7 @@ namespace BackupChrono.Infrastructure.Scheduling;
 public class MicrosoftDependencyInjectionJobFactory : IJobFactory
 {
     private readonly IServiceScopeFactory _serviceScopeFactory;
+    private readonly Dictionary<IJob, IServiceScope> _scopes = new();
 
     public MicrosoftDependencyInjectionJobFactory(IServiceScopeFactory serviceScopeFactory)
     {
@@ -27,19 +28,25 @@ public class MicrosoftDependencyInjectionJobFactory : IJobFactory
         
         if (job == null)
         {
+            scope.Dispose();
             throw new InvalidOperationException(
                 $"Job type {bundle.JobDetail.JobType.FullName} could not be resolved as IJob");
         }
 
+        _scopes[job] = scope;
         return job;
     }
-
     /// <summary>
-    /// Disposes the job instance (no-op for DI-managed jobs).
+    /// Disposes the job instance and its associated scope.
     /// </summary>
     public void ReturnJob(IJob job)
     {
-        // Jobs are scoped and will be disposed by the DI container
+        if (_scopes.TryGetValue(job, out var scope))
+        {
+            scope.Dispose();
+            _scopes.Remove(job);
+        }
+        
         (job as IDisposable)?.Dispose();
     }
 }

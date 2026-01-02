@@ -1,4 +1,4 @@
-﻿# BackupChrono Development Guidelines
+﻿﻿# BackupChrono Development Guidelines
 
 Auto-generated from all feature plans. Last updated: 2025-12-30
 
@@ -26,7 +26,7 @@ C# / .NET 8.0 (ASP.NET Core), JavaScript/TypeScript (React 18+): Follow standard
 
 ### Unit Tests (xUnit)
 
-**CRITICAL: Never write meaningless tests**
+### CRITICAL: Never write meaningless tests
 
 ❌ **BAD - Meaningless placeholder:**
 ```csharp
@@ -43,10 +43,14 @@ public async Task ScheduleDeviceBackup_SchedulesJob()
 [Fact]
 public async Task ScheduleDeviceBackup_SchedulesJob()
 {
+    var device = new Device { Id = Guid.NewGuid(), Name = "TestNAS" };
+    var schedule = new Schedule { CronExpression = "0 2 * * *" };
+    
     await _schedulerService.ScheduleDeviceBackup(device, schedule);
     
-    // Verify job was actually scheduled by triggering it
-    await _schedulerService.TriggerImmediateBackup(device.Id);
+    // Verify job was persisted and can be queried
+    var scheduledJobs = await _schedulerService.GetScheduledJobs();
+    scheduledJobs.Should().ContainSingle(j => j.DeviceId == device.Id);
 }
 ```
 

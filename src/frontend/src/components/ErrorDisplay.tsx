@@ -3,10 +3,9 @@ import { AlertCircle, ChevronDown, ChevronRight } from 'lucide-react';
 
 interface ErrorDisplayProps {
   error: any;
-  title?: string;
 }
 
-export function ErrorDisplay({ error, title = 'Error' }: ErrorDisplayProps) {
+export function ErrorDisplay({ error }: ErrorDisplayProps) {
   const [showDetails, setShowDetails] = useState(false);
 
   // Extract error information

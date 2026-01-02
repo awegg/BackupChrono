@@ -110,8 +110,19 @@ public class StorageMonitor : IStorageMonitor
             return false;
         }
 
+        // Guard against overflow when calculating required space
+        long requiredSpace;
+        if (estimatedSizeBytes > long.MaxValue - _options.MinimumFreeSpaceBytes)
+        {
+            _logger.LogError(
+                "Estimated backup size {Size:N0} bytes is too large to safely calculate required space at {Path}",
+                estimatedSizeBytes, path);
+            return false;
+        }
+        
+        requiredSpace = estimatedSizeBytes + _options.MinimumFreeSpaceBytes;
+        
         // Check if there's enough space for the estimated size
-        var requiredSpace = estimatedSizeBytes + _options.MinimumFreeSpaceBytes;
         if (status.AvailableBytes < requiredSpace)
         {
             _logger.LogWarning(

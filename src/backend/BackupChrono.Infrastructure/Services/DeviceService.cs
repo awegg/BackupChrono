@@ -192,9 +192,8 @@ public class DeviceService : IDeviceService
             File.Delete(fullPath);
         }
 
-        // TODO: Delete associated shares when ShareService is implemented
-        var sharesDirectory = Path.Combine(_gitConfigService.RepositoryPath, "shares", device.Name);
-        if (Directory.Exists(sharesDirectory))
+        // Delete associated shares for this device
+        var sharesDirectory = Path.Combine(_gitConfigService.RepositoryPath, "shares", device.Name);        if (Directory.Exists(sharesDirectory))
         {
             Directory.Delete(sharesDirectory, recursive: true);
         }

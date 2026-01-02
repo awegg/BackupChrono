@@ -59,10 +59,9 @@ class SignalRService {
 
     // Ensure connection is established
     if (!this.connection || this.connection.state !== signalR.HubConnectionState.Connected) {
-      this.connect();
+      this.connect().catch(err => console.error('Failed to connect on subscribe:', err));
     }
   }
-
   unsubscribe(id: string) {
     this.listeners.delete(id);
   }

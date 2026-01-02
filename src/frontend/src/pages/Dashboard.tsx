@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Device } from '../types';
 import { deviceService } from '../services/deviceService';
 import { healthService } from '../services/healthService';
@@ -13,7 +12,6 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [backendOffline, setBackendOffline] = useState(false);
-  const navigate = useNavigate();
 
   const checkBackendHealth = async () => {
     const isHealthy = await healthService.checkAvailability();
