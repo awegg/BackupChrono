@@ -32,6 +32,9 @@ public class GitConfigService
             .WithTypeConverter(new YamlEncryptedCredentialConverter())
             .IgnoreUnmatchedProperties()
             .Build();
+        
+        // Auto-initialize Git repository if it doesn't exist
+        InitializeRepository();
     }
 
     /// <summary>

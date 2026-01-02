@@ -12,11 +12,15 @@ public class BackupJobRepository : IBackupJobRepository
     private readonly ISerializer _yamlSerializer;
     private readonly IDeserializer _yamlDeserializer;
     private readonly ILogger<BackupJobRepository> _logger;
+    private readonly IDeviceService _deviceService;
+    private readonly IShareService _shareService;
 
-    public BackupJobRepository(string repositoryPath, ILogger<BackupJobRepository> logger)
+    public BackupJobRepository(string repositoryPath, ILogger<BackupJobRepository> logger, IDeviceService deviceService, IShareService shareService)
     {
         _jobsDirectory = Path.Combine(repositoryPath, "jobs");
         _logger = logger;
+        _deviceService = deviceService;
+        _shareService = shareService;
         Directory.CreateDirectory(_jobsDirectory);
         
         _yamlSerializer = new SerializerBuilder()
@@ -66,6 +70,8 @@ public class BackupJobRepository : IBackupJobRepository
                 var job = _yamlDeserializer.Deserialize<BackupJob>(yaml);
                 if (job != null)
                 {
+                    // Enrich job with device and share names if not already populated
+                    await EnrichJobWithNames(job);
                     jobs.Add(job);
                 }
             }
@@ -76,6 +82,36 @@ public class BackupJobRepository : IBackupJobRepository
         }
 
         return jobs.OrderByDescending(j => j.StartedAt ?? DateTime.MinValue).ToList();
+    }
+
+    private async Task EnrichJobWithNames(BackupJob job)
+    {
+        try
+        {
+            // Only populate if not already set (from new jobs)
+            if (string.IsNullOrEmpty(job.DeviceName))
+            {
+                var device = await _deviceService.GetDevice(job.DeviceId);
+                if (device != null)
+                {
+                    job.DeviceName = device.Name;
+                }
+            }
+
+            if (job.ShareId.HasValue && string.IsNullOrEmpty(job.ShareName))
+            {
+                var share = await _shareService.GetShare(job.ShareId.Value);
+                if (share != null)
+                {
+                    job.ShareName = share.Name;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to enrich job {JobId} with names", job.Id);
+            // Don't throw - continue with whatever data we have
+        }
     }
 
     public async Task<List<BackupJob>> ListJobsByDevice(Guid deviceId)

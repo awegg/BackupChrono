@@ -25,13 +25,13 @@ public class BackupJob : IJob
     {
         var dataMap = context.MergedJobDataMap;
 
-        // Extract job parameters
-        var deviceIdStr = dataMap.GetString("DeviceId");
-        var shareIdStr = dataMap.GetString("ShareId");
-        var jobTypeStr = dataMap.GetString("JobType") ?? "Scheduled";
-        var deviceName = dataMap.GetString("DeviceName");
-        var shareName = dataMap.GetString("ShareName");
-        var retryAttemptStr = dataMap.GetString("RetryAttempt");
+        // Extract job parameters - use TryGetValue for optional parameters
+        var deviceIdStr = dataMap.ContainsKey("DeviceId") ? dataMap.GetString("DeviceId") : null;
+        var shareIdStr = dataMap.ContainsKey("ShareId") ? dataMap.GetString("ShareId") : null;
+        var jobTypeStr = dataMap.ContainsKey("JobType") ? dataMap.GetString("JobType") : "Scheduled";
+        var deviceName = dataMap.ContainsKey("DeviceName") ? dataMap.GetString("DeviceName") : null;
+        var shareName = dataMap.ContainsKey("ShareName") ? dataMap.GetString("ShareName") : null;
+        var retryAttemptStr = dataMap.ContainsKey("RetryAttempt") ? dataMap.GetString("RetryAttempt") : null;
 
         if (string.IsNullOrEmpty(deviceIdStr) || !Guid.TryParse(deviceIdStr, out var deviceId))
         {
@@ -112,6 +112,30 @@ public class BackupJob : IJob
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unhandled exception during backup job execution");
+            
+            // Create a failed job record so it appears in the jobs list
+            var failedJob = new Core.Entities.BackupJob
+            {
+                Id = Guid.NewGuid(),
+                DeviceId = deviceId,
+                ShareId = shareId,                DeviceName = deviceName,
+                ShareName = shareName,                Type = jobType,
+                Status = BackupJobStatus.Failed,
+                StartedAt = DateTime.UtcNow,
+                CompletedAt = DateTime.UtcNow,
+                ErrorMessage = ex.Message
+            };
+
+            // Track the failed job so it appears in the jobs list
+            try
+            {
+                await orchestrator.TrackFailedJob(failedJob);
+            }
+            catch (Exception trackEx)
+            {
+                _logger.LogError(trackEx, "Failed to track failed job");
+            }
+
             throw new JobExecutionException(ex, refireImmediately: false);
         }
     }

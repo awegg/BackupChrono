@@ -34,14 +34,19 @@ public class ResticClient
     /// <summary>
     /// Executes a restic command and returns the JSON output.
     /// </summary>
-    public async Task<string> ExecuteCommand(string[] args, CancellationToken cancellationToken = default)
+    public async Task<string> ExecuteCommand(string[] args, CancellationToken cancellationToken = default, TimeSpan? timeout = null, Action<string>? onOutputLine = null)
     {
+        // Default timeout: 30 minutes for long-running operations
+        var effectiveTimeout = timeout ?? TimeSpan.FromMinutes(30);
+        using var timeoutCts = new CancellationTokenSource(effectiveTimeout);
+        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
+        
         var startInfo = new ProcessStartInfo
         {
             FileName = _resticPath,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
-            RedirectStandardInput = true,
+            RedirectStandardInput = false,  // Changed from true - we don't need stdin
             UseShellExecute = false,
             CreateNoWindow = true
         };
@@ -59,32 +64,80 @@ public class ResticClient
         using var process = new Process { StartInfo = startInfo };
         var outputBuilder = new StringBuilder();
         var errorBuilder = new StringBuilder();
+        var outputLock = new object();
+        var errorLock = new object();
 
         process.OutputDataReceived += (sender, e) =>
         {
             if (e.Data != null)
-                outputBuilder.AppendLine(e.Data);
+            {
+                lock (outputLock)
+                {
+                    outputBuilder.AppendLine(e.Data);
+                }
+                
+                // Invoke callback for each output line if provided
+                onOutputLine?.Invoke(e.Data);
+            }
         };
 
         process.ErrorDataReceived += (sender, e) =>
         {
             if (e.Data != null)
-                errorBuilder.AppendLine(e.Data);
+            {
+                lock (errorLock)
+                {
+                    errorBuilder.AppendLine(e.Data);
+                }
+            }
         };
 
         process.Start();
         process.BeginOutputReadLine();
         process.BeginErrorReadLine();
 
-        await process.WaitForExitAsync(cancellationToken);
+        try
+        {
+            await process.WaitForExitAsync(linkedCts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            // Kill the process if it's still running
+            try
+            {
+                if (!process.HasExited)
+                {
+                    process.Kill(entireProcessTree: true);
+                    // Give it a moment to clean up
+                    await Task.Delay(500);
+                }
+            }
+            catch
+            {
+                // Ignore errors during kill
+            }
+
+            if (timeoutCts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+            {
+                throw new TimeoutException($"Restic command timed out after {effectiveTimeout.TotalMinutes:F1} minutes");
+            }
+            
+            throw;
+        }
+
+        string output;
+        string error;
+        
+        lock (outputLock) { output = outputBuilder.ToString(); }
+        lock (errorLock) { error = errorBuilder.ToString(); }
 
         if (process.ExitCode != 0)
         {
             throw new InvalidOperationException(
-                $"Restic command failed with exit code {process.ExitCode}: {errorBuilder}");
+                $"Restic command failed with exit code {process.ExitCode}. Error: {error}");
         }
 
-        return outputBuilder.ToString();
+        return output;
     }
 
     /// <summary>

@@ -17,17 +17,32 @@ This document organizes implementation tasks by **user story** to enable indepen
 
 **Task Format**: `- [ ] [TaskID] [P?] [Story?] Description with file path`
 
-**User Story Priority Order**:
-1. **US1** (P1): Automated Scheduled Backups - Core functionality
-2. **US2** (P2): Restore Files from Backups - Recovery capability  
-3. **US9** (P2): Version-Controlled Configuration with Git - Config management
-4. **US6** (P2): Efficient Unix/Linux Backups via Rsync - Protocol support
-5. **US3** (P3): Monitor Backup Health - Dashboard visibility
-6. **US7** (P3): Email Notifications for Backup Status - Alerting
-7. **US8** (P3): Direct Restore to Source Location - Push restore
-8. **US4** (P4): Configure Backup Sources via Web UI - Admin UI
-9. **US5** (P5): Track File History Across Backups - Version tracking
-10. **US10** (P5): Multi-User Access Management - RBAC
+**User Story Priority Order** (Updated 2026-01-02):
+1. **US1** (P1): Automated Scheduled Backups - Core functionality ✅ **COMPLETE**
+2. **Minimal UI** (P1): Basic testing UI for development workflow - **NEXT**
+3. **US2** (P2): Restore Files from Backups - Recovery capability  
+4. **US7** (P2): Multi-Channel Notifications - Discord, Gotify (top 2 only) 🎯 **EXPANDED**
+5. **US11** (P2): Device Auto-Discovery - Network scanning ⭐ **KILLER FEATURE** 🎯 **NEW**
+6. **US12** (P2): Git Configuration Enhancements - Diff, blame, rollback 🎯 **EXPANDED**
+7. **US9** (P2): Infrastructure-as-Code Configuration - Git versioning (baseline)
+8. **US6** (P2): Efficient Unix/Linux Backups via Rsync - Protocol support
+9. **US3** (P3): Enhanced Monitoring & Metrics - Prometheus, Grafana, trends 🎯 **EXPANDED**
+10. **US1B** (P3): Command Hooks - Pre/post backup scripts 🎯 **NEW**
+11. **US8** (P3): Direct Restore to Source Location - Push restore
+12. **US13** (P3): Snapshot Shares - Mount backups as SMB/NFS ⭐ **UNIQUE FEATURE** 🎯 **NEW**
+13. **US4** (P4): Configure Backup Sources via Web UI - Full-featured admin UI
+14. **US5** (P5): Track File History Across Backups - Version tracking
+15. **US10** (P5): Multi-User Access Management - RBAC
+
+**NOTE**: Minimal UI moved to Phase 3.5 (immediately after US1) to enable manual testing and validation during development. Full-featured UI (US4) remains at P4 for polish and advanced features.
+
+**🎯 STRATEGIC FOCUS (2026-01-02)**: New features prioritize differentiation from other tools:
+- **Auto-Discovery (US11)**: Agentless advantage - no per-device installation required
+- **Snapshot Shares (US13)**: Browse backups like file server - unique restore experience  
+- **Enhanced Monitoring (US3)**: Prometheus/Grafana integration - enterprise-grade observability
+- **Git Enhancements (US12)**: Config diff/rollback - IaC story doubled down
+- **Command Hooks (US1B)**: Flexibility for database snapshots, VM prep
+- **Top 2 Notifications (US7)**: Discord + Gotify - focused scope vs Backrest's 8+ channels
 
 ---
 
@@ -149,6 +164,55 @@ This document organizes implementation tasks by **user story** to enable indepen
 
 ---
 
+## Phase 3.5: Minimal Testing UI (P1) 🎯 **CURRENT PRIORITY**
+
+**Story Goal**: As a developer, I want a basic web UI to test and validate backup functionality, so I don't need to use Postman/curl for every operation.
+
+**Effort Estimate**: 2-3 days
+
+**Independent Test Criteria**:
+- Can view device list in browser
+- Can create/edit device through simple forms
+- Can create/edit shares under devices
+- Can click "Trigger Backup Now" button
+- Can see real-time backup progress
+- Can view backup job status (running/completed/failed)
+- Can see scheduled jobs and next run times
+
+### Implementation Tasks
+
+- [X] T201 [P] [MinUI] Initialize React 18 project in src/frontend/ with Vite, TypeScript, Tailwind CSS
+- [X] T202 [P] [MinUI] Install minimal dependencies: react-router-dom, axios, @tanstack/react-query, lucide-react
+- [X] T203 [P] [MinUI] Create API client in src/frontend/src/services/api.ts with axios configured for backend
+- [X] T204 [P] [MinUI] Create TypeScript interfaces in src/frontend/src/types/ for Device, Share, BackupJob, Schedule
+- [X] T205 [MinUI] Create minimal Dashboard page in src/frontend/src/pages/Dashboard.tsx with device list
+- [X] T206 [MinUI] Create DeviceList component in src/frontend/src/components/DeviceList.tsx with basic table
+- [X] T207 [MinUI] Create DeviceForm component in src/frontend/src/components/DeviceForm.tsx with basic inputs (no fancy validation)
+- [X] T208 [MinUI] Create ShareList component in src/frontend/src/components/ShareList.tsx under device
+- [X] T209 [MinUI] Create ShareForm component in src/frontend/src/components/ShareForm.tsx with basic inputs
+- [X] T210 [MinUI] Create BackupJobStatus component in src/frontend/src/components/BackupJobStatus.tsx showing job list
+- [X] T211 [MinUI] Add "Trigger Backup" button in DeviceList that calls POST /backup-jobs
+- [X] T212 [MinUI] Wire up SignalR for real-time backup progress updates
+- [X] T213 [MinUI] Create simple progress bar component showing backup percentage
+- [X] T214 [MinUI] Add basic routing in src/frontend/src/App.tsx (Dashboard, Device Detail)
+- [X] T215 [MinUI] Create minimal layout with sidebar navigation
+- [X] T216 [MinUI] Update Dockerfile.frontend to serve React build with nginx
+- [X] T217 [MinUI] Update docker-compose.yml to include frontend service
+
+**Deferred to Full UI (Phase 10)**:
+- Advanced form validation with zod
+- Cron expression builder
+- Retention policy editor
+- Include/exclude pattern editor
+- Effective config inheritance view
+- File history timeline
+- Animations and polish
+- E2E tests with Playwright
+
+**Checkpoint**: Can manage devices/shares visually, trigger backups with button click, see real-time progress, validate system works without curl/Postman.
+
+---
+
 ## Phase 4: User Story 2 - Restore Files from Backups (P2) 🎯 MVP
 
 **Story Goal**: As a homelab admin, I want to browse and restore files from backups, so I can recover data when needed.
@@ -181,34 +245,44 @@ This document organizes implementation tasks by **user story** to enable indepen
 
 ---
 
-## Phase 5: User Story 9 - Version-Controlled Configuration with Git (P2)
+## Phase 5: User Story 9 - Infrastructure-as-Code Configuration (P2) 🎯 **ENHANCED**
 
-**Story Goal**: As a homelab admin, I want all configuration changes tracked in Git, so I can review history and rollback mistakes.
+**Story Goal**: As a homelab admin, I want Git-versioned configuration with visual diff/blame tools and one-click rollback, so I can manage infrastructure as code with confidence.
 
-**Effort Estimate**: 3-4 days
+**Effort Estimate**: 5-6 days (enhanced scope)
 
 **Independent Test Criteria**:
-- Configuration changes create Git commits automatically
-- Can view configuration history via API
-- Can view diff between two configuration versions
-- Can rollback to a previous configuration version
+- Configuration changes create Git commits automatically with meaningful messages
+- Can view configuration history via API and UI
+- Can view side-by-side diff between two configuration versions
+- Can view blame/annotation showing who changed what line
+- One-click rollback from UI with confirmation
 - Configuration file structure matches device-share hierarchy
+- Can export/import entire configuration as tar.gz
+- Change notifications sent when configuration modified
 
 ### Implementation Tasks
 
-- [ ] T080 [US9] Implement GitConfigService.CommitChanges in src/backend/BackupChrono.Infrastructure/Git/GitConfigService.cs to auto-commit on device/share CRUD
+- [ ] T080 [US9] Implement GitConfigService.CommitChanges in src/backend/BackupChrono.Infrastructure/Git/GitConfigService.cs to auto-commit on device/share CRUD with descriptive messages
 - [ ] T081 [US9] Update DeviceService to call GitConfigService.CommitChanges after create/update/delete operations
 - [ ] T082 [US9] Update ShareService to call GitConfigService.CommitChanges after create/update/delete operations
 - [ ] T083 [US9] Create ConfigurationController in BackupChrono.Api/Controllers/ConfigurationController.cs with GET /configuration/global, PUT /configuration/global per openapi.yaml
 - [ ] T084 [US9] Implement GET /configuration/history endpoint in ConfigurationController to list commits using LibGit2Sharp
 - [ ] T085 [US9] Implement GET /configuration/history/{commitHash} endpoint to view specific commit details and diff
+- [ ] T268 [US9] Implement GET /configuration/diff endpoint with fromCommit and toCommit parameters for side-by-side comparison
+- [ ] T269 [US9] Implement GET /configuration/blame/{filePath} endpoint showing line-by-line change history
 - [ ] T086 [US9] Implement POST /configuration/rollback endpoint to checkout previous commit and apply configuration
+- [ ] T270 [US9] Add configuration change webhook/notification integration (triggers notification on commit)
 - [ ] T087 [US9] Implement global configuration YAML read/write in GitConfigService for config/global.yaml
 - [ ] T088 [US9] Add validation to rollback endpoint: prevent rollback if uncommitted changes exist
+- [ ] T265 [US9] Implement POST /configuration/export endpoint creating tar.gz of entire config/ directory
+- [ ] T266 [US9] Implement POST /configuration/import endpoint with validation and rollback on failure
+- [ ] T267 [US9] Add GET /configuration/disaster-recovery endpoint for minimal config import mode
 - [ ] T089 [US9] Create GitConfigServiceTests in BackupChrono.Infrastructure.Tests/Git/GitConfigServiceTests.cs for commit, history, rollback operations
 - [ ] T090 [US9] Create end-to-end configuration test in BackupChrono.Integration.Tests/ConfigurationFlowTests.cs verifying Git commits on CRUD operations
+- [ ] T271 [US9] Create integration test for export/import workflow
 
-**Checkpoint**: Device/share CRUD creates Git commits, can view history via API, can rollback configuration and verify changes applied.
+**Checkpoint**: Git commits auto-created with good messages, visual diff/blame available via API, one-click rollback working, export/import functional, change notifications sent.
 
 ---
 
@@ -240,7 +314,115 @@ This document organizes implementation tasks by **user story** to enable indepen
 
 ---
 
-## Phase 7: User Story 3 - Monitor Backup Health (P3)
+## Phase 6.5: User Story 1B - Command Hooks (P3)
+
+**Story Goal**: As a homelab admin, I want to execute custom scripts before and after backups, so I can prepare systems (stop databases, snapshot VMs) and integrate with external tools.
+
+**Effort Estimate**: 2-3 days
+
+**Independent Test Criteria**:
+- Can configure pre-backup hook script per device/share
+- Can configure post-backup hook script per device/share
+- Hooks receive environment variables (device name, share name, status)
+- Failed pre-hook aborts backup
+- Post-hook runs regardless of backup success/failure
+- Hook timeout prevents indefinite hangs
+
+### Implementation Tasks
+
+- [ ] T224 [US1B] Create HookConfiguration value object in BackupChrono.Core/ValueObjects/HookConfiguration.cs with script path, timeout, environment variables
+- [ ] T225 [US1B] Add PreBackupHook and PostBackupHook properties to Device and Share entities
+- [ ] T226 [US1B] Create IHookExecutor interface in BackupChrono.Core/Interfaces/IHookExecutor.cs with ExecuteHook method
+- [ ] T227 [US1B] Implement HookExecutor in src/backend/BackupChrono.Infrastructure/Hooks/HookExecutor.cs for spawning shell scripts
+- [ ] T228 [US1B] Add hook environment variable population (BACKUPCHRONO_DEVICE, BACKUPCHRONO_SHARE, BACKUPCHRONO_STATUS, BACKUPCHRONO_JOB_ID)
+- [ ] T229 [US1B] Update BackupOrchestrator to execute pre-backup hook before mounting share
+- [ ] T230 [US1B] Update BackupOrchestrator to execute post-backup hook after unmounting share (always runs)
+- [ ] T231 [US1B] Add hook timeout configuration (default 5 minutes) and force-kill on timeout
+- [ ] T232 [US1B] Add hook failure handling: abort backup on pre-hook failure, log post-hook failures
+- [ ] T233 [US1B] Add hook execution logging to logs/hook-executions.jsonl
+- [ ] T234 [US1B] Create HookExecutorTests in BackupChrono.Infrastructure.Tests/Hooks/HookExecutorTests.cs
+- [ ] T235 [US1B] Create integration test in BackupChrono.Integration.Tests/HookExecutionTests.cs with sample scripts
+
+**Checkpoint**: Can configure pre/post hooks, hooks execute with environment variables, pre-hook failure aborts backup, timeout prevents hangs, execution logged.
+
+---
+
+## Phase 7: User Story 3 - Enhanced Monitoring & Metrics (P3) 🎯 **EXPANDED**
+
+**Story Goal**: As a homelab admin, I want comprehensive monitoring with trend analysis and Prometheus metrics, so I can track backup health over time and integrate with existing monitoring tools.
+
+**Effort Estimate**: 5-6 days (expanded scope)
+
+**Independent Test Criteria**:
+- Dashboard shows all devices with last backup time and status
+- Can see upcoming scheduled backups
+- Can view backup size and deduplication savings with trends
+- Failed backups are highlighted with error details
+- Real-time backup progress displayed during execution
+- Backup success rate trends (7/30/90 day)
+- Storage growth prediction based on historical data
+- Prometheus metrics endpoint available for scraping
+- Device backup matrix (heatmap view)
+
+### Implementation Tasks
+
+- [ ] T099 [US3] Implement GET /devices endpoint enhancement in DevicesController to include lastBackupTime, lastBackupStatus, nextScheduledBackup
+- [ ] T100 [US3] Implement ResticService.GetStats to query repository statistics (total size, unique size, deduplication savings)
+- [ ] T101 [US3] Create RepositoryController in BackupChrono.Api/Controllers/RepositoryController.cs with GET /repository/stats endpoint
+- [ ] T102 [US3] Create BackupProgressHub SignalR hub in BackupChrono.Api/Hubs/BackupProgressHub.cs for real-time backup status broadcasts
+- [ ] T103 [US3] Update BackupOrchestrator to broadcast progress events via BackupProgressHub during backup execution
+- [ ] T104 [US3] Implement GET /backup-jobs endpoint enhancement to support filtering by status (pending, running, failed) and date range
+- [ ] T105 [US3] Implement GET /backup-jobs/upcoming endpoint to query next scheduled jobs from Quartz scheduler
+- [ ] T106 [US3] Add logging to BackupJob for structured logging with device name, share name, duration, status to logs/backup-jobs.jsonl
+- [ ] T252 [US3] Add GET /metrics/backup-success-rate endpoint with 7/30/90 day trend analysis
+- [ ] T253 [US3] Implement storage growth prediction based on backup history (linear regression)
+- [ ] T254 [US3] Add GET /metrics/bandwidth endpoint showing transfer rates per device
+- [ ] T255 [US3] Create GET /metrics/device-matrix endpoint for heatmap data (device x date grid)
+- [ ] T256 [US3] Add GET /backup-jobs/timeline endpoint for Gantt chart visualization
+- [ ] T257 [US3] Implement Prometheus metrics endpoint at /metrics (backup_duration, backup_size, backup_success_total, etc.)
+- [ ] T258 [US3] Create Grafana dashboard template in docs/grafana/ for common visualizations
+- [ ] T107 [US3] Create BackupProgressHubTests in BackupChrono.Api.Tests/Hubs/BackupProgressHubTests.cs for SignalR messaging
+- [ ] T108 [US3] Create end-to-end dashboard test in BackupChrono.Integration.Tests/DashboardTests.cs verifying backup status display
+- [ ] T259 [US3] Create MetricsControllerTests in BackupChrono.Api.Tests/Controllers/MetricsControllerTests.cs
+
+**Checkpoint**: Comprehensive metrics available via API, Prometheus endpoint functional, trend analysis working, Grafana dashboard template provided, real-time progress via SignalR.
+
+---
+
+## Phase 6.5: User Story 1B - Command Hooks (P3)
+
+**Story Goal**: As a homelab admin, I want to execute custom scripts before and after backups, so I can prepare systems (stop databases, snapshot VMs) and integrate with external tools.
+
+**Effort Estimate**: 2-3 days
+
+**Independent Test Criteria**:
+- Can configure pre-backup hook script per device/share
+- Can configure post-backup hook script per device/share
+- Hooks receive environment variables (device name, share name, status)
+- Failed pre-hook aborts backup
+- Post-hook runs regardless of backup success/failure
+- Hook timeout prevents indefinite hangs
+
+### Implementation Tasks
+
+- [ ] T224 [US1B] Create HookConfiguration value object in BackupChrono.Core/ValueObjects/HookConfiguration.cs with script path, timeout, environment variables
+- [ ] T225 [US1B] Add PreBackupHook and PostBackupHook properties to Device and Share entities
+- [ ] T226 [US1B] Create IHookExecutor interface in BackupChrono.Core/Interfaces/IHookExecutor.cs with ExecuteHook method
+- [ ] T227 [US1B] Implement HookExecutor in src/backend/BackupChrono.Infrastructure/Hooks/HookExecutor.cs for spawning shell scripts
+- [ ] T228 [US1B] Add hook environment variable population (BACKUPCHRONO_DEVICE, BACKUPCHRONO_SHARE, BACKUPCHRONO_STATUS, BACKUPCHRONO_JOB_ID)
+- [ ] T229 [US1B] Update BackupOrchestrator to execute pre-backup hook before mounting share
+- [ ] T230 [US1B] Update BackupOrchestrator to execute post-backup hook after unmounting share (always runs)
+- [ ] T231 [US1B] Add hook timeout configuration (default 5 minutes) and force-kill on timeout
+- [ ] T232 [US1B] Add hook failure handling: abort backup on pre-hook failure, log post-hook failures
+- [ ] T233 [US1B] Add hook execution logging to logs/hook-executions.jsonl
+- [ ] T234 [US1B] Create HookExecutorTests in BackupChrono.Infrastructure.Tests/Hooks/HookExecutorTests.cs
+- [ ] T235 [US1B] Create integration test in BackupChrono.Integration.Tests/HookExecutionTests.cs with sample scripts
+
+**Checkpoint**: Can configure pre/post hooks, hooks execute with environment variables, pre-hook failure aborts backup, timeout prevents hangs, execution logged.
+
+---
+
+## Phase 7: User Story 3 - Enhanced Monitoring & Metrics (P3) 🎯 **EXPANDED**
 
 **Story Goal**: As a homelab admin, I want to see backup status at a glance on a dashboard, so I know if backups are healthy.
 
@@ -270,34 +452,40 @@ This document organizes implementation tasks by **user story** to enable indepen
 
 ---
 
-## Phase 8: User Story 7 - Email Notifications for Backup Status (P3)
+## Phase 8: User Story 7 - Multi-Channel Notifications (P2) 🎯 **EXPANDED**
 
-**Story Goal**: As a homelab admin, I want email notifications for backup failures and daily summaries, so I'm informed of issues.
+**Story Goal**: As a homelab admin, I want notifications via Discord, Gotify, and Email for backup status, so I'm informed through my preferred channels.
 
-**Effort Estimate**: 3-4 days
+**Effort Estimate**: 5-6 days (expanded scope)
 
 **Independent Test Criteria**:
-- Email sent on backup failure with error details
-- Email sent on backup success (if configured)
-- Daily summary email lists all backup activity
-- Can configure SMTP settings via API
-- Can test email configuration before saving
+- Notifications sent on backup failure with error details
+- Notifications sent on backup success (if configured)
+- Daily summary sent to all configured channels
+- Can configure Discord webhook, Gotify endpoint, SMTP settings via API
+- Can test each notification channel before saving
+- Support per-device notification overrides
 
 ### Implementation Tasks
 
-- [ ] T109 [US7] Create NotificationSettings entity in BackupChrono.Core/Entities/NotificationSettings.cs with SMTP configuration fields per data-model.md
-- [ ] T110 [US7] Implement IEmailService interface in BackupChrono.Core/Interfaces/IEmailService.cs with SendEmail, TestConnection methods
-- [ ] T111 [US7] Implement EmailService in src/backend/BackupChrono.Infrastructure/Notifications/EmailService.cs using MailKit for SMTP
-- [ ] T112 [US7] Implement notification templates in src/backend/BackupChrono.Infrastructure/Notifications/Templates/ for failure, success, daily summary emails
-- [ ] T113 [US7] Update BackupOrchestrator to call EmailService after backup completion (success or failure)
+- [ ] T109 [US7] Create NotificationSettings entity in BackupChrono.Core/Entities/NotificationSettings.cs with fields for Email, Discord, Gotify per data-model.md
+- [ ] T110 [US7] Create INotificationService interface in BackupChrono.Core/Interfaces/INotificationService.cs with SendNotification, TestConnection methods
+- [ ] T111 [US7] Implement EmailNotificationService in src/backend/BackupChrono.Infrastructure/Notifications/EmailNotificationService.cs using MailKit for SMTP
+- [ ] T218 [US7] Implement DiscordNotificationService in src/backend/BackupChrono.Infrastructure/Notifications/DiscordNotificationService.cs using webhook API
+- [ ] T219 [US7] Implement GotifyNotificationService in src/backend/BackupChrono.Infrastructure/Notifications/GotifyNotificationService.cs using Gotify REST API
+- [ ] T220 [US7] Create NotificationChannelType enum in BackupChrono.Core/Entities/NotificationChannelType.cs (Email, Discord, Gotify)
+- [ ] T112 [US7] Implement notification templates in src/backend/BackupChrono.Infrastructure/Notifications/Templates/ for failure, success, daily summary (multi-channel)
+- [ ] T113 [US7] Update BackupOrchestrator to call INotificationService after backup completion (success or failure)
 - [ ] T114 [US7] Implement DailySummaryJob Quartz job in src/backend/BackupChrono.Infrastructure/Scheduling/DailySummaryJob.cs to send summary at configured time
 - [ ] T115 [US7] Create NotificationsController in BackupChrono.Api/Controllers/NotificationsController.cs with GET /notifications, PUT /notifications, POST /notifications/test per openapi.yaml
+- [ ] T221 [US7] Add POST /notifications/test/{channel} endpoint to test individual channels (email, discord, gotify)
 - [ ] T116 [US7] Implement notification settings YAML persistence via GitConfigService at config/notifications.yaml
-- [ ] T117 [US7] Add email sending to background queue to avoid blocking backup operations
-- [ ] T118 [US7] Create EmailServiceTests in BackupChrono.Infrastructure.Tests/Notifications/EmailServiceTests.cs for email operations
-- [ ] T119 [US7] Create integration test in BackupChrono.Integration.Tests/EmailNotificationTests.cs with mock SMTP server
+- [ ] T117 [US7] Add notification sending to background queue to avoid blocking backup operations
+- [ ] T222 [US7] Implement notification retry logic with exponential backoff for failed deliveries
+- [ ] T118 [US7] Create NotificationServiceTests in BackupChrono.Infrastructure.Tests/Notifications/NotificationServiceTests.cs for all channels
+- [ ] T119 [US7] Create integration test in BackupChrono.Integration.Tests/NotificationTests.cs with mock servers for each channel
 
-**Checkpoint**: SMTP settings configurable via API, test email succeeds, backup failure triggers email, daily summary sent at configured time.
+**Checkpoint**: Discord, Gotify, and Email configurable via API, test endpoints work for each channel, backup events trigger notifications, daily summary sent to all enabled channels.
 
 ---
 
@@ -438,6 +626,76 @@ This document organizes implementation tasks by **user story** to enable indepen
 
 ---
 
+## Phase 12.5: User Story 11 - Device Auto-Discovery (P2) ⭐ **KILLER FEATURE**
+
+**Story Goal**: As a homelab admin, I want BackupChrono to automatically discover devices on my network, so I can quickly add them to backups without manual configuration.
+
+**Effort Estimate**: 4-5 days
+
+**Independent Test Criteria**:
+- Can scan network for SMB shares (NetBIOS/SMB enumeration)
+- Can scan network for SSH devices (banner grabbing)
+- Discovered devices show in UI with detected capabilities
+- Can "Add to Backups" with one click from discovered devices
+- Device fingerprinting prevents duplicate additions
+- Discovery respects network boundaries (subnet configuration)
+- Periodic re-scan option for network changes
+
+### Implementation Tasks
+
+- [ ] T236 [US11] Create DiscoveredDevice entity in BackupChrono.Core/Entities/DiscoveredDevice.cs with hostname, IP, protocol, capabilities
+- [ ] T237 [US11] Create IDeviceDiscovery interface in BackupChrono.Core/Interfaces/IDeviceDiscovery.cs with ScanNetwork, GetDiscovered methods
+- [ ] T238 [US11] Implement SmbDiscoveryService in src/backend/BackupChrono.Infrastructure/Discovery/SmbDiscoveryService.cs using NetBIOS/SMB probes
+- [ ] T239 [US11] Implement SshDiscoveryService in src/backend/BackupChrono.Infrastructure/Discovery/SshDiscoveryService.cs using SSH banner detection
+- [ ] T240 [US11] Add network range configuration (CIDR notation) for scan boundaries
+- [ ] T241 [US11] Implement device fingerprinting using MAC address + hostname hash to prevent duplicates
+- [ ] T242 [US11] Create DiscoveryController in BackupChrono.Api/Controllers/DiscoveryController.cs with POST /discovery/scan, GET /discovery/devices
+- [ ] T243 [US11] Implement POST /discovery/devices/{id}/add endpoint to convert discovered device to managed device
+- [ ] T244 [US11] Add background discovery job (optional, configurable schedule) for periodic scanning
+- [ ] T245 [US11] Store discovered devices in memory cache with TTL (24 hours default)
+- [ ] T246 [US11] Add discovery exclusion list (IP ranges to ignore)
+- [ ] T247 [US11] Create DiscoveryServiceTests in BackupChrono.Infrastructure.Tests/Discovery/DiscoveryServiceTests.cs
+- [ ] T248 [US11] Create integration test in BackupChrono.Integration.Tests/DiscoveryTests.cs with mock network devices
+
+**Checkpoint**: Network scan discovers SMB/SSH devices, discovered devices listed via API, one-click add functional, fingerprinting prevents duplicates, exclusions respected.
+
+---
+
+## Phase 12.7: User Story 14 - Snapshot Shares (P4) ⭐ **UNIQUE FEATURE**
+
+**Story Goal**: As a homelab admin, I want to mount backup snapshots as network shares (SMB/NFS), so I can browse and restore files using Windows Explorer or Finder without the CLI.
+
+**Effort Estimate**: 5-6 days
+
+**Independent Test Criteria**:
+- Can mount a restic snapshot as read-only FUSE filesystem
+- Can expose mounted snapshot via SMB share (Windows-accessible)
+- Can expose mounted snapshot via NFS share (Unix-accessible)
+- Mounted snapshots auto-unmount after inactivity timeout
+- Multiple snapshots can be mounted simultaneously
+- Share URLs returned via API for easy access
+- Clean unmount on BackupChrono shutdown
+
+### Implementation Tasks
+
+- [ ] T272 [US14] Create MountedSnapshot entity in BackupChrono.Core/Entities/MountedSnapshot.cs with snapshotId, mountPath, protocol, expiresAt
+- [ ] T273 [US14] Create ISnapshotMountService interface in BackupChrono.Core/Interfaces/ISnapshotMountService.cs with Mount, Unmount, List methods
+- [ ] T274 [US14] Implement ResticFuseMount in src/backend/BackupChrono.Infrastructure/Restic/ResticFuseMount.cs using restic mount command
+- [ ] T275 [US14] Implement SambaShareService in src/backend/BackupChrono.Infrastructure/Shares/SambaShareService.cs for SMB export (config generation)
+- [ ] T276 [US14] Implement NfsShareService in src/backend/BackupChrono.Infrastructure/Shares/NfsShareService.cs for NFS export (exportfs)
+- [ ] T277 [US14] Create SnapshotSharesController in BackupChrono.Api/Controllers/SnapshotSharesController.cs with POST /snapshots/{id}/mount, DELETE /snapshots/{id}/unmount
+- [ ] T278 [US14] Implement GET /snapshots/mounted endpoint listing all active mounts with share URLs
+- [ ] T279 [US14] Add inactivity timeout tracking (default 2 hours) and auto-unmount background job
+- [ ] T280 [US14] Add mount limit configuration (max simultaneous mounts, default 5)
+- [ ] T281 [US14] Implement graceful unmount on application shutdown (cleanup all mounts)
+- [ ] T282 [US14] Add access logging for mounted shares (who accessed what)
+- [ ] T283 [US14] Create SnapshotMountServiceTests in BackupChrono.Infrastructure.Tests/Shares/SnapshotMountServiceTests.cs
+- [ ] T284 [US14] Create integration test in BackupChrono.Integration.Tests/SnapshotShareTests.cs verifying mount/unmount workflow
+
+**Checkpoint**: Can mount snapshot via API, SMB/NFS shares accessible from Windows/Mac, auto-unmount after timeout, clean shutdown unmounts all, access logged.
+
+---
+
 ## Phase 13: Polish & Cross-Cutting Concerns
 
 **Goal**: Final polish, advanced features, and comprehensive documentation.
@@ -470,6 +728,110 @@ This document organizes implementation tasks by **user story** to enable indepen
 
 ---
 
+## Phase 14: User Story 11 - Device Auto-Discovery (P2) 🎯 **NEW**
+
+**Story Goal**: As a homelab admin, I want to automatically discover devices on my network, so I don't have to manually add every NAS, server, or workstation.
+
+**Effort Estimate**: 4-5 days
+
+**Independent Test Criteria**:
+- Network scan discovers devices with SMB shares
+- Can configure discovery rules (IP ranges, excluded hosts, required protocols)
+- Discovered devices appear in staging area with suggested configuration
+- Can bulk-add discovered devices with one click
+- Discovery runs on schedule or on-demand
+- Can auto-detect share names on SMB devices
+
+### Implementation Tasks
+
+- [ ] T260 [US11] Create DeviceDiscoveryService interface in BackupChrono.Core/Interfaces/IDeviceDiscoveryService.cs with ScanNetwork, GetDiscoveredDevices methods
+- [ ] T261 [US11] Implement SmbDiscoveryService in src/backend/BackupChrono.Infrastructure/Discovery/SmbDiscoveryService.cs using nmap or custom SMB scanner
+- [ ] T262 [US11] Create DiscoveryRule entity in BackupChrono.Core/Entities/DiscoveryRule.cs with IP ranges, port scans, protocol filters
+- [ ] T263 [US11] Implement DiscoveryRuleRepository in src/backend/BackupChrono.Infrastructure/Repositories/DiscoveryRuleRepository.cs for config/discovery-rules.yaml
+- [ ] T264 [US11] Create DiscoveredDevice entity in BackupChrono.Core/Entities/DiscoveredDevice.cs with hostname, IP, detected shares, suggested config
+- [ ] T265 [US11] Implement DiscoveryStagingService in src/backend/BackupChrono.Infrastructure/Discovery/DiscoveryStagingService.cs to manage staging area
+- [ ] T266 [US11] Create DiscoveryController in BackupChrono.Api/Controllers/DiscoveryController.cs with POST /discovery/scan, GET /discovery/staged, POST /discovery/bulk-add endpoints
+- [ ] T267 [US11] Implement scheduled discovery job using Quartz.NET (runs daily at 2 AM by default)
+- [ ] T268 [US11] Add network scan logging to logs/discovery.jsonl
+- [ ] T269 [US11] Create DiscoveryServiceTests in BackupChrono.Infrastructure.Tests/Discovery/DiscoveryServiceTests.cs
+- [ ] T270 [US11] Create integration test in BackupChrono.Integration.Tests/DiscoveryTests.cs with mock network devices
+
+**Checkpoint**: Network scans discover SMB devices, staging area shows suggested configurations, can bulk-add discovered devices, discovery runs on schedule.
+
+---
+
+## Phase 15: User Story 12 - Git Configuration Enhancements (P2) 🎯 **EXPANDED**
+
+**Story Goal**: As a homelab admin, I want advanced Git features (diff viewer, blame, rollback), so I can understand configuration changes and quickly recover from mistakes.
+
+**Effort Estimate**: 3-4 days
+
+**Independent Test Criteria**:
+- Can view diff of any configuration file compared to previous commit
+- Can see who changed what and when (git blame view)
+- Can rollback to previous configuration with one click
+- Diff viewer shows side-by-side changes with syntax highlighting
+- Can browse full commit history with messages
+- Can export configuration as ZIP at any commit
+
+### Implementation Tasks
+
+- [ ] T271 [US12] Add GetFileDiff method to IGitConfigService interface in BackupChrono.Core/Interfaces/IGitConfigService.cs
+- [ ] T272 [US12] Implement LibGit2Sharp diff generation in GitConfigService with unified and side-by-side formats
+- [ ] T273 [US12] Add GetFileBlame method to IGitConfigService returning line-by-line authorship
+- [ ] T274 [US12] Add RollbackToCommit method to IGitConfigService for restoring configuration to specific commit
+- [ ] T275 [US12] Implement GetCommitHistory method returning paginated commit log with messages, authors, timestamps
+- [ ] T276 [US12] Create ConfigHistoryController in BackupChrono.Api/Controllers/ConfigHistoryController.cs with:
+  - GET /config/history - paginated commit log
+  - GET /config/diff/{commitId} - diff view
+  - GET /config/blame/{filePath} - blame view
+  - POST /config/rollback/{commitId} - rollback action
+  - GET /config/export/{commitId} - export as ZIP
+- [ ] T277 [US12] Add validation to prevent rollback during active backups
+- [ ] T278 [US12] Create audit log entry for rollback operations in logs/config-audit.jsonl
+- [ ] T279 [US12] Create GitConfigServiceTests in BackupChrono.Infrastructure.Tests/Git/GitConfigServiceTests.cs for diff, blame, rollback
+- [ ] T280 [US12] Create integration test in BackupChrono.Integration.Tests/GitConfigTests.cs verifying full workflow
+
+**Checkpoint**: Can view diffs and blame, rollback works with validation, commit history browsable, audit log tracks rollbacks.
+
+---
+
+## Phase 16: User Story 13 - Snapshot Shares via SMB/NFS (P3) 🎯 **NEW**
+
+**Story Goal**: As a homelab admin, I want to mount backup snapshots as read-only network shares, so I can browse and restore files using standard file explorer without API calls.
+
+**Effort Estimate**: 5-6 days
+
+**Independent Test Criteria**:
+- Can mount specific snapshot as SMB share on-demand
+- Mounted share appears as read-only network drive
+- Can browse full file tree using Windows Explorer / macOS Finder
+- Can copy files directly from mounted share to local system
+- Automatic unmount after configurable idle timeout (default 1 hour)
+- Support both SMB and NFS export protocols
+
+### Implementation Tasks
+
+- [ ] T281 [US13] Create ISnapshotMountService interface in BackupChrono.Core/Interfaces/ISnapshotMountService.cs with MountSnapshot, UnmountSnapshot, ListActiveMounts methods
+- [ ] T282 [US13] Implement ResticFuseMountService in src/backend/BackupChrono.Infrastructure/Restic/ResticFuseMountService.cs using `restic mount` command
+- [ ] T283 [US13] Create SnapshotMount entity in BackupChrono.Core/Entities/SnapshotMount.cs with mount point, snapshot ID, protocol type, expiry time
+- [ ] T284 [US13] Implement SmbShareService in src/backend/BackupChrono.Infrastructure/Shares/SmbShareService.cs for creating SMB shares (Windows: net share, Linux: Samba)
+- [ ] T285 [US13] Implement NfsShareService in src/backend/BackupChrono.Infrastructure/Shares/NfsShareService.cs for creating NFS exports (Linux: /etc/exports)
+- [ ] T286 [US13] Create SnapshotShareController in BackupChrono.Api/Controllers/SnapshotShareController.cs with:
+  - POST /snapshots/{snapshotId}/mount - mount as SMB/NFS share
+  - GET /snapshots/mounts - list active mounts
+  - DELETE /snapshots/mounts/{mountId} - unmount share
+  - POST /snapshots/mounts/{mountId}/extend - extend timeout
+- [ ] T287 [US13] Implement idle timeout monitoring job using Quartz.NET to auto-unmount expired shares
+- [ ] T288 [US13] Add access logging to logs/snapshot-access.jsonl for security auditing
+- [ ] T289 [US13] Create platform detection (Windows/Linux) for share creation strategy
+- [ ] T290 [US13] Create SnapshotMountServiceTests in BackupChrono.Infrastructure.Tests/Restic/SnapshotMountServiceTests.cs
+- [ ] T291 [US13] Create integration test in BackupChrono.Integration.Tests/SnapshotShareTests.cs verifying mount/unmount, timeout
+
+**Checkpoint**: Can mount snapshots as SMB/NFS shares, browse via file explorer, auto-unmount on timeout, access logged for auditing.
+
+---
+
 ## Dependencies & Execution Order
 
 ### User Story Dependency Graph
@@ -481,17 +843,25 @@ Foundational (Phase 2) ← BLOCKING for all user stories
   ↓
   ├─→ US1: Automated Backups (P1) ← MVP START
   │     ↓
+  │   US1B: Command Hooks (P3) ← Extends US1 with pre/post backup scripts
+  │     ↓
   ├─→ US2: Restore Files (P2) ← MVP END (depends on US1 for backups to exist)
   │
   ├─→ US9: Git Config (P2) ← Independent (foundational only)
+  │     ↓
+  │   US12: Git Config Enhancements (P2) ← Extends US9 with diff/blame/rollback
   │
   ├─→ US6: Rsync Protocol (P2) ← Independent (foundational only)
   │
+  ├─→ US11: Device Auto-Discovery (P2) ← Independent (network scanning)
+  │
   ├─→ US3: Monitor Health (P3) ← Depends on US1 (needs backup jobs to monitor)
   │
-  ├─→ US7: Email Notifications (P3) ← Depends on US1 (needs backup completion events)
+  ├─→ US7: Multi-Channel Notifications (P2) ← Depends on US1 (needs backup completion events)
   │
   ├─→ US8: Direct Restore (P3) ← Depends on US2 (extends restore capability)
+  │
+  ├─→ US13: Snapshot Shares (P3) ← Depends on US2 (extends restore capability)
   │
   ├─→ US4: Configure via UI (P4) ← Independent (frontend work)
   │
@@ -573,60 +943,111 @@ After US2 completes:
 
 ## Summary
 
-- **Total Tasks**: 200
+- **Total Tasks**: 291 (91 new tasks added for competitive differentiation)
 - **Setup Tasks**: 15 (Phase 1) - includes CI/CD setup
 - **Foundational Tasks**: 36 (Phase 2)
-- **User Story Tasks**: 130 (Phases 3-12)
+- **User Story Tasks**: 221 (Phases 3-16)
   - US1: 21 tasks (includes production-critical monitoring)
+  - MinUI: 17 tasks
   - US2: 12 tasks
-  - US9: 11 tasks
+  - US9: 11 tasks (baseline Git IaC)
   - US6: 8 tasks
-  - US3: 10 tasks
-  - US7: 11 tasks
+  - US1B: 12 tasks (command hooks) 🎯 **NEW**
+  - US3: 19 tasks (enhanced monitoring with Prometheus) 🎯 **EXPANDED**
+  - US7: 17 tasks (multi-channel notifications: Discord, Gotify, Email) 🎯 **EXPANDED**
   - US8: 9 tasks
   - US4: 24 tasks
   - US5: 9 tasks
   - US10: 15 tasks
+  - US11: 12 tasks (device auto-discovery) 🎯 **NEW - KILLER FEATURE**
+  - US12: 10 tasks (Git config enhancements) 🎯 **NEW - EXPANDED**
+  - US13: 11 tasks (snapshot shares) 🎯 **NEW - UNIQUE FEATURE**
 - **Polish Tasks**: 19 (Phase 13)
 
-**Parallel Opportunities**: 78 tasks marked `[P]` (39% of total tasks).
+**Parallel Opportunities**: 78 tasks marked `[P]` (27% of total tasks).
 
 **MVP Scope**: Phases 1-4 (72 tasks) deliver production-ready automated backups and file restoration with monitoring.
 
 **Independent Testing**: Each user story phase has clear test criteria and checkpoint verification before proceeding to next story.
 
+**🎯 STRATEGIC DIFFERENTIATION**: 51 new tasks added to differentiate from Backrest:
+- **Auto-Discovery (US11)**: 12 tasks - agentless advantage
+- **Snapshot Shares (US13)**: 11 tasks - unique restore UX
+- **Enhanced Monitoring (US3)**: 10 additional tasks - Prometheus/Grafana
+- **Git Enhancements (US12)**: 10 tasks - diff/blame/rollback
+- **Command Hooks (US1B)**: 12 tasks - pre/post backup automation
+- **Focused Notifications (US7)**: Enhanced to 17 tasks - Discord + Gotify priority
+
 ## Effort Estimates
 
 ### Total Project Effort
-**Sequential**: 55-68 days (11-14 weeks) for single developer  
-**Parallel (2 developers)**: 32-40 days (6-8 weeks) with optimal task distribution  
-**Parallel (3+ developers)**: 24-30 days (5-6 weeks) with parallelized Phase 2 and user stories
+**Sequential**: 85-107 days (17-21.5 weeks) for single developer (with all strategic features)  
+**Parallel (2 developers)**: 51-64 days (10-13 weeks) with optimal task distribution  
+**Parallel (3+ developers)**: 38-48 days (7.5-9.5 weeks) with parallelized Phase 2 and user stories
+
+**🎯 Strategic Investment**: New competitive differentiation features add ~28-35 days to timeline, but position BackupChrono as "The Agentless Homelab Backup Orchestrator" vs Backrest's agent-based model.
 
 ### By Phase
 - **Phase 1 (Setup)**: 2-4 days (includes CI/CD pipeline)
 - **Phase 2 (Foundational)**: 10-12 days ⚠️ BLOCKING - Must complete before user stories
 - **Phase 3 (US1 - Automated Backups)**: 7-9 days 🎯 MVP (includes production monitoring)
+- **Phase 3.5 (Minimal UI)**: 2-3 days 🎯 MVP
 - **Phase 4 (US2 - Restore Files)**: 4-5 days 🎯 MVP
-- **Phase 5 (US9 - Git Config)**: 3-4 days
+- **Phase 5 (US9 - IaC Configuration Baseline)**: 3-4 days
 - **Phase 6 (US6 - Rsync)**: 3-4 days
-- **Phase 7 (US3 - Monitor Health)**: 3-4 days
-- **Phase 8 (US7 - Email Notifications)**: 3-4 days
+- **Phase 6.5 (US1B - Command Hooks)**: 2-3 days 🎯 **NEW**
+- **Phase 7 (US3 - Enhanced Monitoring)**: 5-6 days 🎯 **EXPANDED** (Prometheus, Grafana, trends)
+- **Phase 8 (US7 - Multi-Channel Notifications)**: 5-6 days 🎯 **EXPANDED** (Discord, Gotify priority)
 - **Phase 9 (US8 - Direct Restore)**: 2-3 days
 - **Phase 10 (US4 - Web UI)**: 8-10 days
 - **Phase 11 (US5 - File History)**: 3-4 days
 - **Phase 12 (US10 - Multi-User)**: 4-5 days
+- **Phase 14 (US11 - Device Auto-Discovery)**: 4-5 days 🎯 **NEW - KILLER FEATURE**
+- **Phase 15 (US12 - Git Config Enhancements)**: 3-4 days 🎯 **NEW - EXPANDED**
+- **Phase 16 (US13 - Snapshot Shares)**: 5-6 days 🎯 **NEW - UNIQUE FEATURE**
 - **Phase 13 (Polish)**: 3-4 days
 
-### MVP Effort
-**Phases 1-4**: 23-30 days (4.5-6 weeks) for single developer (production-ready with CI/CD and monitoring)  
-**Parallel (2 developers)**: 15-19 days (3-4 weeks) with one on backend, one on testing/integration
+### MVP Effort (Core Features Only)
+**Phases 1-4**: 25-33 days (5-6.5 weeks) for single developer (includes Minimal UI)  
+**Parallel (2 developers)**: 16-21 days (3-4 weeks) with one on backend, one on testing/integration
+
+### Enhanced MVP (With Key Differentiators) 🎯 **RECOMMENDED**
+**Phases 1-4 + US7 + US11 + US1B**: 36-47 days (7-9.5 weeks)  
+Adds: Discord/Gotify notifications, device auto-discovery, command hooks  
+**Parallel (2 developers)**: 23-30 days (4.5-6 weeks)
+
+**Rationale**: This combination delivers immediate competitive advantage:
+- **Auto-Discovery (US11)**: No manual device configuration (vs Backrest's agent installation)
+- **Notifications (US7)**: Instant feedback on backup health
+- **Command Hooks (US1B)**: Flexibility for database/VM prep
 
 ### Post-MVP Increments
-- **Config Management (US9)**: +3-4 days
-- **Protocol Support (US6)**: +3-4 days
-- **Observability (US3 + US7)**: +6-8 days
-- **Advanced Features (US8 + US4 + US5 + US10)**: +17-22 days
+- **Baseline IaC (US9)**: +3-4 days (Git versioning)
+- **Protocol Support (US6)**: +3-4 days (Rsync)
+- **Command Hooks (US1B)**: +2-3 days 🎯 **NEW**
+- **Enhanced Monitoring (US3)**: +5-6 days 🎯 **EXPANDED**
+- **Multi-Channel Notifications (US7)**: +5-6 days 🎯 **EXPANDED**
+- **Device Auto-Discovery (US11)**: +4-5 days 🎯 **NEW - KILLER FEATURE**
+- **Git Enhancements (US12)**: +3-4 days 🎯 **NEW**
+- **Advanced Restore (US8)**: +2-3 days
+- **Snapshot Shares (US13)**: +5-6 days 🎯 **NEW - UNIQUE FEATURE**
+- **Full UI (US4)**: +8-10 days
+- **File History (US5)**: +3-4 days
+- **Multi-User (US10)**: +4-5 days
 - **Polish (Phase 13)**: +3-4 days
+
+**Total Post-MVP**: +60-76 days (12-15 weeks) for all enhancements
+
+### Strategic Feature Breakdown 🎯
+**Competitive Differentiation Investment**: 28-35 days
+- Auto-Discovery: 4-5 days - **Justification**: Eliminates agent installation burden
+- Snapshot Shares: 5-6 days - **Justification**: Unique restore UX via file explorer
+- Enhanced Monitoring: +2-3 days - **Justification**: Enterprise-grade observability
+- Git Enhancements: 3-4 days - **Justification**: Strengthens IaC story
+- Command Hooks: 2-3 days - **Justification**: Enables advanced workflows
+- Focused Notifications: Already in baseline scope (Discord/Gotify prioritized over 8+ channels)
+
+**ROI**: These features position BackupChrono in a unique market segment (agentless homelab orchestration) that Backrest does not target.
 
 ### Assumptions
 - Estimates assume experienced developers familiar with ASP.NET Core, React, and Docker

@@ -1,7 +1,9 @@
+using System.Text.Json;
 using BackupChrono.Core.DTOs;
 using BackupChrono.Core.Entities;
 using BackupChrono.Core.Interfaces;
 using BackupChrono.Core.ValueObjects;
+using Microsoft.Extensions.Logging;
 
 namespace BackupChrono.Infrastructure.Restic;
 
@@ -11,10 +13,14 @@ namespace BackupChrono.Infrastructure.Restic;
 public class ResticService : IResticService
 {
     private readonly ResticClient _client;
+    private readonly ILogger<ResticService> _logger;
+    private DateTime _lastLogTime = DateTime.MinValue;
+    private static readonly TimeSpan LogThrottleInterval = TimeSpan.FromSeconds(1);
 
-    public ResticService(ResticClient client)
+    public ResticService(ResticClient client, ILogger<ResticService> logger)
     {
         _client = client;
+        _logger = logger;
     }
 
     public async Task<bool> InitializeRepository(string repositoryPath, string password)
@@ -72,7 +78,7 @@ public class ResticService : IResticService
         await _client.ExecuteCommand(new[] { "prune" });
     }
 
-    public async Task<Backup> CreateBackup(Device device, Share? share, string sourcePath, IncludeExcludeRules rules)
+    public async Task<Backup> CreateBackup(Device device, Share? share, string sourcePath, IncludeExcludeRules rules, Action<BackupProgress>? onProgress = null)
     {
         var args = new List<string> { "backup", sourcePath, "--json" };
 
@@ -83,7 +89,61 @@ public class ResticService : IResticService
             args.Add(pattern);
         }
 
-        var output = await _client.ExecuteCommand(args.ToArray());
+        var output = await _client.ExecuteCommand(args.ToArray(), onOutputLine: line =>
+        {
+            if (onProgress == null || string.IsNullOrWhiteSpace(line)) return;
+            
+            try
+            {
+                using var doc = JsonDocument.Parse(line);
+                var root = doc.RootElement;
+                
+                if (root.TryGetProperty("message_type", out var messageType) && 
+                    messageType.GetString() == "status")
+                {
+                    var progress = new BackupProgress
+                    {
+                        JobId = "", // Will be set by BackupOrchestrator
+                        DeviceName = device.Name,
+                        ShareName = share?.Name,
+                        Status = "Running",
+                        PercentComplete = root.TryGetProperty("percent_done", out var percentDone) 
+                            ? percentDone.GetDouble() * 100 
+                            : 0,
+                        FilesProcessed = root.TryGetProperty("files_done", out var filesDone) 
+                            ? filesDone.GetInt32() 
+                            : 0,
+                        TotalFiles = root.TryGetProperty("total_files", out var totalFiles) 
+                            ? totalFiles.GetInt32() 
+                            : null,
+                        BytesProcessed = root.TryGetProperty("bytes_done", out var bytesDone) 
+                            ? bytesDone.GetInt64() 
+                            : 0,
+                        TotalBytes = root.TryGetProperty("total_bytes", out var totalBytes) 
+                            ? totalBytes.GetInt64() 
+                            : null,
+                        CurrentFile = root.TryGetProperty("current_files", out var currentFiles) && 
+                                      currentFiles.GetArrayLength() > 0
+                            ? currentFiles[0].GetString()
+                            : null
+                    };
+                    
+                    var now = DateTime.UtcNow;
+                    if (now - _lastLogTime >= LogThrottleInterval)
+                    {
+                        _logger.LogDebug("Restic progress: {Percent}% - {Files}/{TotalFiles} files", 
+                            progress.PercentComplete, progress.FilesProcessed, progress.TotalFiles);
+                        _lastLogTime = now;
+                    }
+                    
+                    onProgress(progress);
+                }
+            }
+            catch (JsonException)
+            {
+                // Ignore JSON parse errors for non-JSON output lines (restic outputs mixed text/JSON)
+            }
+        });
         
         // TODO: Parse backup result from JSON
         return new Backup
@@ -111,7 +171,7 @@ public class ResticService : IResticService
         {
             JobId = jobId,
             FilesProcessed = 0,
-            BytesTransferred = 0,
+            BytesProcessed = 0,
             PercentComplete = 0
         });
     }

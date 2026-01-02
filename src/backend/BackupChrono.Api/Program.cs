@@ -1,3 +1,4 @@
+using BackupChrono.Api.Hubs;
 using BackupChrono.Api.Middleware;
 using BackupChrono.Api.Services;
 using BackupChrono.Core.Entities;
@@ -9,9 +10,19 @@ using BackupChrono.Infrastructure.Repositories;
 using BackupChrono.Infrastructure.Restic;
 using BackupChrono.Infrastructure.Scheduling;
 using BackupChrono.Infrastructure.Services;
+using Microsoft.AspNetCore.SignalR;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Configure host shutdown timeout to allow backup jobs to cancel gracefully
+builder.Host.ConfigureServices((context, services) =>
+{
+    services.Configure<HostOptions>(options =>
+    {
+        options.ShutdownTimeout = TimeSpan.FromSeconds(30);
+    });
+});
 
 // Configure Serilog
 builder.Host.UseSerilog((context, configuration) =>
@@ -64,8 +75,14 @@ builder.Services.AddCors(options =>
 });
 
 // Register application services
+var configPath = builder.Configuration["ConfigRepository:Path"] ?? "./config";
+// Make the path absolute if it's relative, resolving from the application directory
+if (!Path.IsPathRooted(configPath))
+{
+    configPath = Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, configPath));
+}
 builder.Services.AddSingleton<GitConfigService>(sp => 
-    new GitConfigService(builder.Configuration["ConfigRepository:Path"] ?? "./config"));
+    new GitConfigService(configPath));
 builder.Services.AddSingleton<ResticClient>(sp => 
 {
     var resticPassword = builder.Configuration["Restic:Password"];
@@ -96,6 +113,11 @@ builder.Services.AddSingleton<IResticService, ResticService>();
 // Register application services (Phase 3 - User Story 1)
 builder.Services.AddSingleton<IMappingService, MappingService>();
 
+// Protocol plugins
+builder.Services.AddSingleton<SmbPlugin>();
+builder.Services.AddSingleton<SshPlugin>();
+builder.Services.AddSingleton<RsyncPlugin>();
+
 // Protocol plugin loader (discovers and instantiates plugins)
 builder.Services.AddSingleton<IProtocolPluginLoader, ProtocolPluginLoader>();
 
@@ -114,11 +136,22 @@ builder.Services.AddSingleton<IBackupJobRepository, BackupJobRepository>(sp =>
 {
     var gitConfig = sp.GetRequiredService<GitConfigService>();
     var logger = sp.GetRequiredService<ILogger<BackupJobRepository>>();
-    return new BackupJobRepository(gitConfig.RepositoryPath, logger);
+    var deviceService = sp.GetRequiredService<IDeviceService>();
+    var shareService = sp.GetRequiredService<IShareService>();
+    return new BackupJobRepository(gitConfig.RepositoryPath, logger, deviceService, shareService);
 });
 
 // Quartz Scheduler
 builder.Services.AddSingleton<IQuartzSchedulerService, QuartzSchedulerService>();
+
+// Register BackupJob for DI (required by Quartz job factory)
+builder.Services.AddTransient<BackupChrono.Infrastructure.Scheduling.BackupJob>();
+
+// BackupProgressBroadcaster - bridges BackupOrchestrator events to SignalR (must be after all dependencies)
+builder.Services.AddHostedService<BackupProgressBroadcaster>();
+
+// BackupShutdownHandler - ensures graceful cancellation of running jobs on app shutdown
+builder.Services.AddHostedService<BackupShutdownHandler>();
 
 var app = builder.Build();
 
@@ -145,6 +178,7 @@ app.UseCors("AllowFrontend");
 // app.UseAuthentication();
 // app.UseAuthorization();
 app.MapControllers();
+app.MapHub<BackupProgressHub>("/hubs/backup-progress");
 
 // Register graceful shutdown
 var lifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
@@ -169,10 +203,9 @@ lifetime.ApplicationStopping.Register(() =>
         
         while (DateTime.UtcNow - waitStart < timeout)
         {
-            var activeJobs = await orchestrator.ListJobs().ConfigureAwait(false);
-            var runningCount = activeJobs.Count(j => j.Status == BackupJobStatus.Running);
+            var activeCount = orchestrator.GetActiveJobCount();
             
-            if (runningCount == 0)
+            if (activeCount == 0)
             {
                 app.Logger.LogInformation("All backup jobs completed successfully");
                 break;
@@ -180,20 +213,26 @@ lifetime.ApplicationStopping.Register(() =>
             
             app.Logger.LogWarning(
                 "Waiting for {Count} backup job(s) to complete... ({Elapsed}s elapsed)", 
-                runningCount, 
+                activeCount, 
                 (DateTime.UtcNow - waitStart).TotalSeconds);
             await Task.Delay(1000).ConfigureAwait(false); // Check every second
         }
         
-        var finalJobs = await orchestrator.ListJobs().ConfigureAwait(false);
-        var stillRunning = finalJobs.Count(j => j.Status == BackupJobStatus.Running);
+        var stillRunning = orchestrator.GetActiveJobCount();
         
         if (stillRunning > 0)
         {
             app.Logger.LogWarning(
-                "Graceful shutdown timeout - {Count} backup job(s) still running. " +
-                "Jobs will be marked as cancelled. Consider increasing Docker stop timeout if needed.",
+                "Graceful shutdown timeout - {Count} backup job(s) still running. Force-cancelling all jobs.",
                 stillRunning);
+            
+            // Force cancel all remaining jobs
+            await orchestrator.CancelAllJobs().ConfigureAwait(false);
+            
+            // Give cancellation tokens a moment to propagate
+            await Task.Delay(500).ConfigureAwait(false);
+            
+            app.Logger.LogInformation("All backup jobs cancelled");
         }
         else
         {

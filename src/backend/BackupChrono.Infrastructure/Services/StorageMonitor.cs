@@ -26,8 +26,26 @@ public class StorageMonitor : IStorageMonitor
     {
         try
         {
-            // Get the drive info for the given path
-            var driveInfo = new DriveInfo(Path.GetPathRoot(path) ?? path);
+            // Convert to absolute path first (handles relative paths like "./repositories/...")
+            var absolutePath = Path.IsPathRooted(path) 
+                ? path 
+                : Path.GetFullPath(path);
+            
+            // Get the drive root (e.g., "C:\" on Windows)
+            var pathRoot = Path.GetPathRoot(absolutePath);
+            if (string.IsNullOrEmpty(pathRoot))
+            {
+                _logger.LogWarning("Could not determine path root for {Path}", path);
+                return Task.FromResult(new StorageStatus
+                {
+                    Path = path,
+                    ThresholdLevel = StorageThresholdLevel.Critical,
+                    Message = "Could not determine storage drive"
+                });
+            }
+            
+            // Get the drive info for the root path
+            var driveInfo = new DriveInfo(pathRoot);
 
             if (!driveInfo.IsReady)
             {

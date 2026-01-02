@@ -32,7 +32,7 @@ public class InfoControllerTests : IAsyncLifetime
         response.Content.Headers.ContentType?.MediaType.Should().Be("application/json");
 
         var content = await response.Content.ReadAsStringAsync();
-        var json = JsonDocument.Parse(content);
+        using var json = JsonDocument.Parse(content);
         var root = json.RootElement;
 
         root.GetProperty("name").GetString().Should().NotBeNullOrEmpty();
@@ -46,12 +46,12 @@ public class InfoControllerTests : IAsyncLifetime
         // Act
         var response = await _httpClient.GetAsync("api/info");
         var content = await response.Content.ReadAsStringAsync();
-        var json = JsonDocument.Parse(content);
+        using var json = JsonDocument.Parse(content);
         var timestampStr = json.RootElement.GetProperty("timestamp").GetString();
 
         // Assert
         response.StatusCode.Should().Be(System.Net.HttpStatusCode.OK);
-        DateTime.TryParse(timestampStr, out var timestamp).Should().BeTrue();
+        DateTime.TryParse(timestampStr, null, System.Globalization.DateTimeStyles.RoundtripKind, out var timestamp).Should().BeTrue();
         
         // Timestamp should be recent (within last minute)
         var timeDiff = DateTime.UtcNow - timestamp;

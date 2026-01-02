@@ -188,6 +188,8 @@ public class MappingService : IMappingService
             Id = job.Id,
             DeviceId = job.DeviceId,
             ShareId = job.ShareId,
+            DeviceName = job.DeviceName,
+            ShareName = job.ShareName,
             Type = job.Type.ToString(),
             Status = job.Status.ToString(),
             StartedAt = job.StartedAt,

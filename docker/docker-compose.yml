@@ -1,11 +1,11 @@
 version: '3.8'
 
 services:
-  backupchrono-api:
+  backend:
     build:
       context: ..
       dockerfile: docker/Dockerfile.backend
-    container_name: backupchrono-api
+    container_name: backupchrono-backend
     ports:
       - "5000:5000"
     volumes:
@@ -19,14 +19,22 @@ services:
       - RESTIC_REPOSITORY=/repository
       - RESTIC_PASSWORD=${RESTIC_PASSWORD:-changeme}
     restart: unless-stopped
+    networks:
+      - backupchrono
 
-  backupchrono-frontend:
+  frontend:
     build:
       context: ..
       dockerfile: docker/Dockerfile.frontend
     container_name: backupchrono-frontend
     ports:
-      - "8080:80"
+      - "3000:80"
     depends_on:
-      - backupchrono-api
+      - backend
     restart: unless-stopped
+    networks:
+      - backupchrono
+
+networks:
+  backupchrono:
+    driver: bridge
