@@ -3,7 +3,9 @@ using System.Security.Cryptography;
 using BackupChrono.Core.Entities;
 using BackupChrono.Core.Interfaces;
 using BackupChrono.Core.ValueObjects;
+using BackupChrono.Core.DTOs;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace BackupChrono.Infrastructure.Services;
 
@@ -18,11 +20,18 @@ public class BackupOrchestrator : IBackupOrchestrator
     private readonly IProtocolPluginLoader _pluginLoader;
     private readonly IResticService _resticService;
     private readonly IStorageMonitor _storageMonitor;
+    private readonly IBackupJobRepository _backupJobRepository;
     private readonly ILogger<BackupOrchestrator> _logger;
+    private readonly string _repositoryBasePath;
     private readonly ConcurrentDictionary<Guid, BackupJob> _activeJobs = new();
     private readonly ConcurrentDictionary<Guid, CancellationTokenSource> _jobCancellationTokens = new();
     private readonly ConcurrentDictionary<Guid, (BackupJob Job, DateTime ExpiresAt)> _completedJobs = new();
+    private readonly ConcurrentDictionary<string, (double LastPercent, DateTime LastBroadcast)> _progressThrottle = new();
     private static readonly TimeSpan CompletedJobRetention = TimeSpan.FromHours(1);
+    private static readonly TimeSpan ProgressBroadcastInterval = TimeSpan.FromMilliseconds(500);
+    private const double ProgressPercentThreshold = 1.0;
+
+    public event EventHandler<BackupProgress>? ProgressUpdated;
 
     public BackupOrchestrator(
         IDeviceService deviceService,
@@ -30,14 +39,60 @@ public class BackupOrchestrator : IBackupOrchestrator
         IProtocolPluginLoader pluginLoader,
         IResticService resticService,
         IStorageMonitor storageMonitor,
-        ILogger<BackupOrchestrator> logger)
+        IBackupJobRepository backupJobRepository,
+        ILogger<BackupOrchestrator> logger,
+        IOptions<ResticOptions> resticOptions)
     {
         _deviceService = deviceService;
         _shareService = shareService;
         _pluginLoader = pluginLoader;
         _resticService = resticService;
         _storageMonitor = storageMonitor;
+        _backupJobRepository = backupJobRepository;
         _logger = logger;
+        _repositoryBasePath = resticOptions.Value.RepositoryBasePath;
+    }
+
+    private void RaiseProgressUpdate(BackupJob job, string? currentFile = null, double? percentComplete = null)
+    {
+        ProgressUpdated?.Invoke(this, new BackupProgress
+        {
+            JobId = job.Id.ToString(),
+            DeviceName = job.DeviceName,
+            ShareName = job.ShareName,
+            Status = job.Status.ToString(),
+            PercentComplete = percentComplete ?? 0,
+            CurrentFile = currentFile,
+            ErrorMessage = job.ErrorMessage
+        });
+    }
+
+    private void RaiseProgressUpdate(BackupProgress progress)
+    {
+        var now = DateTime.UtcNow;
+        var shouldBroadcast = false;
+
+        // Check if we should throttle this broadcast
+        if (_progressThrottle.TryGetValue(progress.JobId, out var lastState))
+        {
+            var timeSinceLastBroadcast = now - lastState.LastBroadcast;
+            var percentChanged = Math.Abs(progress.PercentComplete - lastState.LastPercent);
+
+            // Broadcast if percent changed significantly OR enough time has passed
+            shouldBroadcast = percentChanged >= ProgressPercentThreshold || 
+                             timeSinceLastBroadcast >= ProgressBroadcastInterval;
+        }
+        else
+        {
+            // First broadcast for this job
+            shouldBroadcast = true;
+        }
+
+        if (shouldBroadcast)
+        {
+            _progressThrottle[progress.JobId] = (progress.PercentComplete, now);
+            ProgressUpdated?.Invoke(this, progress);
+        }
     }
 
     public async Task<BackupJob> ExecuteDeviceBackup(Guid deviceId, BackupJobType jobType)
@@ -63,6 +118,7 @@ public class BackupOrchestrator : IBackupOrchestrator
         try
         {
             _logger.LogInformation("Starting device-level backup for '{DeviceName}' (Job: {JobId})", device.Name, job.Id);
+            RaiseProgressUpdate(job, percentComplete: 0);
 
             // Wake device if needed
             if (device.WakeOnLanEnabled)
@@ -99,6 +155,8 @@ public class BackupOrchestrator : IBackupOrchestrator
             if (backups.Count == enabledShares.Count)
             {
                 job.Status = BackupJobStatus.Completed;
+                _logger.LogInformation("Device backup completed successfully for '{DeviceName}'", device.Name);
+                RaiseProgressUpdate(job, percentComplete: 100);
             }
             else if (backups.Count > 0)
             {
@@ -108,11 +166,13 @@ public class BackupOrchestrator : IBackupOrchestrator
                     ? summary
                     : string.Concat(job.ErrorMessage.TrimEnd('\n'), "\n", summary);
                 _logger.LogWarning("Device backup partially completed for '{DeviceName}' ({Completed}/{Total} shares)", device.Name, backups.Count, enabledShares.Count);
+                RaiseProgressUpdate(job, percentComplete: 100);
             }
             else
             {
                 job.Status = BackupJobStatus.Failed;
                 _logger.LogError("Device backup failed for '{DeviceName}' - all shares failed", device.Name);
+                RaiseProgressUpdate(job);
             }
         }
         catch (OperationCanceledException)
@@ -125,6 +185,7 @@ public class BackupOrchestrator : IBackupOrchestrator
                 job.ErrorMessage = "Backup cancelled by user";
             }
             job.CompletedAt = DateTime.UtcNow;
+            RaiseProgressUpdate(job);
         }
         catch (Exception ex)
         {
@@ -136,6 +197,7 @@ public class BackupOrchestrator : IBackupOrchestrator
                 job.ErrorMessage = ex.Message;
             }
             job.CompletedAt = DateTime.UtcNow;
+            RaiseProgressUpdate(job);
         }
         finally
         {
@@ -176,6 +238,7 @@ public class BackupOrchestrator : IBackupOrchestrator
         try
         {
             _logger.LogInformation("Starting share-level backup for '{DeviceName}/{ShareName}' (Job: {JobId})", device.Name, share.Name, job.Id);
+            RaiseProgressUpdate(job, percentComplete: 0);
 
             // Wake device if needed
             if (device.WakeOnLanEnabled)
@@ -191,6 +254,7 @@ public class BackupOrchestrator : IBackupOrchestrator
             job.Status = BackupJobStatus.Completed;
 
             _logger.LogInformation("Share backup completed successfully for '{DeviceName}/{ShareName}'", device.Name, share.Name);
+            RaiseProgressUpdate(job, percentComplete: 100);
         }
         catch (OperationCanceledException)
         {
@@ -202,6 +266,7 @@ public class BackupOrchestrator : IBackupOrchestrator
                 job.ErrorMessage = "Backup cancelled by user";
             }
             job.CompletedAt = DateTime.UtcNow;
+            RaiseProgressUpdate(job);
         }
         catch (Exception ex)
         {
@@ -213,6 +278,7 @@ public class BackupOrchestrator : IBackupOrchestrator
                 job.ErrorMessage = ex.Message;
             }
             job.CompletedAt = DateTime.UtcNow;
+            RaiseProgressUpdate(job);
         }
         finally
         {
@@ -240,7 +306,7 @@ public class BackupOrchestrator : IBackupOrchestrator
         return Task.FromResult<BackupJob?>(null);
     }
 
-    public Task CancelJob(Guid jobId)
+    public async Task CancelJob(Guid jobId)
     {
         if (_activeJobs.TryGetValue(jobId, out var job) && 
             _jobCancellationTokens.TryGetValue(jobId, out var cts))
@@ -255,14 +321,15 @@ public class BackupOrchestrator : IBackupOrchestrator
             job.CompletedAt = DateTime.UtcNow;
             job.ErrorMessage = "Backup cancelled by user";
             
-            _logger.LogInformation("Backup job {JobId} cancellation requested", jobId);
+            // Persist cancelled status immediately
+            await _backupJobRepository.SaveJob(job);
+            
+            _logger.LogInformation("Backup job {JobId} cancellation requested and persisted", jobId);
         }
         else
         {
             _logger.LogWarning("Cannot cancel job {JobId} - job not found or already completed", jobId);
         }
-
-        return Task.CompletedTask;
     }
 
     public async Task<BackupJob> RetryFailedJob(Guid jobId)
@@ -362,9 +429,44 @@ public class BackupOrchestrator : IBackupOrchestrator
             // Check cancellation before backup
             cancellationToken.ThrowIfCancellationRequested();
 
+            // Build command line for debugging (includes repository path, excludes password)
+            var includeExcludeArgs = string.Join(" ", rules.ExcludePatterns.Select(p => $"--exclude \"{p}\""));
+            job.CommandLine = $"RESTIC_REPOSITORY={repositoryPath}\nrestic backup \"{mountPath}\" --json {includeExcludeArgs}";
+            await _backupJobRepository.SaveJob(job);
+
             // Execute restic backup
             _logger.LogDebug("Starting restic backup for '{DeviceName}/{ShareName}'", device.Name, share.Name);
-            var backup = await _resticService.CreateBackup(device, share, mountPath, rules);
+            
+            // Track final progress values
+            BackupProgress? lastProgress = null;
+            
+            var backup = await _resticService.CreateBackup(repositoryPath, device, share, mountPath, rules, progress =>
+            {
+                // Create a new progress object with the JobId set
+                var updatedProgress = new BackupProgress
+                {
+                    JobId = job.Id.ToString(),
+                    DeviceName = progress.DeviceName,
+                    ShareName = progress.ShareName,
+                    Status = progress.Status,
+                    FilesProcessed = progress.FilesProcessed,
+                    TotalFiles = progress.TotalFiles,
+                    BytesProcessed = progress.BytesProcessed,
+                    TotalBytes = progress.TotalBytes,
+                    PercentComplete = progress.PercentComplete,
+                    CurrentFile = progress.CurrentFile,
+                    ErrorMessage = progress.ErrorMessage
+                };
+                lastProgress = updatedProgress;
+                RaiseProgressUpdate(updatedProgress);
+            }, cancellationToken);
+
+            // Save final statistics to job
+            if (lastProgress != null)
+            {
+                job.FilesProcessed = lastProgress.FilesProcessed;
+                job.BytesTransferred = lastProgress.BytesProcessed;
+            }
 
             _logger.LogInformation("Backup completed with snapshot ID: {SnapshotId}", backup.Id);
 
@@ -424,24 +526,36 @@ public class BackupOrchestrator : IBackupOrchestrator
         {
             DeviceId = device.Id,
             ShareId = share?.Id,
+            DeviceName = device.Name,
+            ShareName = share?.Name,
             Type = jobType,
             Status = BackupJobStatus.Running,
             StartedAt = DateTime.UtcNow
         };
     }
 
-    private Task TrackJob(BackupJob job, CancellationTokenSource cts)
+    private async Task TrackJob(BackupJob job, CancellationTokenSource cts)
     {
         _activeJobs[job.Id] = job;
         _jobCancellationTokens[job.Id] = cts;
-        return Task.CompletedTask;
+        
+        // Persist job immediately so it appears in the jobs list even while running
+        await _backupJobRepository.SaveJob(job);
+        _logger.LogDebug("Job {JobId} created and persisted with status {Status}", job.Id, job.Status);
     }
 
-    private Task UntrackJob(Guid jobId)
+    private async Task UntrackJob(Guid jobId)
     {
         if (_activeJobs.TryRemove(jobId, out var job))
         {
-            // Move completed/failed jobs to completed store with TTL
+            // Clean up progress throttle cache
+            _progressThrottle.TryRemove(jobId.ToString(), out _);
+            
+            // Always persist final status to repository
+            await _backupJobRepository.SaveJob(job);
+            _logger.LogInformation("Job {JobId} completed with status {Status}", jobId, job.Status);
+            
+            // Move completed/failed jobs to completed store with TTL for quick in-memory access
             if (job.Status == BackupJobStatus.Completed || 
                 job.Status == BackupJobStatus.Failed || 
                 job.Status == BackupJobStatus.Cancelled ||
@@ -455,12 +569,9 @@ public class BackupOrchestrator : IBackupOrchestrator
         }
         
         // Clean up and dispose the cancellation token source
-        if (_jobCancellationTokens.TryRemove(jobId, out var cts))
-        {
+        if (_jobCancellationTokens.TryRemove(jobId, out var cts))  {
             cts.Dispose();
         }
-
-        return Task.CompletedTask;
     }
 
     /// <summary>
@@ -483,9 +594,9 @@ public class BackupOrchestrator : IBackupOrchestrator
 
     private string GetRepositoryPath(Device device, Share share)
     {
-        // Path hard coded by design. It will be used in a docker container which mounts
-        // the host directory as /repositories.
-        return Path.Combine("./repositories", device.Id.ToString(), share.Id.ToString());
+        // Build repository path: {RepositoryBasePath}/{deviceId}/{shareId}
+        // Use injected base path rather than relying on current working directory
+        return Path.Combine(_repositoryBasePath, device.Id.ToString(), share.Id.ToString());
     }
 
     private async Task<string> GetRepositoryPassword(Device device, Share share)
@@ -537,5 +648,36 @@ public class BackupOrchestrator : IBackupOrchestrator
         using var pbkdf2 = new Rfc2898DeriveBytes(devicePassword, saltBytes, 150_000, HashAlgorithmName.SHA256);
         var key = pbkdf2.GetBytes(32); // 256-bit key
         return Convert.ToBase64String(key);
+    }
+
+    public async Task TrackFailedJob(BackupJob failedJob)
+    {
+        // Save to repository so it persists and appears in the jobs list
+        await _backupJobRepository.SaveJob(failedJob);
+        
+        // Also track in-memory for quick access
+        var expiresAt = DateTime.UtcNow.Add(CompletedJobRetention);
+        _completedJobs[failedJob.Id] = (failedJob, expiresAt);
+        
+        _logger.LogInformation(
+            "Tracked failed job {JobId} with error: {Error}",
+            failedJob.Id,
+            failedJob.ErrorMessage);
+    }
+
+    public int GetActiveJobCount()
+    {
+        return _activeJobs.Count;
+    }
+
+    public async Task CancelAllJobs()
+    {
+        var activeJobs = _activeJobs.Values.ToList();
+        _logger.LogWarning("Cancelling all {Count} active backup jobs", activeJobs.Count);
+        
+        foreach (var job in activeJobs)
+        {
+            await CancelJob(job.Id);
+        }
     }
 }

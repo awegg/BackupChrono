@@ -77,7 +77,8 @@ public class SharesControllerTests : IAsyncLifetime
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var content = await response.Content.ReadAsStringAsync();
-        var shares = JsonDocument.Parse(content).RootElement.EnumerateArray().ToList();
+        using var json = JsonDocument.Parse(content);
+        var shares = json.RootElement.EnumerateArray().ToList();
         shares.Should().BeEmpty();
     }
 
@@ -123,7 +124,7 @@ public class SharesControllerTests : IAsyncLifetime
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var content = await response.Content.ReadAsStringAsync();
-        var json = JsonDocument.Parse(content);
+        using var json = JsonDocument.Parse(content);
         var shares = json.RootElement.EnumerateArray().ToList();
 
         shares.Should().HaveCount(1);

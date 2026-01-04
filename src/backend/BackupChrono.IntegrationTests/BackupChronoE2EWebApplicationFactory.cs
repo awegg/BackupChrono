@@ -2,12 +2,14 @@ using BackupChrono.Core.Interfaces;
 using BackupChrono.Infrastructure.Git;
 using BackupChrono.Infrastructure.Plugins;
 using BackupChrono.Infrastructure.Protocols;
+using BackupChrono.Infrastructure.Repositories;
 using BackupChrono.Infrastructure.Restic;
 using BackupChrono.Infrastructure.Services;
 using LibGit2Sharp;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Moq;
 
 namespace BackupChrono.IntegrationTests;
@@ -105,6 +107,7 @@ public class BackupChronoE2EWebApplicationFactory : WebApplicationFactory<Progra
                 d.ServiceType == typeof(ResticClient) ||
                 d.ServiceType == typeof(IDeviceService) ||
                 d.ServiceType == typeof(IShareService) ||
+                d.ServiceType == typeof(IBackupJobRepository) ||
                 d.ServiceType == typeof(IProtocolPluginLoader) ||
                 d.ServiceType == typeof(IBackupOrchestrator) ||
                 d.ServiceType == typeof(IQuartzSchedulerService)
@@ -122,6 +125,8 @@ public class BackupChronoE2EWebApplicationFactory : WebApplicationFactory<Progra
             // Register actual service implementations for device/share management
             services.AddSingleton<IDeviceService, DeviceService>();
             services.AddSingleton<IShareService, ShareService>();
+            services.AddSingleton<IBackupJobRepository>(sp => 
+                new BackupJobRepository(_testRepositoryPath, sp.GetRequiredService<ILogger<BackupJobRepository>>(), sp.GetRequiredService<IDeviceService>(), sp.GetRequiredService<IShareService>()));
 
             // Register protocol plugin loader and plugins
             services.AddSingleton<IProtocolPluginLoader, ProtocolPluginLoader>();
@@ -131,10 +136,14 @@ public class BackupChronoE2EWebApplicationFactory : WebApplicationFactory<Progra
             services.AddSingleton<SshPlugin>();
             services.AddSingleton<RsyncPlugin>();
             
-            // BackupOrchestrator is also required - use mock for it
-            var mockOrchestrator = new Mock<IBackupOrchestrator>();
-            services.AddSingleton(mockOrchestrator.Object);
+            // Register mock dependencies needed by BackupOrchestrator
+            var mockResticService = new Mock<IResticService>();
+            var mockStorageMonitor = new Mock<IStorageMonitor>();
+            services.AddSingleton(mockResticService.Object);
+            services.AddSingleton(mockStorageMonitor.Object);
             
+            // BackupOrchestrator with real implementation - will call ExecuteDeviceBackup and throw exception
+            services.AddSingleton<IBackupOrchestrator, BackupOrchestrator>();            
             // Still need QuartzSchedulerService mock since it's required by Program
             var mockScheduler = new Mock<IQuartzSchedulerService>();
             services.AddSingleton(mockScheduler.Object);

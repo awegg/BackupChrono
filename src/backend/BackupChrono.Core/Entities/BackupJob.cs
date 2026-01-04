@@ -21,6 +21,16 @@ public class BackupJob
     public Guid? ShareId { get; set; }
 
     /// <summary>
+    /// Device name (for display purposes).
+    /// </summary>
+    public string? DeviceName { get; set; }
+
+    /// <summary>
+    /// Share name (for display purposes, null if device-level backup).
+    /// </summary>
+    public string? ShareName { get; set; }
+
+    /// <summary>
     /// Type of backup job (Scheduled, Manual, Retry).
     /// </summary>
     public required BackupJobType Type { get; set; }
@@ -69,4 +79,9 @@ public class BackupJob
     /// Scheduled time for the next retry (if applicable).
     /// </summary>
     public DateTime? NextRetryAt { get; set; }
+
+    /// <summary>
+    /// The restic command line executed for this backup (for debugging).
+    /// </summary>
+    public string? CommandLine { get; set; }
 }

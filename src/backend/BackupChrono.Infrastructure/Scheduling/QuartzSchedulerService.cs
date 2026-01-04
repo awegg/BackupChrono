@@ -1,3 +1,4 @@
+using System.Collections.Specialized;
 using System.Threading;
 using BackupChrono.Core.Entities;
 using BackupChrono.Core.Interfaces;
@@ -17,13 +18,16 @@ public class QuartzSchedulerService : IQuartzSchedulerService
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<QuartzSchedulerService> _logger;
     private readonly SemaphoreSlim _schedulerLock = new(1, 1);
+    private readonly string _schedulerName;
 
     public QuartzSchedulerService(
         IServiceScopeFactory scopeFactory,
-        ILogger<QuartzSchedulerService> logger)
+        ILogger<QuartzSchedulerService> logger,
+        string? schedulerName = null)
     {
         _scopeFactory = scopeFactory;
         _logger = logger;
+        _schedulerName = schedulerName ?? "DefaultQuartzScheduler";
     }
 
     /// <summary>
@@ -41,8 +45,16 @@ public class QuartzSchedulerService : IQuartzSchedulerService
         {
             if (_scheduler == null)
             {
-                var schedulerFactory = new StdSchedulerFactory();
+                // Create scheduler with unique name to avoid conflicts in tests
+                var properties = new NameValueCollection
+                {
+                    ["quartz.scheduler.instanceName"] = _schedulerName
+                };
+                var schedulerFactory = new StdSchedulerFactory(properties);
                 _scheduler = await schedulerFactory.GetScheduler().ConfigureAwait(false);
+                
+                // Use a job factory that supports dependency injection
+                _scheduler.JobFactory = new MicrosoftDependencyInjectionJobFactory(_scopeFactory);
             }
         }
         finally
@@ -266,16 +278,32 @@ public class QuartzSchedulerService : IQuartzSchedulerService
         var job = JobBuilder.Create<BackupJob>()
             .WithIdentity(jobKey)
             .SetJobData(jobData)
+            // Non-durable: job will be removed when trigger completes
             .Build();
 
-        // Ensure the job exists in the scheduler before triggering
-        await scheduler.AddJob(job, replace: true);
+        // Create an immediate trigger
+        var trigger = TriggerBuilder.Create()
+            .WithIdentity($"{jobKey.Name}_trigger", jobKey.Group)
+            .ForJob(jobKey)
+            .StartNow()
+            .WithSimpleSchedule(x => x.WithMisfireHandlingInstructionFireNow())
+            .Build();
 
-        await scheduler.TriggerJob(jobKey, jobData);
+        // Schedule job with trigger atomically (no need for AddJob + TriggerJob)
+        // If job already exists, replace it
+        await scheduler.ScheduleJob(job, new[] { trigger }, replace: true);
 
         _logger.LogInformation(
             "Triggered immediate backup for device {DeviceId}, share {ShareId}",
             deviceId,
             shareId?.ToString() ?? "all");
+    }
+
+    public async Task CancelJob(Guid jobId)
+    {
+        // Delegate to BackupOrchestrator which manages the actual job execution and cancellation
+        using var scope = _scopeFactory.CreateScope();
+        var orchestrator = scope.ServiceProvider.GetRequiredService<IBackupOrchestrator>();
+        await orchestrator.CancelJob(jobId);
     }
 }

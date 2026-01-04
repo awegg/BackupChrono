@@ -41,12 +41,14 @@ public interface IResticService
     /// <summary>
     /// Creates a new backup.
     /// </summary>
+    /// <param name="repositoryPath">Path to the restic repository.</param>
     /// <param name="device">Device being backed up.</param>
     /// <param name="share">Share to backup (null for device-level backup of all shares).</param>
     /// <param name="sourcePath">Local path to backup (from mounted share).</param>
     /// <param name="rules">Include/exclude rules to apply.</param>
+    /// <param name="onProgress">Optional callback for progress updates during backup.</param>
     /// <returns>Created backup snapshot.</returns>
-    Task<Backup> CreateBackup(Device device, Share? share, string sourcePath, IncludeExcludeRules rules);
+    Task<Backup> CreateBackup(string repositoryPath, Device device, Share? share, string sourcePath, IncludeExcludeRules rules, Action<BackupProgress>? onProgress = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets progress of a running backup job.
