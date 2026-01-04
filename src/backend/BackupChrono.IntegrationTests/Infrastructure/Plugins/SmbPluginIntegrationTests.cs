@@ -53,7 +53,8 @@ public class SmbPluginIntegrationTests : IAsyncLifetime
             .WithEnvironment("USERID", "1000")
             .WithEnvironment("GROUPID", "1000")
             .WithEnvironment("USER", $"{TestUsername};{TestPassword}")
-            .WithEnvironment("SHARE", $"{TestShareName};/share;yes;no;no;{TestUsername}")
+            .WithEnvironment("SHARE", $"{TestShareName};/share")
+            .WithEnvironment("PERMISSIONS", "1000:1000:/share")
             .WithEnvironment("WORKGROUP", "WORKGROUP")
             .WithWaitStrategy(Wait.ForUnixContainer().UntilMessageIsLogged(".*smbd.*started.*"))
             .Build();
