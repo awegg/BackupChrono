@@ -16,14 +16,14 @@ namespace BackupChrono.Api.Controllers;
 public class HealthController : ControllerBase
 {
     private readonly ILogger<HealthController> _logger;
-    private readonly ResticClient _resticClient;
+    private readonly IResticClient _resticClient;
     private readonly GitConfigService _gitConfigService;
     private readonly IStorageMonitor _storageMonitor;
     private static readonly DateTime _startTime = DateTime.UtcNow;
 
     public HealthController(
         ILogger<HealthController> logger, 
-        ResticClient resticClient,
+        IResticClient resticClient,
         GitConfigService gitConfigService,
         IStorageMonitor storageMonitor)
     {

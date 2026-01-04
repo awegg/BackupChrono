@@ -1,5 +1,6 @@
 using BackupChrono.Core.Interfaces;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace BackupChrono.Infrastructure.Services;
 
@@ -14,12 +15,12 @@ public class StorageMonitor : IStorageMonitor
 
     public StorageMonitor(
         ILogger<StorageMonitor> logger,
-        Restic.ResticClient resticClient,
+        IOptions<ResticOptions> resticOptions,
         StorageMonitorOptions? options = null)
     {
         _logger = logger;
         _options = options ?? new StorageMonitorOptions();
-        _repositoryBasePath = resticClient?.RepositoryPath ?? string.Empty;
+        _repositoryBasePath = resticOptions.Value.RepositoryBasePath;
     }
 
     public Task<StorageStatus> GetStorageStatus(string path)

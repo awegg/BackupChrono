@@ -238,10 +238,7 @@ This document organizes implementation tasks by **user story** to enable indepen
 - [X] T070 [US2] Implement ResticService.ListBackups to query restic snapshots and return Backup entities with JSON parsing
 - [X] T071 [US2] Implement ResticService.GetBackup to get backup details by ID with stats retrieval
 - [X] T072 [US2] Implement ResticService.BrowseBackup to list files/folders at a path within a backup using restic ls with line-by-line JSON parsing
-- [ ] T073 [US2] Implement file download endpoint GET /backups/{id}/files with path query parameter using restic dump (deferred - using frontend blob download)
-- [ ] T074 [US2] Implement folder download endpoint GET /backups/{id}/files with path and folder=true query parameter using restic restore to temp + tar.gz (deferred - individual file download works)
 - [X] T075 [US2] Implement ResticService.RestoreBackup for restoring files to a local target path using restic restore with include paths support and proper error handling
-- [ ] T076 [US2] Implement progress tracking for restore operations using ResticClient JSON output parsing (deferred - hub infrastructure ready)
 - [X] T077 [US2] Create RestoreProgress SignalR hub in BackupChrono.Api/Hubs/RestoreProgressHub.cs for real-time restore status
 - [X] T078 [US2] Create ResticRestoreTests in BackupChrono.Infrastructure.Restic.Tests/ResticRestoreTests.cs for restore operations (3 tests created, skipped for manual Docker execution)
 - [X] T079 [US2] Create end-to-end restore test in BackupChrono.Integration.Tests/RestoreFlowTests.cs verifying API endpoints (8 integration tests created, 5 passing validation tests)
@@ -985,6 +982,174 @@ Adds: Discord/Gotify notifications, device auto-discovery, command hooks
 
 **ROI**: These features position BackupChrono in a unique market segment (agentless homelab orchestration) that Backrest does not target.
 
+---
+
+## Phase 17: UX Enhancement 🎨 **NEW (2026-01-04)**
+
+**Goal**: Improve user experience using AI-assisted design workflow with minimal time investment.
+
+**Effort Estimate**: 8-10 days (1-2 weeks)
+
+**Tools Required**: Figma AI, Claude/ChatGPT, v0.dev, existing React + Tailwind stack
+
+### Context Abstract for AI Tools
+
+```
+Context: BackupChrono is a central backup system for IT administrators.
+- Users: Sysadmins managing 10-100+ devices (servers, NAS, workstations)
+- Primary tasks: Monitor backup health, restore files from history, configure new backup sources
+- Key scenarios: Spot failed backups quickly, browse backup snapshots like a file explorer, track deduplication savings
+- Technical: Real-time updates (SignalR), long-running operations (30+ min backups), large datasets (1M+ files per backup)
+- UX goals: Clarity over beauty, scannable not readable, professional IT tool aesthetic
+```
+
+### Week 1: Design & Generate (Days 1-5)
+
+**Day 1: Design Foundation**
+- [ ] T800 [UX] Create design system in Figma AI (color palette, typography, spacing, component styles)
+  - **Prompt Location**: Figma AI
+  - **Prompt**: "Context: [paste abstract]. Generate a design system for a professional IT backup monitoring tool. Include: color palette (focus on status colors - success green, warning yellow, error red), typography scale, 8px spacing system, component styles for cards, tables, buttons, forms. Optimize for long monitoring sessions (low eye strain)."
+  - **Deliverable**: `docs/design-system.fig` (Figma file), design tokens exported
+  
+- [ ] T801 [UX] Create dashboard wireframe in Figma AI
+  - **Prompt Location**: Figma AI  
+  - **Prompt**: "Context: [paste abstract]. Create a dashboard wireframe with: sidebar navigation (Dashboard, Devices, Restore, Settings), main area showing device status cards in a grid (6 per row), each card has device name, last backup timestamp, status badge, storage metric. Include header with search and notifications."
+  - **Deliverable**: `docs/wireframes/dashboard.fig`
+
+**Day 2: Component Design**
+- [ ] T802 [UX] Design device status card component in Figma AI
+  - **Prompt Location**: Figma AI
+  - **Prompt**: "Context: [paste abstract]. Design a device status card component with 3 states: healthy (green accent), warning (yellow), failed (red). Show: device icon, device name (headline), last backup time (subtitle), storage used bar chart, next backup countdown. Card should be ~250px wide, ~180px tall."
+  - **Deliverable**: `docs/components/device-card.fig` with variants (hover, selected states)
+
+- [ ] T803 [UX] Design file browser interface in Figma AI
+  - **Prompt Location**: Figma AI
+  - **Prompt**: "Context: [paste abstract]. Design a file browser interface for backup restore. Left panel: backup date selector (timeline view). Right panel: file table with columns (name with icon, size, modified date, download button). Include breadcrumb navigation, search bar, and multi-select checkboxes."
+  - **Deliverable**: `docs/components/file-browser.fig`
+
+**Day 3: Generate React Components**
+- [ ] T804 [UX] Generate dashboard card component in v0.dev
+  - **Prompt Location**: v0.dev
+  - **Prompt**: "Create a React component for device status cards matching this design [export from Figma]. Each card: device name, last backup time, success/fail badge, storage used. Red if failed in last 24h, green if healthy. Use shadcn/ui card component and Tailwind."
+  - **Deliverable**: `src/frontend/src/components/DeviceStatusCard.tsx`
+
+- [ ] T805 [UX] Generate file browser component in v0.dev
+  - **Prompt Location**: v0.dev
+  - **Prompt**: "Create a file browser table component with columns: name (with folder/file icon), size, modified date, download button. Tree view for folders (expandable). Use shadcn/ui table component. Include search and breadcrumb navigation."
+  - **Deliverable**: `src/frontend/src/components/FileBrowser.tsx`
+
+**Day 4: Forms & Interactions**
+- [ ] T806 [UX] Design add device form in Figma AI
+  - **Prompt Location**: Figma AI
+  - **Prompt**: "Context: [paste abstract]. Design a form for adding a new backup device. Fields: device name (text), protocol (dropdown: SMB/SFTP), host/IP (text), username (text), password (password), test connection button. Include validation states (error, success). Modal or side panel layout."
+  - **Deliverable**: `docs/components/add-device-form.fig`
+
+- [ ] T807 [UX] Generate add device form component in v0.dev
+  - **Prompt Location**: v0.dev
+  - **Prompt**: "Generate React form component from this design [export from Figma]. Include validation (required fields, IP format, test connection). Use shadcn/ui form, input, select components. Show loading state on test connection."
+  - **Deliverable**: `src/frontend/src/components/AddDeviceForm.tsx`
+
+- [ ] T808 [UX] Generate user-friendly error messages with Claude
+  - **Prompt Location**: Claude/ChatGPT
+  - **Prompt**: "Rewrite these technical backend errors for non-technical admins. Keep them actionable with clear next steps: [paste actual error messages from backend logs/exceptions]"
+  - **Deliverable**: Error message mapping in `src/frontend/src/utils/errorMessages.ts`
+
+**Day 5: Build & Integrate**
+- [ ] T809 [UX] Integrate v0.dev components into React app
+  - Copy generated components to `src/frontend/src/components/`
+  - Adapt to BackupChrono API endpoints
+  - Wire up SignalR for real-time backup progress updates
+  - **Files**: Multiple components in `src/frontend/src/components/`
+
+### Week 2: Polish (Days 6-10)
+
+**Day 6: Loading & Empty States**
+- [ ] T810 [UX] Design loading skeleton states in Figma AI
+  - **Prompt Location**: Figma AI
+  - **Prompt**: "Context: [paste abstract]. Create loading skeleton states for: device status card (shimmer effect), file browser table (3 skeleton rows). Also design empty states: no devices configured yet (with CTA button), no backups found, no files in backup."
+  - **Deliverable**: `docs/components/loading-states.fig`
+
+- [ ] T811 [UX] Generate loading state components in v0.dev
+  - **Prompt Location**: v0.dev
+  - **Prompt**: "Generate React components for these loading and empty states using Tailwind animations [paste Figma export]."
+  - **Deliverable**: `src/frontend/src/components/LoadingStates.tsx`, `src/frontend/src/components/EmptyStates.tsx`
+
+**Day 7: User Testing Simulation**
+- [ ] T812 [UX] Conduct novice sysadmin user testing with Claude
+  - **Prompt Location**: Claude/ChatGPT
+  - **Prompt**: "You're a novice sysadmin who's never used BackupChrono. I'll describe the UI step by step, you tell me what's confusing or unclear: [describe implemented UI]"
+  - **Deliverable**: Document feedback in `docs/ux/user-testing-feedback.md`
+
+- [ ] T813 [UX] Conduct experienced sysadmin user testing with Claude
+  - **Prompt Location**: Claude/ChatGPT
+  - **Prompt**: "Now you're an experienced sysadmin managing 50+ devices. What shortcuts, bulk actions, or filtering would you expect that's missing? [describe implemented UI]"
+  - **Deliverable**: Append feedback to `docs/ux/user-testing-feedback.md`
+
+**Day 8: Visual Polish**
+- [ ] T814 [UX] Design micro-interactions in Figma AI
+  - **Prompt Location**: Figma AI
+  - **Prompt**: "Context: [paste abstract]. Design hover states and animations for: device card hover (subtle lift shadow), backup progress indicator (animated pulse), file download button (loading spinner). Keep animations under 200ms for professional feel."
+  - **Deliverable**: `docs/components/micro-interactions.fig`
+
+- [ ] T815 [UX] Identify missing loading states with Claude
+  - **Prompt Location**: Claude/ChatGPT
+  - **Prompt**: "What loading states am I missing for: backup in progress (long-running 30+ min), device connection test (5-10 sec), file tree expansion, large file download? Suggest UX patterns for each."
+  - **Deliverable**: Implementation plan in task notes
+
+**Day 9: Accessibility & Responsiveness**
+- [ ] T816 [UX] Create responsive breakpoints in Figma AI
+  - **Prompt Location**: Figma AI
+  - **Prompt**: "Context: [paste abstract]. Create mobile/tablet breakpoints for dashboard. Mobile (< 768px): stack cards vertically, collapse sidebar to hamburger menu. Tablet (768-1024px): 3 cards per row."
+  - **Deliverable**: `docs/wireframes/dashboard-responsive.fig`
+
+- [ ] T817 [UX] Conduct accessibility review with Claude
+  - **Prompt Location**: Claude/ChatGPT
+  - **Prompt**: "Review this component for WCAG 2.1 AA compliance: [paste component code]. What keyboard shortcuts should work? What ARIA labels are missing?"
+  - **Deliverable**: Accessibility fixes in component files
+
+**Day 10: Final Touches**
+- [ ] T818 [UX] Design onboarding wizard in Figma AI
+  - **Prompt Location**: Figma AI
+  - **Prompt**: "Context: [paste abstract]. Design a 3-step first-run wizard overlay: Step 1 - Add first device, Step 2 - Configure first backup, Step 3 - View backup progress. Include progress indicator (1/3, 2/3, 3/3) and skip option."
+  - **Deliverable**: `docs/components/onboarding-wizard.fig`
+
+- [ ] T819 [UX] Generate contextual help tooltips with Claude
+  - **Prompt Location**: Claude/ChatGPT
+  - **Prompt**: "Generate contextual help tooltips for each configuration field in the device setup form. Keep under 20 words each. Fields: device name, protocol, host/IP, username, password, schedule, retention policy, include/exclude patterns."
+  - **Deliverable**: Tooltip content in `src/frontend/src/content/tooltips.ts`
+
+- [ ] T820 [UX] Final integration and testing
+  - Integrate all polished components
+  - Test responsive behavior across breakpoints
+  - Verify accessibility with keyboard navigation
+  - Test error states and loading states
+  - **Files**: Final updates across `src/frontend/src/`
+
+**Checkpoint**: Enhanced UX shipped with:
+- Professional design system
+- Dashboard with device status cards
+- File browser for restore
+- Add device form
+- Loading/empty states
+- Responsive design
+- WCAG 2.1 AA accessibility
+- Onboarding wizard
+
+### Priority Components (Minimum Viable UX)
+1. **Dashboard** with device status cards (T800-T804) - Days 1-3
+2. **File browser** for restore (T803, T805) - Day 3
+3. **Add device form** (T806-T807) - Day 4
+
+Everything else is polish that can ship in v2.
+
+### Effort Breakdown
+- **Week 1 (Design & Generate)**: 5 days, 10 tasks
+- **Week 2 (Polish)**: 5 days, 11 tasks
+- **Total**: 8-10 days, 21 tasks
+- **Minimum Viable UX**: 3-4 days (T800-T809 only)
+
+**Note**: This phase can run in parallel with backend feature development (US11, US12, US13) since it primarily touches frontend code.
+
 ### Assumptions
 - Estimates assume experienced developers familiar with ASP.NET Core, React, and Docker
 - Restic integration complexity is moderate (well-documented tool)
@@ -992,3 +1157,4 @@ Adds: Discord/Gotify notifications, device auto-discovery, command hooks
 - Testing time included in estimates (unit, integration, e2e)
 - No major architectural changes during implementation
 - 6-hour productive coding days (actual work time, not calendar time)
+- UX phase assumes familiarity with Figma AI, v0.dev, and AI prompt engineering

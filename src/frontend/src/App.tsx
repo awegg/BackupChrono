@@ -1,11 +1,13 @@
-import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { signalRService } from './services/signalr';
 import Dashboard from './pages/Dashboard';
 import DeviceDetail from './pages/DeviceDetail';
 import { BackupBrowser } from './pages/BackupBrowser';
+import { DevicesPage } from './pages/DevicesPage';
 import { ErrorNotification } from './components/ErrorNotification';
+import { Sidebar } from './components/Sidebar';
 import './App.css';
 
 const queryClient = new QueryClient();
@@ -29,26 +31,28 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <div className="min-h-screen bg-gray-50">
-          {signalRError && (
-            <ErrorNotification 
-              message={signalRError} 
-              onClose={() => setSignalRError(null)}
-            />
-          )}
-          <nav className="bg-blue-600 text-white shadow-lg">
-            <div className="max-w-7xl mx-auto px-4 py-3">
-              <Link to="/" className="text-2xl font-bold">
-                BackupChrono
-              </Link>
-            </div>
-          </nav>
-          
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/devices/:deviceId" element={<DeviceDetail />} />
-            <Route path="/devices/:deviceId/backups" element={<BackupBrowser />} />
-          </Routes>
+        <div className="min-h-screen bg-background flex">
+          {/* Sidebar */}
+          <Sidebar />
+
+          {/* Main Content */}
+          <div className="flex-1 ml-64 min-h-screen">
+            {signalRError && (
+              <ErrorNotification 
+                message={signalRError} 
+                onClose={() => setSignalRError(null)}
+              />
+            )}
+            
+            <main className="p-8 min-h-screen">
+              <Routes>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/devices" element={<DevicesPage />} />
+                <Route path="/devices/:deviceId" element={<DeviceDetail />} />
+                <Route path="/devices/:deviceId/backups" element={<BackupBrowser />} />
+              </Routes>
+            </main>
+          </div>
         </div>
       </BrowserRouter>
     </QueryClientProvider>

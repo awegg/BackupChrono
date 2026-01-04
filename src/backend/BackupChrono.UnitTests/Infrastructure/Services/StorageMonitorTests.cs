@@ -2,6 +2,7 @@ using BackupChrono.Core.Interfaces;
 using BackupChrono.Infrastructure.Restic;
 using BackupChrono.Infrastructure.Services;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Xunit;
 
 namespace BackupChrono.UnitTests.Infrastructure.Services;
@@ -15,8 +16,8 @@ public class StorageMonitorTests
         var tempPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
         try
         {
-            var resticClient = new ResticClient("restic", tempPath, "password");
-            var monitor = new StorageMonitor(new NullLogger<StorageMonitor>(), resticClient);
+            var options = Options.Create(new ResticOptions { RepositoryBasePath = tempPath });
+            var monitor = new StorageMonitor(new NullLogger<StorageMonitor>(), options);
 
             // Act
             var result = await monitor.GetAllRepositoryStorageStatus();
@@ -49,8 +50,8 @@ public class StorageMonitorTests
         Directory.CreateDirectory(tempPath);
         try
         {
-            var resticClient = new ResticClient("restic", tempPath, "password");
-            var monitor = new StorageMonitor(new NullLogger<StorageMonitor>(), resticClient);
+            var options = Options.Create(new ResticOptions { RepositoryBasePath = tempPath });
+            var monitor = new StorageMonitor(new NullLogger<StorageMonitor>(), options);
 
             // Act
             var result = (await monitor.GetAllRepositoryStorageStatus()).ToList();

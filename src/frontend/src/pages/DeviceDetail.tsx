@@ -37,7 +37,7 @@ export default function DeviceDetail() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <RefreshCw className="w-8 h-8 animate-spin text-blue-500" />
+        <RefreshCw className="w-6 h-6 animate-spin text-blue-500" />
       </div>
     );
   }
