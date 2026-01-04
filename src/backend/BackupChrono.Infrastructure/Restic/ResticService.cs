@@ -359,7 +359,7 @@ public class ResticService : IResticService
                         // Debug logging for first few files
                         if (files.Count < 3)
                         {
-                            _logger.LogInformation(
+                            _logger.LogDebug(
                                 "File: {FilePath}, Parent: {ParentPath}, NormalizedPath: {NormalizedPath}, Match: {Match}",
                                 filePath,
                                 parentPath,

@@ -341,9 +341,17 @@ public class ResticClient : IResticClient
                     if (!_process.HasExited)
                     {
                         _process.WaitForExit(5000);
+                        
+                        // If still not exited, force kill
+                        if (!_process.HasExited)
+                        {
+                            _process.Kill(entireProcessTree: true);
+                            _process.WaitForExit(1000);
+                        }
                     }
 
-                    if (_process.ExitCode != 0)
+                    // Only check ExitCode if process has exited
+                    if (_process.HasExited && _process.ExitCode != 0)
                     {
                         var error = _errorBuilder.ToString();
                         // Can't throw in Dispose, log instead
@@ -377,7 +385,10 @@ public class ResticClient : IResticClient
     /// <summary>
     /// Executes a restic command with streaming JSON output (for progress monitoring).
     /// </summary>
-    public async IAsyncEnumerable<T> ExecuteCommandJsonStream<T>(string[] args, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
+    public async IAsyncEnumerable<T> ExecuteCommandJsonStream<T>(
+        string[] args,
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default,
+        string? repositoryPathOverride = null)
     {
         var startInfo = new ProcessStartInfo
         {
@@ -393,7 +404,8 @@ public class ResticClient : IResticClient
             startInfo.ArgumentList.Add(arg);
         }
 
-        startInfo.Environment["RESTIC_REPOSITORY"] = _repositoryPath;
+        var effectiveRepositoryPath = repositoryPathOverride ?? _repositoryPath;
+        startInfo.Environment["RESTIC_REPOSITORY"] = effectiveRepositoryPath;
         startInfo.Environment["RESTIC_PASSWORD"] = _password;
 
         using var process = new Process { StartInfo = startInfo };

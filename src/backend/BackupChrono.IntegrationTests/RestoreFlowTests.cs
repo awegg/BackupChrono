@@ -202,10 +202,12 @@ public class RestoreFlowTests : IAsyncLifetime
         // Arrange
         var backupId = "test456";
         var path = "/some/path";
+        var deviceId = Guid.NewGuid();
+        var shareId = Guid.NewGuid();
 
         // Act
         var response = await _httpClient.GetAsync(
-            $"api/backups/{backupId}/files?path={Uri.EscapeDataString(path)}");
+            $"api/backups/{backupId}/files?deviceId={deviceId}&shareId={shareId}&path={Uri.EscapeDataString(path)}");
 
         // Assert - Will be 404 since backup doesn't exist
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
@@ -275,9 +277,12 @@ public class RestoreFlowTests : IAsyncLifetime
     {
         // Arrange
         var backupId = "test202";
+        var deviceId = Guid.NewGuid();
+        var shareId = Guid.NewGuid();
 
         // Act - Default path is root
-        var response = await _httpClient.GetAsync($"api/backups/{backupId}/files");
+        var response = await _httpClient.GetAsync(
+            $"api/backups/{backupId}/files?deviceId={deviceId}&shareId={shareId}");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.NotFound); // Backup doesn't exist

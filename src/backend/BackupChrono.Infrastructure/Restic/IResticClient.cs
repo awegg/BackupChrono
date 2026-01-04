@@ -26,7 +26,8 @@ public interface IResticClient
 
     IAsyncEnumerable<T> ExecuteCommandJsonStream<T>(
         string[] args,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        string? repositoryPathOverride = null);
 
     Task<T?> ExecuteCommandJson<T>(
         string[] args,
