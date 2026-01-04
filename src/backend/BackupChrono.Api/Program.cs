@@ -101,7 +101,7 @@ builder.Services.Configure<BackupChrono.Infrastructure.Services.ResticOptions>(o
 
 builder.Services.AddSingleton<GitConfigService>(sp => 
     new GitConfigService(configPath));
-builder.Services.AddSingleton<ResticClient>(sp => 
+builder.Services.AddSingleton<IResticClient, ResticClient>(sp => 
 {
     var resticOptions = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<BackupChrono.Infrastructure.Services.ResticOptions>>().Value;
     var resticPassword = resticOptions.Password;
@@ -200,6 +200,7 @@ app.UseCors("AllowFrontend");
 // app.UseAuthorization();
 app.MapControllers();
 app.MapHub<BackupProgressHub>("/hubs/backup-progress");
+app.MapHub<RestoreProgressHub>("/hubs/restore-progress");
 
 // Register graceful shutdown
 var lifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();

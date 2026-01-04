@@ -109,3 +109,49 @@ export interface BackupJob {
   commandLine?: string;
 }
 
+export enum BackupStatus {
+  Success = 'Success',
+  Partial = 'Partial',
+  Failed = 'Failed',
+}
+
+export interface Backup {
+  id: string;
+  deviceId: string;
+  shareId?: string;
+  deviceName: string;
+  shareName?: string;
+  timestamp: string;
+  status: BackupStatus;
+  sharesPaths: Record<string, string>;
+  filesNew?: number;
+  filesChanged?: number;
+  filesUnmodified?: number;
+  dataAdded?: number;
+  dataProcessed?: number;
+  duration?: string;
+  errorMessage?: string;
+  createdByJobId?: string;
+}
+
+export interface FileEntry {
+  name: string;
+  path: string;
+  isDirectory: boolean;
+  size: number;
+  modifiedAt: string;
+  permissions?: string;
+}
+
+export interface FileVersion {
+  backupId: string;
+  timestamp: string;
+  size: number;
+  hash: string;
+}
+
+export interface RestoreRequest {
+  targetPath: string;
+  includePaths?: string[];
+  restoreToSource?: boolean;
+}

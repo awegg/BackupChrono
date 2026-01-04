@@ -1,5 +1,6 @@
 using BackupChrono.Api.DTOs;
 using BackupChrono.Api.Services;
+using BackupChrono.Core.Entities;
 using BackupChrono.Core.Interfaces;
 using BackupChrono.Infrastructure.Utilities;
 using Microsoft.AspNetCore.Mvc;
@@ -12,17 +13,20 @@ public class DevicesController : ControllerBase
 {
     private readonly IDeviceService _deviceService;
     private readonly IShareService _shareService;
+    private readonly IResticService _resticService;
     private readonly IMappingService _mappingService;
     private readonly ILogger<DevicesController> _logger;
 
     public DevicesController(
         IDeviceService deviceService,
         IShareService shareService,
+        IResticService resticService,
         IMappingService mappingService,
         ILogger<DevicesController> logger)
     {
         _deviceService = deviceService;
         _shareService = shareService;
+        _resticService = resticService;
         _mappingService = mappingService;
         _logger = logger;
     }
@@ -249,6 +253,96 @@ public class DevicesController : ControllerBase
         {
             _logger.LogError(ex, "Error sending WOL to device {DeviceId}", deviceId);
             return StatusCode(500, new ErrorResponse { Error = "Failed to send WOL packet", Detail = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// List all backups for a specific device
+    /// </summary>
+    [HttpGet("{deviceId:guid}/backups")]
+    [ProducesResponseType(typeof(List<BackupDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<List<BackupDto>>> ListDeviceBackups(Guid deviceId)
+    {
+        try
+        {
+            // Verify device exists
+            var device = await _deviceService.GetDevice(deviceId);
+            if (device == null)
+            {
+                return NotFound(new ErrorResponse
+                {
+                    Error = "Device not found",
+                    Detail = $"No device with ID {deviceId}"
+                });
+            }
+
+            // Get all shares for this device
+            var shares = await _shareService.ListShares(deviceId);
+            var allBackups = new List<Backup>();
+
+            // Query each share's repository
+            foreach (var share in shares)
+            {
+                try
+                {
+                    // Repository path is ./repositories/{deviceId}/{shareId}/
+                    var repositoryPath = Path.Combine("./repositories", deviceId.ToString(), share.Id.ToString());
+                    
+                    // Check if repository exists before querying
+                    if (await _resticService.RepositoryExists(repositoryPath))
+                    {
+                        // Don't filter by hostname since we're already querying the correct repository
+                        var backups = await _resticService.ListBackups(null, repositoryPath);
+                        
+                        // Populate device and share IDs for each backup
+                        foreach (var backup in backups)
+                        {
+                            backup.DeviceId = deviceId;
+                            backup.ShareId = share.Id;
+                            backup.ShareName = share.Name;
+                        }
+                        
+                        allBackups.AddRange(backups);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to list backups for share {ShareId} on device {DeviceId}", share.Id, deviceId);
+                    // Continue with other shares
+                }
+            }
+
+            var backupDtos = allBackups.Select(b => new BackupDto
+            {
+                Id = b.Id,
+                DeviceId = b.DeviceId,
+                ShareId = b.ShareId,
+                DeviceName = b.DeviceName,
+                ShareName = b.ShareName,
+                Timestamp = b.Timestamp,
+                Status = b.Status.ToString(),
+                SharesPaths = b.SharesPaths,
+                FilesNew = b.FilesNew,
+                FilesChanged = b.FilesChanged,
+                FilesUnmodified = b.FilesUnmodified,
+                DataAdded = b.DataAdded,
+                DataProcessed = b.DataProcessed,
+                Duration = b.Duration.ToString(),
+                ErrorMessage = b.ErrorMessage,
+                CreatedByJobId = b.CreatedByJobId
+            }).ToList();
+
+            return Ok(backupDtos);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error listing backups for device {DeviceId}", deviceId);
+            return StatusCode(500, new ErrorResponse
+            {
+                Error = "Failed to list device backups",
+                Detail = ex.Message
+            });
         }
     }
 }

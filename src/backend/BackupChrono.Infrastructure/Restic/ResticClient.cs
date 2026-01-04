@@ -7,7 +7,7 @@ namespace BackupChrono.Infrastructure.Restic;
 /// <summary>
 /// Low-level client for executing restic commands and parsing JSON output.
 /// </summary>
-public class ResticClient
+public class ResticClient : IResticClient
 {
     private readonly string _resticPath;
     private readonly string _repositoryPath;
@@ -139,6 +139,89 @@ public class ResticClient
         }
 
         return output;
+    }
+
+    /// <summary>
+    /// Executes a restic command and returns binary output (for dump command).
+    /// </summary>
+    public async Task<byte[]> ExecuteCommandBinary(
+        string[] args,
+        CancellationToken cancellationToken = default,
+        string? repositoryPathOverride = null)
+    {
+        var effectiveTimeout = TimeSpan.FromMinutes(30);
+        using var timeoutCts = new CancellationTokenSource(effectiveTimeout);
+        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
+        
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = _resticPath,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            RedirectStandardInput = false,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+
+        foreach (var arg in args)
+        {
+            startInfo.ArgumentList.Add(arg);
+        }
+
+        var effectiveRepositoryPath = repositoryPathOverride ?? _repositoryPath;
+        startInfo.Environment["RESTIC_REPOSITORY"] = effectiveRepositoryPath;
+        startInfo.Environment["RESTIC_PASSWORD"] = _password;
+
+        using var process = new Process { StartInfo = startInfo };
+        var errorBuilder = new StringBuilder();
+
+        process.ErrorDataReceived += (sender, e) =>
+        {
+            if (e.Data != null)
+            {
+                errorBuilder.AppendLine(e.Data);
+            }
+        };
+
+        process.Start();
+        process.BeginErrorReadLine();
+
+        // Read binary output
+        using var memoryStream = new MemoryStream();
+        await process.StandardOutput.BaseStream.CopyToAsync(memoryStream, linkedCts.Token);
+
+        try
+        {
+            await process.WaitForExitAsync(linkedCts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            try
+            {
+                if (!process.HasExited)
+                {
+                    process.Kill(entireProcessTree: true);
+                    await Task.Delay(500);
+                }
+            }
+            catch { }
+
+            if (timeoutCts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+            {
+                throw new TimeoutException($"Restic command timed out after {effectiveTimeout.TotalMinutes:F1} minutes");
+            }
+            
+            throw;
+        }
+
+        if (process.ExitCode != 0)
+        {
+            var error = errorBuilder.ToString();
+            throw new InvalidOperationException(
+                $"Restic command failed with exit code {process.ExitCode}. Error: {error}");
+        }
+
+        return memoryStream.ToArray();
     }
 
     /// <summary>

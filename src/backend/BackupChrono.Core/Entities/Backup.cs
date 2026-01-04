@@ -14,12 +14,12 @@ public class Backup
     /// <summary>
     /// Foreign key to the device that was backed up.
     /// </summary>
-    public required Guid DeviceId { get; init; }
+    public required Guid DeviceId { get; set; }
 
     /// <summary>
     /// Foreign key to the share (null for device-level backups).
     /// </summary>
-    public Guid? ShareId { get; init; }
+    public Guid? ShareId { get; set; }
 
     /// <summary>
     /// Device name (denormalized for query performance).
@@ -29,7 +29,7 @@ public class Backup
     /// <summary>
     /// Share name (denormalized, null for device-level backups).
     /// </summary>
-    public string? ShareName { get; init; }
+    public string? ShareName { get; set; }
 
     /// <summary>
     /// Timestamp when the backup was created (UTC).
