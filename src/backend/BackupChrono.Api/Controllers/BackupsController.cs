@@ -59,7 +59,10 @@ public class BackupsController : ControllerBase
 
             return Ok(backupDtos);
         }
-        catch (InvalidOperationException ex) when (ex.Message.Contains("repository does not exist"))
+        catch (InvalidOperationException ex) when (
+            ex.Message.Contains("repository does not exist") ||
+            ex.Message.Contains("exit code 1") ||
+            ex.Message.Contains("unable to open config file"))
         {
             // Repository doesn't exist yet - return empty list
             _logger.LogInformation("Repository does not exist yet, returning empty backup list");
