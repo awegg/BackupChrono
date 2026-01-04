@@ -164,6 +164,8 @@ public class BackupJobDto
     public Guid Id { get; set; }
     public Guid DeviceId { get; set; }
     public Guid? ShareId { get; set; }
+    public string? DeviceName { get; set; }
+    public string? ShareName { get; set; }
     public string Type { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
     public DateTime? StartedAt { get; set; }
@@ -174,6 +176,7 @@ public class BackupJobDto
     public string? ErrorMessage { get; set; }
     public int RetryAttempt { get; set; }
     public DateTime? NextRetryAt { get; set; }
+    public string? CommandLine { get; set; }
 }
 
 public class BackupDto

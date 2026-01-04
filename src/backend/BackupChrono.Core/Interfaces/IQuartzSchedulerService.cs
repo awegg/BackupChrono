@@ -50,4 +50,11 @@ public interface IQuartzSchedulerService
     /// <param name="shareId">Optional share identifier; if null, run the device-level backup.</param>
     /// <returns>Task that completes when the trigger request is dispatched.</returns>
     Task TriggerImmediateBackup(Guid deviceId, Guid? shareId = null);
+
+    /// <summary>
+    /// Cancels a running backup job.
+    /// </summary>
+    /// <param name="jobId">The job identifier to cancel.</param>
+    /// <returns>Task that completes when the cancellation is requested.</returns>
+    Task CancelJob(Guid jobId);
 }

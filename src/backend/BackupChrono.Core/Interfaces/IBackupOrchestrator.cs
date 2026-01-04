@@ -1,4 +1,5 @@
 using BackupChrono.Core.Entities;
+using BackupChrono.Core.DTOs;
 
 namespace BackupChrono.Core.Interfaces;
 
@@ -44,4 +45,24 @@ public interface IBackupOrchestrator
     /// Lists all tracked backup jobs (active and recent).
     /// </summary>
     Task<IEnumerable<BackupJob>> ListJobs();
+
+    /// <summary>
+    /// Tracks a failed job that couldn't be executed (for error reporting).
+    /// </summary>
+    Task TrackFailedJob(BackupJob failedJob);
+
+    /// <summary>
+    /// Gets the count of currently active (running) jobs.
+    /// </summary>
+    int GetActiveJobCount();
+
+    /// <summary>
+    /// Cancels all active jobs (used during graceful shutdown).
+    /// </summary>
+    Task CancelAllJobs();
+
+    /// <summary>
+    /// Event raised when backup progress is updated.
+    /// </summary>
+    event EventHandler<BackupProgress>? ProgressUpdated;
 }

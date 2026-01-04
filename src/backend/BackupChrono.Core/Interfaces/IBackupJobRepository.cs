@@ -40,4 +40,11 @@ public interface IBackupJobRepository
     /// <param name="status">The job status to filter by.</param>
     /// <returns>A list of backup jobs with the specified status.</returns>
     Task<List<BackupJob>> ListJobsByStatus(BackupJobStatus status);
+    
+    /// <summary>
+    /// Deletes a backup job by its ID.
+    /// </summary>
+    /// <param name="jobId">The unique identifier of the job to delete.</param>
+    /// <returns>True if the job was deleted; false if the job was not found.</returns>
+    Task<bool> DeleteJob(Guid jobId);
 }

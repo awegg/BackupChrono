@@ -4,6 +4,7 @@ using BackupChrono.Core.ValueObjects;
 using BackupChrono.Infrastructure.Services;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
 
@@ -16,6 +17,7 @@ public class BackupOrchestratorTests
     private readonly Mock<IProtocolPluginLoader> _mockPluginLoader;
     private readonly Mock<IResticService> _mockResticService;
     private readonly Mock<IStorageMonitor> _mockStorageMonitor;
+    private readonly Mock<IBackupJobRepository> _mockBackupJobRepository;
     private readonly Mock<ILogger<BackupOrchestrator>> _mockLogger;
     private readonly BackupOrchestrator _orchestrator;
 
@@ -26,7 +28,13 @@ public class BackupOrchestratorTests
         _mockPluginLoader = new Mock<IProtocolPluginLoader>();
         _mockResticService = new Mock<IResticService>();
         _mockStorageMonitor = new Mock<IStorageMonitor>();
+        _mockBackupJobRepository = new Mock<IBackupJobRepository>();
         _mockLogger = new Mock<ILogger<BackupOrchestrator>>();
+
+        var resticOptions = Options.Create(new ResticOptions
+        {
+            RepositoryBasePath = Path.Combine(Path.GetTempPath(), "test-repositories")
+        });
 
         _orchestrator = new BackupOrchestrator(
             _mockDeviceService.Object,
@@ -34,7 +42,9 @@ public class BackupOrchestratorTests
             _mockPluginLoader.Object,
             _mockResticService.Object,
             _mockStorageMonitor.Object,
-            _mockLogger.Object
+            _mockBackupJobRepository.Object,
+            _mockLogger.Object,
+            resticOptions
         );
     }
 
@@ -359,5 +369,33 @@ public class BackupOrchestratorTests
             DataProcessed = 10240000,
             Duration = TimeSpan.FromMinutes(5)
         };
+    }
+
+    [Fact]
+    public async Task TrackFailedJob_SavesJobToRepository()
+    {
+        // Arrange
+        var failedJob = new BackupJob
+        {
+            Id = Guid.NewGuid(),
+            DeviceId = Guid.NewGuid(),
+            ShareId = null,
+            Type = BackupJobType.Manual,
+            Status = BackupJobStatus.Failed,
+            StartedAt = DateTime.UtcNow,
+            CompletedAt = DateTime.UtcNow,
+            ErrorMessage = "Test error message"
+        };
+
+        // Act
+        await _orchestrator.TrackFailedJob(failedJob);
+
+        // Assert
+        _mockBackupJobRepository.Verify(
+            x => x.SaveJob(It.Is<BackupJob>(j => 
+                j.Id == failedJob.Id && 
+                j.Status == BackupJobStatus.Failed && 
+                j.ErrorMessage == "Test error message")),
+            Times.Once);
     }
 }

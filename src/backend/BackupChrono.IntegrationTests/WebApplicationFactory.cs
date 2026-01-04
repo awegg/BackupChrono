@@ -1,10 +1,12 @@
 using BackupChrono.Core.Interfaces;
 using BackupChrono.Infrastructure.Git;
+using BackupChrono.Infrastructure.Repositories;
 using BackupChrono.Infrastructure.Restic;
 using BackupChrono.Infrastructure.Services;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Moq;
 
 namespace BackupChrono.IntegrationTests;
@@ -38,7 +40,8 @@ public class BackupChronoWebApplicationFactory : WebApplicationFactory<Program>
                 d.ServiceType == typeof(IDeviceService) ||
                 d.ServiceType == typeof(IShareService) ||
                 d.ServiceType == typeof(IBackupOrchestrator) ||
-                d.ServiceType == typeof(IQuartzSchedulerService)
+                d.ServiceType == typeof(IQuartzSchedulerService) ||
+                d.ServiceType == typeof(IBackupJobRepository)
             ).ToList();
 
             foreach (var descriptor in descriptors)
@@ -53,11 +56,23 @@ public class BackupChronoWebApplicationFactory : WebApplicationFactory<Program>
             services.AddSingleton(_ => MockBackupOrchestrator.Object);
             services.AddSingleton(_ => MockSchedulerService.Object);
             
+            // Provide a real GitConfigService with test repository
+            var gitConfig = new GitConfigService(_repositoryPath);
+            services.AddSingleton(gitConfig);
+            
+            // Provide a real BackupJobRepository with the mocked services
+            services.AddSingleton<IBackupJobRepository>(sp =>
+            {
+                var logger = sp.GetRequiredService<ILogger<BackupJobRepository>>();
+                return new BackupJobRepository(
+                    gitConfig.RepositoryPath, 
+                    logger,
+                    MockDeviceService.Object,
+                    MockShareService.Object);
+            });
+            
             // Provide a real ResticClient with test repository
             services.AddSingleton(new ResticClient("restic", _repositoryPath, "test-password"));
-            
-            // Provide a real GitConfigService with test repository
-            services.AddSingleton(new GitConfigService(_repositoryPath));
         });
     }
 
