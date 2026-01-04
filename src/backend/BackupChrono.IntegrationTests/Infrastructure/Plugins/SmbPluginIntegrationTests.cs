@@ -51,7 +51,8 @@ public class SmbPluginIntegrationTests : IAsyncLifetime
             .WithImage("dperson/samba:latest")
             .WithPortBinding(HostPort, SmbPort) // Map container's 445 to host's high port
             .WithEnvironment("USER", $"{TestUsername};{TestPassword}")
-            .WithEnvironment("SHARE", $"{TestShareName};/share;yes;no;no;{TestUsername};{TestUsername};{TestUsername};{TestUsername}")
+            // SHARE format: name;path;browsable;readonly;guest;users;admins;writelist;comment
+            .WithEnvironment("SHARE", $"{TestShareName};/share;yes;no;no;{TestUsername};;;;Test Share")
             .WithEnvironment("WORKGROUP", "WORKGROUP")
             .WithWaitStrategy(Wait.ForUnixContainer().UntilMessageIsLogged(".*smbd.*started.*"))
             .Build();
