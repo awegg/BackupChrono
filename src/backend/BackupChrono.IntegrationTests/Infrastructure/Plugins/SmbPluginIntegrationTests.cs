@@ -49,19 +49,16 @@ public class SmbPluginIntegrationTests : IAsyncLifetime
         // Map container's 445 to a high port on host to avoid conflicts with Windows SMB service
         _sambaContainer = new ContainerBuilder()
             .WithImage("dperson/samba:latest")
-            .WithPortBinding(HostPort, SmbPort) // Map container's 445 to host's high port
+            .WithPortBinding(HostPort, SmbPort)
             .WithEnvironment("USER", $"{TestUsername};{TestPassword}")
-            // SHARE format: name;path;browsable;readonly;guest;users;admins;writelist;comment
-            .WithEnvironment("SHARE", $"{TestShareName};/share;yes;no;no;{TestUsername};;;;Test Share")
+            .WithEnvironment("SHARE", $"{TestShareName};/share")
             .WithEnvironment("WORKGROUP", "WORKGROUP")
             .WithWaitStrategy(Wait.ForUnixContainer().UntilMessageIsLogged(".*smbd.*started.*"))
             .Build();
 
         await _sambaContainer.StartAsync();
 
-        // Use localhost - the port mapping should make it accessible
         _containerHost = "localhost";
-        
         _plugin = new SmbPlugin();
 
         // Wait for Samba to fully initialize
