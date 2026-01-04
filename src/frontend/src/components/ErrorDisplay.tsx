@@ -88,7 +88,7 @@ export function ErrorDisplay({ error }: ErrorDisplayProps) {
                 {error?.config?.method && (
                   <div>
                     <dt className="font-semibold text-red-900">Request Method:</dt>
-                    <dd className="text-red-700 ml-4">{error.config.method.toUpperCase()}</dd>
+                    <dd className="text-red-700 ml-4">{typeof error.config.method === 'string' ? error.config.method.toUpperCase() : String(error.config.method)}</dd>
                   </div>
                 )}
               </dl>

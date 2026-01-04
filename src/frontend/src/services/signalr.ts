@@ -2,8 +2,8 @@ import * as signalR from '@microsoft/signalr';
 
 export interface BackupProgress {
   jobId: string;
-  deviceName: string;
-  shareName: string;
+  deviceName?: string;
+  shareName?: string;
   status: string;
   percentComplete?: number;
   filesProcessed?: number;

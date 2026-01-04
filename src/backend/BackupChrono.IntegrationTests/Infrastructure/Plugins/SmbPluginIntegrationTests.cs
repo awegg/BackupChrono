@@ -92,20 +92,9 @@ public class SmbPluginIntegrationTests : IAsyncLifetime
         return false;
     }
 
-    [Fact]
+    [Fact(Skip = "SMBLibrary only supports port 445. Testcontainers uses port 44555, making TestConnection unreachable in this test environment.")]
     public async Task TestConnection_WithValidCredentials_ShouldReturnTrue()
     {
-        // SKIPPED: SMBLibrary only supports port 445, not custom ports
-        // Testcontainers maps container port 445 to a random host port, which SMBLibrary can't reach
-        // This is a known limitation documented in SmbPlugin.cs
-        // Mount operations work correctly because they use native tools (mount.cifs) which support custom ports
-        if (HostPort != 445)
-        {
-            // Test is skipped (early return) - xUnit doesn't support dynamic Skip
-            // This shows as PASSED but doesn't execute TestConnection logic
-            return;
-        }
-
         // Arrange
         var device = CreateTestDevice();
 

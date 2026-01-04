@@ -18,7 +18,7 @@ export default function DeviceForm({ device, onSuccess, onCancel }: DeviceFormPr
     username: device?.username || '',
     password: device?.password || '',
     wakeOnLanEnabled: device?.wakeOnLanEnabled || false,
-    macAddress: device?.macAddress,
+    wakeOnLanMacAddress: device?.wakeOnLanMacAddress,
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<any>(null);
@@ -110,10 +110,12 @@ export default function DeviceForm({ device, onSuccess, onCancel }: DeviceFormPr
       </div>
 
       <div>
-        <label className="block text-sm font-medium mb-1">Password</label>
+        <label className="block text-sm font-medium mb-1">
+          Password {device && <span className="text-gray-500 text-xs">(leave empty to keep existing)</span>}
+        </label>
         <input
           type="password"
-          required
+          required={!device}
           value={formData.password}
           onChange={(e) => setFormData({ ...formData, password: e.target.value })}
           className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -136,8 +138,8 @@ export default function DeviceForm({ device, onSuccess, onCancel }: DeviceFormPr
           <label className="block text-sm font-medium mb-1">MAC Address</label>
           <input
             type="text"
-            value={formData.macAddress || ''}
-            onChange={(e) => setFormData({ ...formData, macAddress: e.target.value })}
+            value={formData.wakeOnLanMacAddress || ''}
+            onChange={(e) => setFormData({ ...formData, wakeOnLanMacAddress: e.target.value })}
             className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="00:11:22:33:44:55"
           />

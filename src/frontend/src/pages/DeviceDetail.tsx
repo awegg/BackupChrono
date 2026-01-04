@@ -82,7 +82,7 @@ export default function DeviceDetail() {
         </div>
       </div>
 
-      <ShareList deviceId={deviceId!} shares={shares} onShareUpdated={loadData} />
+      {deviceId && <ShareList deviceId={deviceId} shares={shares} onShareUpdated={loadData} />}
     </div>
   );
 }

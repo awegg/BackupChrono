@@ -3,6 +3,7 @@ using BackupChrono.Core.Interfaces;
 using BackupChrono.Infrastructure.Utilities;
 using SMBLibrary;
 using SMBLibrary.Client;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 
@@ -14,8 +15,7 @@ namespace BackupChrono.Infrastructure.Plugins;
 /// </summary>
 public class SmbPlugin : IProtocolPlugin
 {
-    private static readonly Dictionary<string, string> _mountedPaths = new();
-    private static readonly object _mountLock = new object();
+    private static readonly ConcurrentDictionary<string, Task<string>> _mountTasks = new();
     public string ProtocolName => "SMB";
 
     public bool SupportsWakeOnLan => true;
@@ -59,36 +59,28 @@ public class SmbPlugin : IProtocolPlugin
         var uncPath = BuildUncPath(device, share);
         var password = device.Password.GetPlaintext();
 
-        lock (_mountLock)
+        // Use GetOrAdd with Task pattern for atomic async check-and-mount
+        // This prevents race conditions where multiple threads try to mount the same share
+        var mountTask = _mountTasks.GetOrAdd(uncPath, _ =>
         {
-            // Check if already mounted
-            if (_mountedPaths.ContainsKey(uncPath))
+            return Task.Run(async () =>
             {
-                return _mountedPaths[uncPath];
-            }
-        }
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                {
+                    return await MountShareWindows(device, share, uncPath, password);
+                }
+                else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+                {
+                    return await MountShareLinux(device, share, uncPath, password);
+                }
+                else
+                {
+                    throw new PlatformNotSupportedException($"SMB mounting not supported on {RuntimeInformation.OSDescription}");
+                }
+            });
+        });
 
-        string mountPoint;
-
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        {
-            mountPoint = await MountShareWindows(device, share, uncPath, password);
-        }
-        else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-        {
-            mountPoint = await MountShareLinux(device, share, uncPath, password);
-        }
-        else
-        {
-            throw new PlatformNotSupportedException($"SMB mounting not supported on {RuntimeInformation.OSDescription}");
-        }
-
-        lock (_mountLock)
-        {
-            _mountedPaths[uncPath] = mountPoint;
-        }
-
-        return mountPoint;
+        return await mountTask;
     }
 
     private async Task<string> MountShareWindows(Device device, Share share, string uncPath, string password)
@@ -122,7 +114,12 @@ public class SmbPlugin : IProtocolPlugin
             var outputTask = process.StandardOutput.ReadToEndAsync();
             var errorTask = process.StandardError.ReadToEndAsync();
             await Task.WhenAll(outputTask, errorTask);
-            process.WaitForExit();
+            
+            if (!process.WaitForExit(30000)) // 30 second timeout
+            {
+                process.Kill();
+                throw new TimeoutException("Mount operation timed out after 30 seconds");
+            }
 
             var output = outputTask.Result;
             var error = errorTask.Result;
@@ -161,7 +158,22 @@ public class SmbPlugin : IProtocolPlugin
                 RedirectStandardError = true,
                 UseShellExecute = false
             });
-            chmodProcess?.WaitForExit();
+            
+            if (chmodProcess == null)
+            {
+                throw new InvalidOperationException("Failed to start chmod process for credential file permissions");
+            }
+            
+            if (!chmodProcess.WaitForExit(5000)) // 5 second timeout
+            {
+                chmodProcess.Kill();
+                throw new TimeoutException("chmod operation timed out after 5 seconds");
+            }
+            
+            if (chmodProcess.ExitCode != 0)
+            {
+                throw new InvalidOperationException($"Failed to set permissions on credential file. Exit code: {chmodProcess.ExitCode}");
+            }
 
             // Mount using mount.cifs with port support
             var portOption = device.Port.HasValue && device.Port.Value != 445 
@@ -191,7 +203,12 @@ public class SmbPlugin : IProtocolPlugin
             var outputTask = process.StandardOutput.ReadToEndAsync();
             var errorTask = process.StandardError.ReadToEndAsync();
             await Task.WhenAll(outputTask, errorTask);
-            process.WaitForExit();
+            
+            if (!process.WaitForExit(30000)) // 30 second timeout
+            {
+                process.Kill();
+                throw new TimeoutException("Mount operation timed out after 30 seconds");
+            }
 
             var output = outputTask.Result;
             var error = errorTask.Result;
@@ -226,14 +243,12 @@ public class SmbPlugin : IProtocolPlugin
             await UnmountShareLinux(mountPath);
         }
 
-        lock (_mountLock)
+        // Remove from tracking (even if unmount failed, don't track it)
+        // Find and remove atomically using TryRemove
+        var entry = _mountTasks.FirstOrDefault(x => x.Value.IsCompletedSuccessfully && x.Value.Result == mountPath);
+        if (entry.Key != null)
         {
-            // Remove from tracking (even if unmount failed, don't track it)
-            var entry = _mountedPaths.FirstOrDefault(x => x.Value == mountPath);
-            if (entry.Key != null)
-            {
-                _mountedPaths.Remove(entry.Key);
-            }
+            _mountTasks.TryRemove(entry.Key, out _);
         }
     }
 
@@ -258,7 +273,12 @@ public class SmbPlugin : IProtocolPlugin
             var outputTask = process.StandardOutput.ReadToEndAsync();
             var errorTask = process.StandardError.ReadToEndAsync();
             await Task.WhenAll(outputTask, errorTask);
-            process.WaitForExit();
+            
+            if (!process.WaitForExit(15000)) // 15 second timeout
+            {
+                process.Kill();
+                throw new TimeoutException("Unmount operation timed out after 15 seconds");
+            }
 
             var output = outputTask.Result;
             var error = errorTask.Result;
@@ -300,7 +320,12 @@ public class SmbPlugin : IProtocolPlugin
             var outputTask = process.StandardOutput.ReadToEndAsync();
             var errorTask = process.StandardError.ReadToEndAsync();
             await Task.WhenAll(outputTask, errorTask);
-            process.WaitForExit();
+            
+            if (!process.WaitForExit(15000)) // 15 second timeout
+            {
+                process.Kill();
+                throw new TimeoutException("Unmount operation timed out after 15 seconds");
+            }
 
             var output = outputTask.Result;
             var error = errorTask.Result;

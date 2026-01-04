@@ -11,7 +11,6 @@ export default function BackupProgressBar({ jobId, initialStatus, job }: BackupP
   const [progress, setProgress] = useState<BackupProgress | null>(null);
   const [lastFilename, setLastFilename] = useState<string>('');
   const [transferRate, setTransferRate] = useState<number>(0);
-  const [lastBytes, setLastBytes] = useState<{ bytes: number; timestamp: number } | null>(null);
 
   const lastBytesRef = useRef<{ bytes: number; timestamp: number } | null>(null);
 

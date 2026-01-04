@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BackupJob, BackupJobStatus as JobStatus } from '../types';
 import { backupService } from '../services/deviceService';
 import { RefreshCw, CheckCircle, XCircle, Clock, Loader, ChevronDown, ChevronRight, Trash2, StopCircle } from 'lucide-react';

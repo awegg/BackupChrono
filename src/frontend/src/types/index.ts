@@ -22,10 +22,12 @@ export enum BackupJobType {
 
 export interface Schedule {
   cronExpression: string;
+  timeWindowStart?: string;
+  timeWindowEnd?: string;
 }
 
 export interface RetentionPolicy {
-  keepLast?: number;
+  keepLatest?: number;
   keepDaily?: number;
   keepWeekly?: number;
   keepMonthly?: number;
@@ -46,7 +48,7 @@ export interface Device {
   username: string;
   password?: string;
   wakeOnLanEnabled: boolean;
-  macAddress?: string;
+  wakeOnLanMacAddress?: string;
   schedule?: Schedule;
   retentionPolicy?: RetentionPolicy;
   createdAt: string;
@@ -61,7 +63,7 @@ export interface DeviceCreateDto {
   username: string;
   password: string;
   wakeOnLanEnabled: boolean;
-  macAddress?: string;
+  wakeOnLanMacAddress?: string;
   schedule?: Schedule;
   retentionPolicy?: RetentionPolicy;
 }

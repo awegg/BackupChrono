@@ -304,12 +304,6 @@ public class DeviceShareBackupWorkflowE2ETests : IClassFixture<BackupChronoE2EWe
 }
 
 // DTOs for the tests
-public class TriggerBackupRequest
-{
-    public Guid DeviceId { get; set; }
-    public Guid? ShareId { get; set; }
-}
-
 public class TriggerBackupResponse
 {
     public string Message { get; set; } = string.Empty;
