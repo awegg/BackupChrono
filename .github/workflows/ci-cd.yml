@@ -44,11 +44,12 @@ jobs:
         
     - name: Upload unit test results
       if: ${{ !cancelled() }}
-      uses: codecov/test-results-action@v1
+      uses: codecov/codecov-action@v5
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         files: ./coverage/unit/test-results.xml
         flags: unit
+        report_type: test_results
         
     - name: Run restic integration tests with coverage
       run: dotnet test src/backend/BackupChrono.Infrastructure.Restic.Tests/ --configuration Release --no-build --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage/restic --logger "junit;LogFilePath=test-results.xml"
@@ -64,14 +65,24 @@ jobs:
         
     - name: Upload restic test results
       if: ${{ !cancelled() }}
-      uses: codecov/test-results-action@v1
+      uses: codecov/codecov-action@v5
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         files: ./coverage/restic/test-results.xml
         flags: restic
+        report_type: test_results
+        
+    - name: Install CIFS utilities for SMB tests
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cifs-utils
+        
+    - name: Configure FUSE for user-space mounting
+      run: |
+        sudo sed -i 's/#user_allow_other/user_allow_other/' /etc/fuse.conf || echo "user_allow_other" | sudo tee -a /etc/fuse.conf
         
     - name: Run integration tests with coverage
-      run: dotnet test src/backend/BackupChrono.IntegrationTests/ --configuration Release --no-build --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage/integration --logger "junit;LogFilePath=test-results.xml"
+      run: sudo -E dotnet test src/backend/BackupChrono.IntegrationTests/ --configuration Release --no-build --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage/integration --logger "junit;LogFilePath=test-results.xml"
       
     - name: Upload integration test coverage
       uses: codecov/codecov-action@v4
@@ -84,11 +95,12 @@ jobs:
         
     - name: Upload integration test results
       if: ${{ !cancelled() }}
-      uses: codecov/test-results-action@v1
+      uses: codecov/codecov-action@v5
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         files: ./coverage/integration/test-results.xml
         flags: integration
+        report_type: test_results
 
   docker-build:
     name: Docker Build
