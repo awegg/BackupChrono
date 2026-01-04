@@ -64,9 +64,12 @@ public class RestoreFlowTests : IAsyncLifetime
     {
         // Arrange
         var nonExistentBackupId = "nonexistent123";
+        var deviceId = Guid.NewGuid();
+        var shareId = Guid.NewGuid();
 
         // Act
-        var response = await _httpClient.GetAsync($"api/backups/{nonExistentBackupId}/files");
+        var response = await _httpClient.GetAsync(
+            $"api/backups/{nonExistentBackupId}/files?deviceId={deviceId}&shareId={shareId}");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);

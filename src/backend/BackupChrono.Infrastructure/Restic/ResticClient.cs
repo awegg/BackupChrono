@@ -225,6 +225,143 @@ public class ResticClient : IResticClient
     }
 
     /// <summary>
+    /// Executes a restic command and returns a stream (for memory-efficient dump command).
+    /// </summary>
+    public Task<Stream> ExecuteCommandStream(
+        string[] args,
+        CancellationToken cancellationToken = default,
+        string? repositoryPathOverride = null)
+    {
+        var effectiveTimeout = TimeSpan.FromMinutes(30);
+        var timeoutCts = new CancellationTokenSource(effectiveTimeout);
+        var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
+        
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = _resticPath,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            RedirectStandardInput = false,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+
+        foreach (var arg in args)
+        {
+            startInfo.ArgumentList.Add(arg);
+        }
+
+        var effectiveRepositoryPath = repositoryPathOverride ?? _repositoryPath;
+        startInfo.Environment["RESTIC_REPOSITORY"] = effectiveRepositoryPath;
+        startInfo.Environment["RESTIC_PASSWORD"] = _password;
+
+        var process = new Process { StartInfo = startInfo };
+        var errorBuilder = new StringBuilder();
+
+        process.ErrorDataReceived += (sender, e) =>
+        {
+            if (e.Data != null)
+            {
+                errorBuilder.AppendLine(e.Data);
+            }
+        };
+
+        process.Start();
+        process.BeginErrorReadLine();
+
+        // Create a stream wrapper that will clean up the process when disposed
+        var processStream = new ProcessOutputStream(
+            process.StandardOutput.BaseStream,
+            process,
+            errorBuilder,
+            linkedCts);
+
+        return Task.FromResult<Stream>(processStream);
+    }
+
+    /// <summary>
+    /// Stream wrapper that ensures process cleanup.
+    /// </summary>
+    private class ProcessOutputStream : Stream
+    {
+        private readonly Stream _baseStream;
+        private readonly Process _process;
+        private readonly StringBuilder _errorBuilder;
+        private readonly CancellationTokenSource _cts;
+        private bool _disposed;
+
+        public ProcessOutputStream(
+            Stream baseStream,
+            Process process,
+            StringBuilder errorBuilder,
+            CancellationTokenSource cts)
+        {
+            _baseStream = baseStream;
+            _process = process;
+            _errorBuilder = errorBuilder;
+            _cts = cts;
+        }
+
+        public override bool CanRead => _baseStream.CanRead;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position
+        {
+            get => throw new NotSupportedException();
+            set => throw new NotSupportedException();
+        }
+
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            return _baseStream.Read(buffer, offset, count);
+        }
+
+        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            return await _baseStream.ReadAsync(buffer, offset, count, cancellationToken);
+        }
+
+        public override void Flush() { }
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+
+        protected override void Dispose(bool disposing)
+        {
+            if (_disposed) return;
+            _disposed = true;
+
+            if (disposing)
+            {
+                _baseStream?.Dispose();
+                
+                try
+                {
+                    if (!_process.HasExited)
+                    {
+                        _process.WaitForExit(5000);
+                    }
+
+                    if (_process.ExitCode != 0)
+                    {
+                        var error = _errorBuilder.ToString();
+                        // Can't throw in Dispose, log instead
+                        Console.Error.WriteLine($"Restic process exited with code {_process.ExitCode}: {error}");
+                    }
+                }
+                finally
+                {
+                    _process?.Dispose();
+                    _cts?.Dispose();
+                }
+            }
+
+            base.Dispose(disposing);
+        }
+    }
+
+    /// <summary>
     /// Executes a restic command and parses the JSON output.
     /// </summary>
     public async Task<T?> ExecuteCommandJson<T>(string[] args, CancellationToken cancellationToken = default)

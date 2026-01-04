@@ -19,6 +19,11 @@ public interface IResticClient
         CancellationToken cancellationToken = default,
         string? repositoryPathOverride = null);
 
+    Task<Stream> ExecuteCommandStream(
+        string[] args,
+        CancellationToken cancellationToken = default,
+        string? repositoryPathOverride = null);
+
     IAsyncEnumerable<T> ExecuteCommandJsonStream<T>(
         string[] args,
         CancellationToken cancellationToken = default);

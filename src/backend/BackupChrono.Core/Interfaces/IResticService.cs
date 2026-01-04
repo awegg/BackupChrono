@@ -103,6 +103,15 @@ public interface IResticService
     Task<byte[]> DumpFile(string backupId, string filePath, string? repositoryPath = null);
 
     /// <summary>
+    /// Dumps a single file from a backup as a stream (memory-efficient for large files).
+    /// </summary>
+    /// <param name="backupId">Backup snapshot ID to dump from.</param>
+    /// <param name="filePath">Path to the file within the backup.</param>
+    /// <param name="repositoryPath">Optional repository path override.</param>
+    /// <returns>File content as stream.</returns>
+    Task<Stream> DumpFileStream(string backupId, string filePath, string? repositoryPath = null);
+
+    /// <summary>
     /// Restores files from a backup.
     /// </summary>
     /// <param name="backupId">Backup snapshot to restore from.</param>

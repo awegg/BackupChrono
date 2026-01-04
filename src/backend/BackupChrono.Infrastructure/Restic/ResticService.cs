@@ -500,6 +500,36 @@ public class ResticService : IResticService
         }
     }
 
+    public async Task<Stream> DumpFileStream(string backupId, string filePath, string? repositoryPath = null)
+    {
+        try
+        {
+            _logger.LogInformation("Streaming file {FilePath} from backup {BackupId}", filePath, backupId);
+            
+            var args = new[] { "dump", backupId, filePath };
+            var stream = await _client.ExecuteCommandStream(args, repositoryPathOverride: repositoryPath);
+            
+            _logger.LogInformation("Successfully started streaming file {FilePath} from backup {BackupId}", 
+                filePath, backupId);
+            
+            return stream;
+        }
+        catch (InvalidOperationException ex) when (
+            ex.Message.Contains("unable to find snapshot") || 
+            ex.Message.Contains("unable to load snapshot") ||
+            ex.Message.Contains("snapshot") && ex.Message.Contains("not found") ||
+            ex.Message.Contains("repository does not exist"))
+        {
+            _logger.LogError("Backup {BackupId} not found for file dump", backupId);
+            throw new KeyNotFoundException($"Backup {backupId} not found");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to stream file {FilePath} from backup {BackupId}", filePath, backupId);
+            throw;
+        }
+    }
+
     public async Task RestoreBackup(string backupId, string targetPath, string[]? includePaths = null, string? repositoryPath = null)
     {
         try

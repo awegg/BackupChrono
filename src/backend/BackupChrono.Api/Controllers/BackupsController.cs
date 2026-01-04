@@ -118,7 +118,11 @@ public class BackupsController : ControllerBase
                 Detail = $"No backup with ID {backupId}"
             });
         }
-        catch (InvalidOperationException ex) when (ex.Message.Contains("repository does not exist") || ex.Message.Contains("exit code 10"))
+        catch (InvalidOperationException ex) when (
+            ex.Message.Contains("repository does not exist") || 
+            ex.Message.Contains("exit code 10") ||
+            ex.Message.Contains("exit code 1") ||
+            ex.Message.Contains("unable to open config file"))
         {
             return NotFound(new ErrorResponse
             {
@@ -173,7 +177,11 @@ public class BackupsController : ControllerBase
                 Detail = $"No backup with ID {backupId}"
             });
         }
-        catch (InvalidOperationException ex) when (ex.Message.Contains("repository does not exist") || ex.Message.Contains("exit code 10"))
+        catch (InvalidOperationException ex) when (
+            ex.Message.Contains("repository does not exist") || 
+            ex.Message.Contains("exit code 10") ||
+            ex.Message.Contains("exit code 1") ||
+            ex.Message.Contains("unable to open config file"))
         {
             return NotFound(new ErrorResponse
             {
@@ -223,11 +231,11 @@ public class BackupsController : ControllerBase
                 filePath,
                 backupId);
 
-            // Use restic dump to get file contents directly without temp files
-            var fileBytes = await _resticService.DumpFile(backupId, filePath, repositoryPath);
+            // Use restic dump to stream file contents directly without loading into memory
+            var fileStream = await _resticService.DumpFileStream(backupId, filePath, repositoryPath);
             var fileName = Path.GetFileName(filePath);
 
-            return File(fileBytes, "application/octet-stream", fileName);
+            return File(fileStream, "application/octet-stream", fileName, enableRangeProcessing: true);
         }
         catch (KeyNotFoundException ex)
         {
@@ -253,7 +261,7 @@ public class BackupsController : ControllerBase
     /// Restore files from a backup
     /// </summary>
     [HttpPost("{backupId}/restore")]
-    [ProducesResponseType(StatusCodes.Status202Accepted)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> RestoreBackup(
