@@ -104,7 +104,7 @@ public class RestoreFlowTests : IAsyncLifetime
         var backupId = "test123";
         var request = new RestoreRequestDto
         {
-            TargetPath = "/tmp/restore"
+            TargetPath = "./restores/test123"
         };
 
         var json = JsonSerializer.Serialize(request);
@@ -220,7 +220,7 @@ public class RestoreFlowTests : IAsyncLifetime
         var backupId = "test789";
         var request = new RestoreRequestDto
         {
-            TargetPath = "/tmp/restore",
+            TargetPath = "./restores/test789",
             IncludePaths = new List<string> { "/path1", "/path2" }
         };
 
@@ -241,7 +241,7 @@ public class RestoreFlowTests : IAsyncLifetime
         var backupId = "test101";
         var request = new RestoreRequestDto
         {
-            TargetPath = "/original/location",
+            TargetPath = "./restores/test101",
             RestoreToSource = true
         };
 

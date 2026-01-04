@@ -276,12 +276,13 @@ public class BackupsController : ControllerBase
 
             // Validate target path to prevent unintended writes
             var targetPath = Path.GetFullPath(request.TargetPath);
-            if (targetPath.Contains("..", StringComparison.OrdinalIgnoreCase))
+            var allowedRestoreRoot = Path.GetFullPath("./restores");
+            if (!targetPath.StartsWith(allowedRestoreRoot, StringComparison.OrdinalIgnoreCase))
             {
                 return BadRequest(new ErrorResponse
                 {
                     Error = "Invalid restore request",
-                    Detail = "TargetPath cannot contain parent directory references (..)"
+                    Detail = "TargetPath must be within the allowed restore directory"
                 });
             }
 

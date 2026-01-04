@@ -227,7 +227,49 @@ public class BackupsControllerTests
     }
 
     [Fact]
-    public async Task RestoreBackup_ReturnsAccepted_WithValidRequest()
+    public async Task RestoreBackup_WithPathOutsideAllowedDirectory_ReturnsBadRequest()
+    {
+        // Arrange
+        var backupId = "backup123";
+        var deviceId = Guid.NewGuid();
+        var shareId = Guid.NewGuid();
+        var request = new RestoreRequestDto
+        {
+            TargetPath = "/etc/passwd" // Outside allowed restore directory
+        };
+
+        // Act
+        var result = await _controller.RestoreBackup(backupId, deviceId, shareId, request);
+
+        // Assert
+        var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
+        var errorResponse = badRequestResult.Value.Should().BeOfType<ErrorResponse>().Subject;
+        errorResponse.Detail.Should().Contain("must be within the allowed restore directory");
+    }
+
+    [Fact]
+    public async Task RestoreBackup_WithPathTraversal_ReturnsBadRequest()
+    {
+        // Arrange
+        var backupId = "backup456";
+        var deviceId = Guid.NewGuid();
+        var shareId = Guid.NewGuid();
+        var request = new RestoreRequestDto
+        {
+            TargetPath = "./restores/../../../etc/passwd" // Path traversal attempt
+        };
+
+        // Act
+        var result = await _controller.RestoreBackup(backupId, deviceId, shareId, request);
+
+        // Assert
+        var badRequestResult = result.Should().BeOfType<BadRequestObjectResult>().Subject;
+        var errorResponse = badRequestResult.Value.Should().BeOfType<ErrorResponse>().Subject;
+        errorResponse.Detail.Should().Contain("must be within the allowed restore directory");
+    }
+
+    [Fact]
+    public async Task RestoreBackup_WithValidRequest_ReturnsOk()
     {
         // Arrange
         var backupId = "backup789";
@@ -235,7 +277,7 @@ public class BackupsControllerTests
         var shareId = Guid.NewGuid();
         var request = new RestoreRequestDto
         {
-            TargetPath = "/tmp/restore"
+            TargetPath = "./restores/backup789"
         };
 
         // Act
@@ -307,7 +349,7 @@ public class BackupsControllerTests
     }
 
     [Fact]
-    public async Task RestoreBackup_WithIncludePaths_ReturnsAccepted()
+    public async Task RestoreBackup_WithIncludePaths_ReturnsOk()
     {
         // Arrange
         var backupId = "backup999";
@@ -315,7 +357,7 @@ public class BackupsControllerTests
         var shareId = Guid.NewGuid();
         var request = new RestoreRequestDto
         {
-            TargetPath = "/tmp/restore",
+            TargetPath = "./restores/backup999",
             IncludePaths = new List<string> { "/path1", "/path2" }
         };
 
@@ -327,7 +369,7 @@ public class BackupsControllerTests
     }
 
     [Fact]
-    public async Task RestoreBackup_WithRestoreToSource_ReturnsAccepted()
+    public async Task RestoreBackup_WithRestoreToSource_ReturnsOk()
     {
         // Arrange
         var backupId = "backup888";
@@ -335,7 +377,7 @@ public class BackupsControllerTests
         var shareId = Guid.NewGuid();
         var request = new RestoreRequestDto
         {
-            TargetPath = "/original/path",
+            TargetPath = "./restores/backup888",
             RestoreToSource = true
         };
 
