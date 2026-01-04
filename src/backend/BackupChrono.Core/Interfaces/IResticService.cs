@@ -65,17 +65,19 @@ public interface IResticService
     /// <summary>
     /// Lists all backups, optionally filtered by device name.
     /// </summary>
-    Task<IEnumerable<Backup>> ListBackups(string? deviceName = null);
+    /// <param name="deviceName">Optional filter by hostname.</param>
+    /// <param name="repositoryPath">Optional repository path override.</param>
+    Task<IEnumerable<Backup>> ListBackups(string? deviceName = null, string? repositoryPath = null);
 
     /// <summary>
     /// Gets a specific backup by ID.
     /// </summary>
-    Task<Backup> GetBackup(string backupId);
+    Task<Backup> GetBackup(string backupId, string? repositoryPath = null);
 
     /// <summary>
     /// Browses files in a backup snapshot.
     /// </summary>
-    Task<IEnumerable<FileEntry>> BrowseBackup(string backupId, string path = "/");
+    Task<IEnumerable<FileEntry>> BrowseBackup(string backupId, string path = "/", string? repositoryPath = null);
 
     /// <summary>
     /// Gets version history for a specific file across backups.
@@ -92,12 +94,30 @@ public interface IResticService
     // Restore
 
     /// <summary>
+    /// Dumps a single file's content from a backup without extracting to disk.
+    /// </summary>
+    /// <param name="backupId">Backup snapshot to dump from.</param>
+    /// <param name="filePath">Path to the file within the backup.</param>
+    /// <param name="repositoryPath">Optional repository path override.</param>
+    /// <returns>File content as byte array.</returns>
+    Task<byte[]> DumpFile(string backupId, string filePath, string? repositoryPath = null);
+
+    /// <summary>
+    /// Dumps a single file from a backup as a stream (memory-efficient for large files).
+    /// </summary>
+    /// <param name="backupId">Backup snapshot ID to dump from.</param>
+    /// <param name="filePath">Path to the file within the backup.</param>
+    /// <param name="repositoryPath">Optional repository path override.</param>
+    /// <returns>File content as stream.</returns>
+    Task<Stream> DumpFileStream(string backupId, string filePath, string? repositoryPath = null);
+
+    /// <summary>
     /// Restores files from a backup.
     /// </summary>
     /// <param name="backupId">Backup snapshot to restore from.</param>
     /// <param name="targetPath">Local path to restore to.</param>
     /// <param name="includePaths">Optional specific paths to restore (null = restore all).</param>
-    Task RestoreBackup(string backupId, string targetPath, string[]? includePaths = null);
+    Task RestoreBackup(string backupId, string targetPath, string[]? includePaths = null, string? repositoryPath = null);
 
     /// <summary>
     /// Gets progress of a running restore operation.

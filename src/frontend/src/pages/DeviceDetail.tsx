@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Device, Share } from '../types';
 import { deviceService, shareService } from '../services/deviceService';
-import { ArrowLeft, RefreshCw } from 'lucide-react';
+import { ArrowLeft, RefreshCw, HardDrive } from 'lucide-react';
 import { ShareList } from '../components/ShareList';
 import { useNavigate } from 'react-router-dom';
 
@@ -56,7 +56,16 @@ export default function DeviceDetail() {
       </button>
 
       <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <h1 className="text-3xl font-bold mb-4">{device.name}</h1>
+        <div className="flex justify-between items-start mb-4">
+          <h1 className="text-3xl font-bold">{device.name}</h1>
+          <button
+            onClick={() => navigate(`/devices/${deviceId}/backups`)}
+            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          >
+            <HardDrive size={16} className="mr-2" />
+            Browse Backups
+          </button>
+        </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
             <span className="font-semibold">Protocol:</span> {device.protocol}

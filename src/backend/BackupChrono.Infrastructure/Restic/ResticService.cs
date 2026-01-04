@@ -12,11 +12,11 @@ namespace BackupChrono.Infrastructure.Restic;
 /// </summary>
 public class ResticService : IResticService
 {
-    private readonly ResticClient _client;
+    private readonly IResticClient _client;
     private readonly ILogger<ResticService> _logger;
     private static readonly TimeSpan LogThrottleInterval = TimeSpan.FromSeconds(1);
 
-    public ResticService(ResticClient client, ILogger<ResticService> logger)
+    public ResticService(IResticClient client, ILogger<ResticService> logger)
     {
         _client = client;
         _logger = logger;
@@ -192,7 +192,7 @@ public class ResticService : IResticService
         return Task.CompletedTask;
     }
 
-    public async Task<IEnumerable<Backup>> ListBackups(string? deviceName = null)
+    public async Task<IEnumerable<Backup>> ListBackups(string? deviceName = null, string? repositoryPath = null)
     {
         var args = new List<string> { "snapshots", "--json" };
         
@@ -202,25 +202,249 @@ public class ResticService : IResticService
             args.Add(deviceName);
         }
 
-        var output = await _client.ExecuteCommand(args.ToArray());
+        var output = await _client.ExecuteCommand(args.ToArray(), repositoryPathOverride: repositoryPath);
         
-        // TODO: Parse snapshots from JSON
-        return Enumerable.Empty<Backup>();
+        // Parse snapshots from JSON
+        var backups = new List<Backup>();
+        
+        try
+        {
+            using var doc = JsonDocument.Parse(output);
+            var snapshots = doc.RootElement;
+            
+            foreach (var snapshot in snapshots.EnumerateArray())
+            {
+                var id = snapshot.GetProperty("short_id").GetString() ?? string.Empty;
+                var hostname = snapshot.GetProperty("hostname").GetString() ?? "unknown";
+                var timestamp = snapshot.GetProperty("time").GetDateTime();
+                
+                // Parse tags for device/share metadata
+                var tags = new List<string>();
+                if (snapshot.TryGetProperty("tags", out var tagsElement))
+                {
+                    tags = tagsElement.EnumerateArray().Select(t => t.GetString() ?? "").ToList();
+                }
+                
+                backups.Add(new Backup
+                {
+                    Id = id,
+                    DeviceId = Guid.Empty, // Will be populated from tags or metadata
+                    ShareId = null,
+                    DeviceName = hostname,
+                    ShareName = null,
+                    Timestamp = timestamp,
+                    Status = BackupStatus.Success,
+                    FilesNew = 0, // Summary stats not available in snapshot list
+                    FilesChanged = 0,
+                    FilesUnmodified = 0,
+                    DataAdded = 0,
+                    DataProcessed = 0,
+                    Duration = TimeSpan.Zero
+                });
+            }
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "Failed to parse backup snapshots from restic output");
+            throw;
+        }
+        
+        return backups;
     }
 
-    public Task<Backup> GetBackup(string backupId)
+    public async Task<Backup> GetBackup(string backupId, string? repositoryPath = null)
     {
-        // TODO: Implement get backup by ID
-        return Task.FromException<Backup>(new NotImplementedException("GetBackup is not yet implemented"));
+        // Get snapshot details
+        var args = new[] { "snapshots", backupId, "--json" };
+        var output = await _client.ExecuteCommand(args, repositoryPathOverride: repositoryPath);
+        
+        try
+        {
+            using var doc = JsonDocument.Parse(output);
+            var snapshots = doc.RootElement;
+            
+            if (snapshots.GetArrayLength() == 0)
+            {
+                throw new KeyNotFoundException($"Backup {backupId} not found");
+            }
+            
+            var snapshot = snapshots[0];
+            var id = snapshot.GetProperty("short_id").GetString() ?? string.Empty;
+            var hostname = snapshot.GetProperty("hostname").GetString() ?? "unknown";
+            var timestamp = snapshot.GetProperty("time").GetDateTime();
+            
+            // Get snapshot stats
+            var statsArgs = new[] { "stats", backupId, "--json" };
+            var statsOutput = await _client.ExecuteCommand(statsArgs, repositoryPathOverride: repositoryPath);
+            
+            long totalSize = 0;
+            int totalFileCount = 0;
+            
+            try
+            {
+                using var statsDoc = JsonDocument.Parse(statsOutput);
+                var stats = statsDoc.RootElement;
+                totalSize = stats.TryGetProperty("total_size", out var size) ? size.GetInt64() : 0;
+                totalFileCount = stats.TryGetProperty("total_file_count", out var count) ? count.GetInt32() : 0;
+            }
+            catch (JsonException)
+            {
+                _logger.LogWarning("Failed to parse backup stats for {BackupId}", backupId);
+            }
+            
+            return new Backup
+            {
+                Id = id,
+                DeviceId = Guid.Empty,
+                ShareId = null,
+                DeviceName = hostname,
+                ShareName = null,
+                Timestamp = timestamp,
+                Status = BackupStatus.Success,
+                FilesNew = 0,
+                FilesChanged = 0,
+                FilesUnmodified = totalFileCount,
+                DataAdded = 0,
+                DataProcessed = totalSize,
+                Duration = TimeSpan.Zero
+            };
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "Failed to parse backup {BackupId} from restic output", backupId);
+            throw;
+        }
     }
 
-    public async Task<IEnumerable<FileEntry>> BrowseBackup(string backupId, string path = "/")
+    public async Task<IEnumerable<FileEntry>> BrowseBackup(string backupId, string path = "/", string? repositoryPath = null)
     {
-        var args = new[] { "ls", backupId, path, "--json" };
-        var output = await _client.ExecuteCommand(args);
+        var args = new[] { "ls", backupId, "--json" };
+        var output = await _client.ExecuteCommand(args, repositoryPathOverride: repositoryPath);
         
-        // TODO: Parse file list from JSON
-        return Enumerable.Empty<FileEntry>();
+        _logger.LogInformation(
+            "Restic ls output for backup {BackupId}: {LineCount} lines",
+            backupId,
+            output.Split('\n', StringSplitOptions.RemoveEmptyEntries).Length);
+        
+        var files = new List<FileEntry>();
+        
+        try
+        {
+            // Parse each line as separate JSON object
+            var lines = output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            
+            foreach (var line in lines)
+            {
+                try
+                {
+                    using var doc = JsonDocument.Parse(line);
+                    var root = doc.RootElement;
+                    
+                    if (root.TryGetProperty("struct_type", out var structType) && 
+                        structType.GetString() == "node")
+                    {
+                        var filePath = root.GetProperty("path").GetString() ?? "";
+                        var fileName = Path.GetFileName(filePath);
+                        var nodeType = root.GetProperty("type").GetString();
+                        var isDirectory = nodeType == "dir";
+                        
+                        // Filter by requested path
+                        // Don't trim "/" from root path, otherwise it becomes empty string
+                        var normalizedPath = path == "/" ? "/" : path.Replace("\\", "/").TrimEnd('/');
+                        var normalizedFilePath = filePath.Replace("\\", "/");
+                        
+                        // Only include files directly in the requested path
+                        var parentPath = Path.GetDirectoryName(normalizedFilePath)?.Replace("\\", "/") ?? "";
+                        
+                        // Debug logging for first few files
+                        if (files.Count < 3)
+                        {
+                            _logger.LogDebug(
+                                "File: {FilePath}, Parent: {ParentPath}, NormalizedPath: {NormalizedPath}, Match: {Match}",
+                                filePath,
+                                parentPath,
+                                normalizedPath,
+                                parentPath == normalizedPath);
+                        }
+                        
+                        // Skip files not in the requested path
+                        if (parentPath != normalizedPath)
+                        {
+                            continue;
+                        }
+                        
+                        files.Add(new FileEntry
+                        {
+                            Name = fileName,
+                            Path = filePath,
+                            IsDirectory = isDirectory,
+                            Size = root.TryGetProperty("size", out var size) ? size.GetInt64() : 0,
+                            ModifiedAt = root.TryGetProperty("mtime", out var mtime) 
+                                ? mtime.GetDateTime() 
+                                : DateTime.MinValue,
+                            Permissions = root.TryGetProperty("mode", out var mode) 
+                                ? GetModeAsOctal(mode)
+                                : null
+                        });
+                    }
+                }
+                catch (JsonException)
+                {
+                    // Skip non-JSON lines (headers, etc.)
+                    continue;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to browse backup {BackupId} at path {Path}", backupId, path);
+            throw;
+        }
+        
+        _logger.LogInformation(
+            "Browse backup {BackupId} at path {Path}: returning {FileCount} files",
+            backupId,
+            path,
+            files.Count);
+        
+        return files;
+    }
+
+    private static string? GetModeAsOctal(JsonElement mode)
+    {
+        try
+        {
+            // Try to get as different numeric types since mode can be large
+            if (mode.ValueKind == JsonValueKind.Number)
+            {
+                // Try Int64 first for large values
+                if (mode.TryGetInt64(out var longValue))
+                {
+                    return Convert.ToString(longValue, 8);
+                }
+                
+                // Fall back to Int32 for smaller values
+                if (mode.TryGetInt32(out var intValue))
+                {
+                    return Convert.ToString(intValue, 8);
+                }
+            }
+            else if (mode.ValueKind == JsonValueKind.String)
+            {
+                // Handle mode as string (some restic versions might do this)
+                var modeStr = mode.GetString();
+                if (long.TryParse(modeStr, out var parsedValue))
+                {
+                    return Convert.ToString(parsedValue, 8);
+                }
+            }
+            
+            return null;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     public Task<IEnumerable<FileVersion>> GetFileHistory(string deviceName, string filePath)
@@ -246,20 +470,103 @@ public class ResticService : IResticService
         await _client.ExecuteCommand(args.ToArray());
     }
 
-    public async Task RestoreBackup(string backupId, string targetPath, string[]? includePaths = null)
+    public async Task<byte[]> DumpFile(string backupId, string filePath, string? repositoryPath = null)
     {
-        var args = new List<string> { "restore", backupId, "--target", targetPath };
-
-        if (includePaths != null)
+        try
         {
-            foreach (var path in includePaths)
-            {
-                args.Add("--include");
-                args.Add(path);
-            }
+            _logger.LogInformation("Dumping file {FilePath} from backup {BackupId}", filePath, backupId);
+            
+            var args = new[] { "dump", backupId, filePath };
+            var bytes = await _client.ExecuteCommandBinary(args, repositoryPathOverride: repositoryPath);
+            
+            _logger.LogInformation("Successfully dumped file {FilePath} from backup {BackupId}, size: {Size} bytes", 
+                filePath, backupId, bytes.Length);
+            
+            return bytes;
         }
+        catch (InvalidOperationException ex) when (
+            ex.Message.Contains("unable to find snapshot") || 
+            ex.Message.Contains("unable to load snapshot") ||
+            ex.Message.Contains("snapshot") && ex.Message.Contains("not found") ||
+            ex.Message.Contains("repository does not exist"))
+        {
+            _logger.LogError("Backup {BackupId} not found for file dump", backupId);
+            throw new KeyNotFoundException($"Backup {backupId} not found");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to dump file {FilePath} from backup {BackupId}", filePath, backupId);
+            throw;
+        }
+    }
 
-        await _client.ExecuteCommand(args.ToArray());
+    public async Task<Stream> DumpFileStream(string backupId, string filePath, string? repositoryPath = null)
+    {
+        try
+        {
+            _logger.LogInformation("Streaming file {FilePath} from backup {BackupId}", filePath, backupId);
+            
+            var args = new[] { "dump", backupId, filePath };
+            var stream = await _client.ExecuteCommandStream(args, repositoryPathOverride: repositoryPath);
+            
+            _logger.LogInformation("Successfully started streaming file {FilePath} from backup {BackupId}", 
+                filePath, backupId);
+            
+            return stream;
+        }
+        catch (InvalidOperationException ex) when (
+            ex.Message.Contains("unable to find snapshot") || 
+            ex.Message.Contains("unable to load snapshot") ||
+            ex.Message.Contains("snapshot") && ex.Message.Contains("not found") ||
+            ex.Message.Contains("repository does not exist"))
+        {
+            _logger.LogError("Backup {BackupId} not found for file dump", backupId);
+            throw new KeyNotFoundException($"Backup {backupId} not found");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to stream file {FilePath} from backup {BackupId}", filePath, backupId);
+            throw;
+        }
+    }
+
+    public async Task RestoreBackup(string backupId, string targetPath, string[]? includePaths = null, string? repositoryPath = null)
+    {
+        try
+        {
+            _logger.LogInformation("Starting restore of backup {BackupId} to {TargetPath}", backupId, targetPath);
+            
+            var args = new List<string> { "restore", backupId, "--target", targetPath };
+
+            // If specific paths are requested, include only those
+            if (includePaths != null && includePaths.Length > 0)
+            {
+                foreach (var path in includePaths)
+                {
+                    args.Add("--include");
+                    args.Add(path);
+                }
+            }
+
+            var output = await _client.ExecuteCommand(args.ToArray(), repositoryPathOverride: repositoryPath);
+            _logger.LogInformation("Successfully restored backup {BackupId} to {TargetPath}", backupId, targetPath);
+        }
+        catch (InvalidOperationException ex) when (
+            ex.Message.Contains("unable to find snapshot") || 
+            ex.Message.Contains("unable to load snapshot") ||
+            ex.Message.Contains("snapshot") && ex.Message.Contains("not found") ||
+            ex.Message.Contains("no snapshot found") ||
+            ex.Message.Contains("snapshot does not exist") ||
+            ex.Message.Contains("Is there a repository"))
+        {
+            _logger.LogWarning(ex, "Backup {BackupId} not found", backupId);
+            throw new KeyNotFoundException($"Backup {backupId} not found", ex);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to restore backup {BackupId} to {TargetPath}", backupId, targetPath);
+            throw;
+        }
     }
 
     public Task<RestoreProgress> GetRestoreProgress(string restoreId)

@@ -220,6 +220,16 @@ public class TriggerBackupRequest
     public Guid? ShareId { get; set; }
 }
 
+public class RestoreRequestDto
+{
+    [Required]
+    public string TargetPath { get; set; } = string.Empty;
+    
+    public List<string>? IncludePaths { get; set; }
+    
+    public bool RestoreToSource { get; set; }
+}
+
 public class ErrorResponse
 {
     public string Error { get; set; } = string.Empty;
