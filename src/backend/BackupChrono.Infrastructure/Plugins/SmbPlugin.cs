@@ -178,8 +178,8 @@ public class SmbPlugin : IProtocolPlugin
                 {
                     FileName = useSudo ? "sudo" : "mount",
                     Arguments = useSudo 
-                        ? $"mount -t cifs \"{uncPath}\" \"{mountPoint}\" -o credentials={credFile},vers=3.0,noperm{portOption}"
-                        : $"-t cifs \"{uncPath}\" \"{mountPoint}\" -o credentials={credFile},vers=3.0,noperm{portOption}",
+                        ? $"mount -n -t cifs \"{uncPath}\" \"{mountPoint}\" -o credentials={credFile},vers=3.0,noperm{portOption}"
+                        : $"-n -t cifs \"{uncPath}\" \"{mountPoint}\" -o credentials={credFile},vers=3.0,noperm{portOption}",
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     UseShellExecute = false,
