@@ -168,12 +168,18 @@ public class SmbPlugin : IProtocolPlugin
                 ? $",port={device.Port.Value}" 
                 : "";
             
+            // Check if we need sudo - always use it if available on Linux for mounting
+            // This is needed in CI environments where tests run with sudo but child processes don't inherit it
+            var useSudo = File.Exists("/usr/bin/sudo");
+            
             var process = new Process
             {
                 StartInfo = new ProcessStartInfo
                 {
-                    FileName = "mount",
-                    Arguments = $"-t cifs \"{uncPath}\" \"{mountPoint}\" -o credentials={credFile},vers=3.0,noperm{portOption}",
+                    FileName = useSudo ? "sudo" : "mount",
+                    Arguments = useSudo 
+                        ? $"mount -t cifs \"{uncPath}\" \"{mountPoint}\" -o credentials={credFile},vers=3.0,noperm{portOption}"
+                        : $"-t cifs \"{uncPath}\" \"{mountPoint}\" -o credentials={credFile},vers=3.0,noperm{portOption}",
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     UseShellExecute = false,
@@ -271,12 +277,16 @@ public class SmbPlugin : IProtocolPlugin
 
     private async Task UnmountShareLinux(string mountPath)
     {
+        // Check if we need sudo - always use it if available on Linux for unmounting
+        // This is needed in CI environments where tests run with sudo but child processes don't inherit it
+        var useSudo = File.Exists("/usr/bin/sudo");
+        
         var process = new Process
         {
             StartInfo = new ProcessStartInfo
             {
-                FileName = "umount",
-                Arguments = mountPath,
+                FileName = useSudo ? "sudo" : "umount",
+                Arguments = useSudo ? $"umount {mountPath}" : mountPath,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
