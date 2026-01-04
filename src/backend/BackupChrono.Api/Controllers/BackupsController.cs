@@ -1,5 +1,6 @@
 using BackupChrono.Api.DTOs;
 using BackupChrono.Core.DTOs;
+using BackupChrono.Core.Entities;
 using BackupChrono.Core.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
@@ -24,6 +25,32 @@ public class BackupsController : ControllerBase
     }
 
     /// <summary>
+    /// Maps a Backup entity to BackupDto.
+    /// </summary>
+    private static BackupDto MapToBackupDto(Backup backup)
+    {
+        return new BackupDto
+        {
+            Id = backup.Id,
+            DeviceId = backup.DeviceId,
+            ShareId = backup.ShareId,
+            DeviceName = backup.DeviceName,
+            ShareName = backup.ShareName,
+            Timestamp = backup.Timestamp,
+            Status = backup.Status.ToString(),
+            SharesPaths = backup.SharesPaths,
+            FilesNew = backup.FilesNew,
+            FilesChanged = backup.FilesChanged,
+            FilesUnmodified = backup.FilesUnmodified,
+            DataAdded = backup.DataAdded,
+            DataProcessed = backup.DataProcessed,
+            Duration = backup.Duration.ToString(),
+            ErrorMessage = backup.ErrorMessage,
+            CreatedByJobId = backup.CreatedByJobId
+        };
+    }
+
+    /// <summary>
     /// List all backups with optional filtering
     /// </summary>
     [HttpGet]
@@ -37,25 +64,7 @@ public class BackupsController : ControllerBase
             // TODO: Filter by deviceId when provided
             var backups = await _resticService.ListBackups();
 
-            var backupDtos = backups.Select(b => new BackupDto
-            {
-                Id = b.Id,
-                DeviceId = b.DeviceId,
-                ShareId = b.ShareId,
-                DeviceName = b.DeviceName,
-                ShareName = b.ShareName,
-                Timestamp = b.Timestamp,
-                Status = b.Status.ToString(),
-                SharesPaths = b.SharesPaths,
-                FilesNew = b.FilesNew,
-                FilesChanged = b.FilesChanged,
-                FilesUnmodified = b.FilesUnmodified,
-                DataAdded = b.DataAdded,
-                DataProcessed = b.DataProcessed,
-                Duration = b.Duration.ToString(),
-                ErrorMessage = b.ErrorMessage,
-                CreatedByJobId = b.CreatedByJobId
-            }).Take(limit).ToList();
+            var backupDtos = backups.Select(MapToBackupDto).Take(limit).ToList();
 
             return Ok(backupDtos);
         }
@@ -90,26 +99,7 @@ public class BackupsController : ControllerBase
         try
         {
             var backup = await _resticService.GetBackup(backupId);
-
-            var backupDto = new BackupDto
-            {
-                Id = backup.Id,
-                DeviceId = backup.DeviceId,
-                ShareId = backup.ShareId,
-                DeviceName = backup.DeviceName,
-                ShareName = backup.ShareName,
-                Timestamp = backup.Timestamp,
-                Status = backup.Status.ToString(),
-                SharesPaths = backup.SharesPaths,
-                FilesNew = backup.FilesNew,
-                FilesChanged = backup.FilesChanged,
-                FilesUnmodified = backup.FilesUnmodified,
-                DataAdded = backup.DataAdded,
-                DataProcessed = backup.DataProcessed,
-                Duration = backup.Duration.ToString(),
-                ErrorMessage = backup.ErrorMessage,
-                CreatedByJobId = backup.CreatedByJobId
-            };
+            var backupDto = MapToBackupDto(backup);
 
             return Ok(backupDto);
         }
@@ -284,9 +274,19 @@ public class BackupsController : ControllerBase
                 });
             }
 
+            // Validate target path to prevent unintended writes
+            var targetPath = Path.GetFullPath(request.TargetPath);
+            if (targetPath.Contains("..", StringComparison.OrdinalIgnoreCase))
+            {
+                return BadRequest(new ErrorResponse
+                {
+                    Error = "Invalid restore request",
+                    Detail = "TargetPath cannot contain parent directory references (..)"
+                });
+            }
+
             // Determine target path - if RestoreToSource is true, we would need to get the original path
             // For now, we use the provided TargetPath in all cases
-            var targetPath = request.TargetPath;
             
             // Convert IncludePaths from List to array for service call
             var includePaths = request.IncludePaths?.ToArray();
@@ -339,33 +339,21 @@ public class BackupsController : ControllerBase
     [HttpGet("files/history")]
     [ProducesResponseType(typeof(List<FileVersion>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
-    public Task<ActionResult<List<FileVersion>>> GetFileHistory(
+    public ActionResult<List<FileVersion>> GetFileHistory(
         [FromQuery] Guid deviceId,
         [FromQuery] string filePath)
     {
-        try
+        if (string.IsNullOrWhiteSpace(filePath))
         {
-            if (string.IsNullOrWhiteSpace(filePath))
+            return BadRequest(new ErrorResponse
             {
-                return Task.FromResult<ActionResult<List<FileVersion>>>(BadRequest(new ErrorResponse
-                {
-                    Error = "Invalid request",
-                    Detail = "filePath is required"
-                }));
-            }
+                Error = "Invalid request",
+                Detail = "filePath is required"
+            });
+        }
 
-            // TODO: Implement file history tracking
-            // For now return empty list
-            return Task.FromResult<ActionResult<List<FileVersion>>>(Ok(new List<FileVersion>()));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting file history for {FilePath}", filePath);
-            return Task.FromResult<ActionResult<List<FileVersion>>>(StatusCode(500, new ErrorResponse
-            {
-                Error = "Failed to get file history",
-                Detail = ex.Message
-            }));
-        }
+        // TODO: Implement file history tracking
+        // For now return empty list
+        return Ok(new List<FileVersion>());
     }
 }

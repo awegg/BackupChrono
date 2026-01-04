@@ -247,14 +247,14 @@ public class BackupsControllerTests
     }
 
     [Fact]
-    public async Task GetFileHistory_ReturnsOkWithEmptyList_WhenNoHistory()
+    public void GetFileHistory_ReturnsOkWithEmptyList_WhenNoHistory()
     {
         // Arrange
         var deviceId = Guid.NewGuid();
         var filePath = "/test/file.txt";
 
         // Act - controller doesn't call ResticService yet, just returns empty list
-        var result = await _controller.GetFileHistory(deviceId, filePath);
+        var result = _controller.GetFileHistory(deviceId, filePath);
 
         // Assert
         var okResult = result.Result.Should().BeOfType<OkObjectResult>().Subject;
@@ -263,14 +263,14 @@ public class BackupsControllerTests
     }
 
     [Fact]
-    public async Task GetFileHistory_ReturnsOkWithHistory_WhenHistoryExists()
+    public void GetFileHistory_ReturnsOkWithHistory_WhenHistoryExists()
     {
         // Arrange
         var deviceId = Guid.NewGuid();
         var filePath = "/documents/report.pdf";
 
         // Act - controller doesn't call ResticService yet, just returns empty list
-        var result = await _controller.GetFileHistory(deviceId, filePath);
+        var result = _controller.GetFileHistory(deviceId, filePath);
 
         // Assert
         var okResult = result.Result.Should().BeOfType<OkObjectResult>().Subject;
