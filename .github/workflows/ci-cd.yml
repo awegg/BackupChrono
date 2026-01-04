@@ -51,6 +51,11 @@ jobs:
         flags: unit
         report_type: test_results
         
+    - name: Install restic for integration tests
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y restic
+        
     - name: Run restic integration tests with coverage
       run: dotnet test src/backend/BackupChrono.Infrastructure.Restic.Tests/ --configuration Release --no-build --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage/restic --logger "junit;LogFilePath=test-results.xml"
       

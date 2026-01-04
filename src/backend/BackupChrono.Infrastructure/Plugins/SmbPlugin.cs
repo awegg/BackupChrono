@@ -244,11 +244,14 @@ public class SmbPlugin : IProtocolPlugin
         }
 
         // Remove from tracking (even if unmount failed, don't track it)
-        // Find and remove atomically using TryRemove
-        var entry = _mountTasks.FirstOrDefault(x => x.Value.IsCompletedSuccessfully && x.Value.Result == mountPath);
-        if (entry.Key != null)
+        // Iterate and remove matching entries atomically
+        foreach (var kvp in _mountTasks)
         {
-            _mountTasks.TryRemove(entry.Key, out _);
+            if (kvp.Value.IsCompletedSuccessfully && kvp.Value.Result == mountPath)
+            {
+                _mountTasks.TryRemove(kvp.Key, out _);
+                break; // Only one mount task should match this path
+            }
         }
     }
 

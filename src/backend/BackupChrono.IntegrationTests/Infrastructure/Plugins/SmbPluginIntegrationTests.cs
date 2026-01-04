@@ -50,8 +50,10 @@ public class SmbPluginIntegrationTests : IAsyncLifetime
         _sambaContainer = new ContainerBuilder()
             .WithImage("dperson/samba:latest")
             .WithPortBinding(HostPort, SmbPort)
+            .WithEnvironment("USERID", "1000")
+            .WithEnvironment("GROUPID", "1000")
             .WithEnvironment("USER", $"{TestUsername};{TestPassword}")
-            .WithEnvironment("SHARE", $"{TestShareName};/share")
+            .WithEnvironment("SHARE", $"{TestShareName};/share;yes;no;no;{TestUsername}")
             .WithEnvironment("WORKGROUP", "WORKGROUP")
             .WithWaitStrategy(Wait.ForUnixContainer().UntilMessageIsLogged(".*smbd.*started.*"))
             .Build();
@@ -60,9 +62,6 @@ public class SmbPluginIntegrationTests : IAsyncLifetime
 
         _containerHost = "localhost";
         _plugin = new SmbPlugin();
-
-        // Wait for Samba to fully initialize
-        await Task.Delay(5000);
     }
 
     public async Task DisposeAsync()

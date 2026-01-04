@@ -2,7 +2,6 @@ export enum ProtocolType {
   SMB = 'SMB',
   SSH = 'SSH',
   Rsync = 'Rsync',
-  NFS = 'NFS',
 }
 
 export enum BackupJobStatus {
