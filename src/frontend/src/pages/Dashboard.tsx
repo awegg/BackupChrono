@@ -2,6 +2,7 @@
 import { RefreshCw, AlertTriangle } from 'lucide-react';
 import { healthService } from '../services/healthService';
 import { dashboardService } from '../services/dashboardService';
+import { backupService } from '../services/deviceService';
 import { DashboardHeader } from '../components/DashboardHeader';
 import { DashboardMetrics } from '../components/DashboardMetrics';
 import { ActiveJobsTable } from '../components/ActiveJobsTable';
@@ -87,6 +88,7 @@ export default function Dashboard() {
 
   // Transform API data for components
   const activeJobsData = activeJobs.map(job => ({
+    id: job.id,
     deviceId: job.deviceId,
     deviceName: job.deviceName || 'Unknown Device',
     status: job.status as 'Running' | 'Pending',
@@ -118,15 +120,16 @@ export default function Dashboard() {
   console.log('Dashboard - recentBackups count:', recentBackups.length);
   console.log('Dashboard - completedBackupsData count:', completedBackupsData.length);
 
-  const handleStopJob = async (deviceId: string) => {
+  const handleStopJob = async (jobId: string) => {
     try {
-      // TODO: Implement API call to cancel job
-      console.log('Stopping job for device:', deviceId);
-      // await dashboardService.cancelJob(deviceId);
-      // Refresh the data after canceling
-      // await loadDashboardData();
+      const job = activeJobs.find(j => j.id === jobId);
+      if (!job) return;
+      
+      await backupService.cancelJob(jobId);
+      await loadDashboardData();
     } catch (err) {
       console.error('Failed to stop job:', err);
+      setError('Failed to cancel job. Please try again.');
     }
   };
 

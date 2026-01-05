@@ -1,6 +1,7 @@
 ﻿import { Server, Loader2, StopCircle } from 'lucide-react';
 
 interface ActiveJob {
+  id: string;
   deviceId: string;
   deviceName: string;
   status: 'Running' | 'Pending';
@@ -13,7 +14,7 @@ interface ActiveJob {
 
 interface ActiveJobsTableProps {
   jobs: ActiveJob[];
-  onStopJob?: (deviceId: string) => void;
+  onStopJob?: (jobId: string) => void;
 }
 
 export function ActiveJobsTable({ jobs, onStopJob = () => {} }: ActiveJobsTableProps) {
@@ -108,7 +109,7 @@ export function ActiveJobsTable({ jobs, onStopJob = () => {} }: ActiveJobsTableP
               
               <td className="px-4 py-3 text-right">
                 <button
-                  onClick={() => onStopJob(job.deviceId)}
+                  onClick={() => onStopJob(job.id)}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-status-error hover:text-status-error-fg bg-status-error-bg hover:bg-status-error/20 rounded-md transition-colors"
                   title="Stop backup job"
                 >

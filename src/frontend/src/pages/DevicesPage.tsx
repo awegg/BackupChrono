@@ -2,6 +2,8 @@
 import { useNavigate } from 'react-router-dom';
 import { Plus, HardDrive, AlertTriangle, RefreshCw } from 'lucide-react';
 import { DeviceCard } from '../components/DeviceCard';
+import { AddDeviceDialog } from '../components/AddDeviceDialog';
+import { AddShareDialog } from '../components/AddShareDialog';
 import { Device } from '../types/devices';
 import { devicesService } from '../services/devicesService';
 
@@ -11,6 +13,11 @@ export function DevicesPage() {
   const [devices, setDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [editingDeviceId, setEditingDeviceId] = useState<string | undefined>();
+  const [showAddShareDialog, setShowAddShareDialog] = useState(false);
+  const [selectedDeviceForShare, setSelectedDeviceForShare] = useState<Device | null>(null);
+  const [editingShare, setEditingShare] = useState<any>(null);
 
   const loadDevices = async () => {
     try {
@@ -31,8 +38,8 @@ export function DevicesPage() {
   }, []);
 
   const handleAddDevice = () => {
-    console.log('Add device clicked');
-    // TODO: Open modal to add device
+    setEditingDeviceId(undefined);
+    setShowAddDialog(true);
   };
 
   const handleToggleDevice = async (deviceId: string) => {
@@ -52,8 +59,8 @@ export function DevicesPage() {
   };
 
   const handleEditDevice = (deviceId: string) => {
-    console.log('Edit device:', deviceId);
-    // TODO: Open modal to edit device
+    setEditingDeviceId(deviceId);
+    setShowAddDialog(true);
   };
 
   const handleDeleteDevice = async (deviceId: string) => {
@@ -71,8 +78,11 @@ export function DevicesPage() {
   };
 
   const handleAddShare = (deviceId: string) => {
-    console.log('Add share for device:', deviceId);
-    // TODO: Open modal to add share
+    const device = devices.find(d => d.id === deviceId);
+    if (device) {
+      setSelectedDeviceForShare(device);
+      setShowAddShareDialog(true);
+    }
   };
 
   const handleToggleShare = async (deviceId: string, shareId: string) => {
@@ -111,8 +121,13 @@ export function DevicesPage() {
   };
 
   const handleEditShare = (deviceId: string, shareId: string) => {
-    console.log('Edit share:', shareId, 'on device:', deviceId);
-    // TODO: Open modal to edit share
+    const device = devices.find(d => d.id === deviceId);
+    const share = device?.shares.find(s => s.id === shareId);
+    if (device && share) {
+      setSelectedDeviceForShare(device);
+      setEditingShare(share);
+      setShowAddShareDialog(true);
+    }
   };
 
   const handleDeleteShare = async (deviceId: string, shareId: string) => {
@@ -218,6 +233,28 @@ export function DevicesPage() {
           </div>
         </div>
       )}
+
+      <AddDeviceDialog
+        open={showAddDialog}
+        onClose={() => {
+          setShowAddDialog(false);
+          setEditingDeviceId(undefined);
+        }}
+        onCreated={loadDevices}
+        editingDeviceId={editingDeviceId}
+      />
+
+      <AddShareDialog
+        open={showAddShareDialog}
+        onClose={() => {
+          setShowAddShareDialog(false);
+          setSelectedDeviceForShare(null);
+          setEditingShare(null);
+        }}
+        device={selectedDeviceForShare}
+        onCreated={loadDevices}
+        editingShare={editingShare}
+      />
     </div>
   );
 }

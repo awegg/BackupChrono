@@ -4,6 +4,7 @@ import { Device, Share } from '../types';
 import { deviceService, shareService } from '../services/deviceService';
 import { ArrowLeft, RefreshCw, HardDrive } from 'lucide-react';
 import { ShareList } from '../components/ShareList';
+import { AddShareDialog } from '../components/AddShareDialog';
 import { useNavigate } from 'react-router-dom';
 
 export default function DeviceDetail() {
@@ -12,6 +13,7 @@ export default function DeviceDetail() {
   const [device, setDevice] = useState<Device | null>(null);
   const [shares, setShares] = useState<Share[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showAddShareDialog, setShowAddShareDialog] = useState(false);
 
   const loadData = async () => {
     if (!deviceId) return;
@@ -91,7 +93,21 @@ export default function DeviceDetail() {
         </div>
       </div>
 
-      {deviceId && <ShareList deviceId={deviceId} shares={shares} onShareUpdated={loadData} />}
+      {deviceId && (
+        <ShareList
+          deviceId={deviceId}
+          shares={shares}
+          onShareUpdated={loadData}
+          onAddShare={() => setShowAddShareDialog(true)}
+        />
+      )}
+
+      <AddShareDialog
+        open={showAddShareDialog}
+        onClose={() => setShowAddShareDialog(false)}
+        device={device}
+        onCreated={loadData}
+      />
     </div>
   );
 }

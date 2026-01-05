@@ -8,9 +8,10 @@ interface ShareListProps {
   deviceId: string;
   shares: Share[];
   onShareUpdated: () => void;
+  onAddShare?: () => void;
 }
 
-export function ShareList({ deviceId, shares, onShareUpdated }: ShareListProps) {
+export function ShareList({ deviceId, shares, onShareUpdated, onAddShare }: ShareListProps) {
   const [showForm, setShowForm] = useState(false);
   const [editingShare, setEditingShare] = useState<Share | null>(null);
 
@@ -47,12 +48,20 @@ export function ShareList({ deviceId, shares, onShareUpdated }: ShareListProps) 
     onShareUpdated();
   };
 
+  const handleAddClick = () => {
+    if (onAddShare) {
+      onAddShare();
+    } else {
+      setShowForm(true);
+    }
+  };
+
   return (
     <div className="mt-6">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-xl font-bold">Shares</h3>
         <button
-          onClick={() => setShowForm(true)}
+          onClick={handleAddClick}
           className="bg-blue-500 text-white px-3 py-1.5 rounded hover:bg-blue-600 flex items-center gap-2 text-sm"
         >
           <Plus size={16} /> Add Share
