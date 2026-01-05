@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { healthService } from '../services/healthService';
 import { HealthStatus } from '../types/health';
 import { 
@@ -156,8 +156,7 @@ export function HealthStatusPanel() {
               <div className="text-sm font-semibold">System Health: {health.status}</div>
               <div className="text-xs text-gray-500">
                 {criticalCount > 0 && <span className="text-red-600">{criticalCount} critical</span>}
-                {criticalCount > 0 && warningCount > 0 && <span className="mx-1">ÔÇó</span>}
-                {warningCount > 0 && <span className="text-yellow-600">{warningCount} warning</span>}
+                {criticalCount > 0 && warningCount > 0 && <span className="mx-1">•</span>}                {warningCount > 0 && <span className="text-yellow-600">{warningCount} warning</span>}
                 {criticalCount === 0 && warningCount === 0 && <span>All checks passing</span>}
               </div>
             </div>

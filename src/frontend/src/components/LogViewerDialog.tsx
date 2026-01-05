@@ -180,7 +180,7 @@ export function LogViewerDialog({ open, onOpenChange, logData, jobId }: LogViewe
                 <div className="space-y-2">
                   <div className="text-sm text-gray-500 dark:text-gray-400">Exit Code</div>
                   <span className={`inline-flex items-center px-2.5 py-1 rounded text-sm ${logData.snapshotInfo.exitCode === 0 ? 'bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300 border border-green-200 dark:border-green-700' : 'bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-300 border border-red-200 dark:border-red-700'}`}>
-                    {logData.snapshotInfo.exitCode} (Success)
+                    {logData.snapshotInfo.exitCode} ({logData.snapshotInfo.exitCode === 0 ? 'Success' : 'Failed'})
                   </span>
                 </div>
               </div>

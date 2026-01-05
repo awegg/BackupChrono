@@ -356,10 +356,15 @@ export function BackupLogViewerPage() {
           </div>
 
           {/* Status Message Banner */}
-          <div className="p-4 rounded-lg bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 text-green-800 dark:text-green-300">
+          <div className={`p-4 rounded-lg ${
+            logData.status === 'error' 
+              ? 'bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 text-red-800 dark:text-red-300'
+              : logData.status === 'warning'
+                ? 'bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-700 text-yellow-800 dark:text-yellow-300'
+                : 'bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 text-green-800 dark:text-green-300'
+          }`}>
             {logData.message}
           </div>
-
           {/* Snapshot Information */}
           <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg shadow-md">
             <button
@@ -398,9 +403,9 @@ export function BackupLogViewerPage() {
                 <div className="space-y-2">
                   <div className="text-sm text-gray-500 dark:text-gray-400">Exit Code</div>
                   <span className={`inline-flex items-center px-2.5 py-1 rounded text-sm ${logData.snapshotInfo.exitCode === 0 ? 'bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300 border border-green-200 dark:border-green-700' : 'bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-300 border border-red-200 dark:border-red-700'}`}>
-                    {logData.snapshotInfo.exitCode} (Success)
-                  </span>
-                </div>
+                    {logData.snapshotInfo.exitCode} ({logData.snapshotInfo.exitCode === 0 ? 'Success' : 'Failed'})
+                  </span>                
+                  </div>
               </div>
             )}
           </div>

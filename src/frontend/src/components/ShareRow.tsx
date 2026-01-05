@@ -1,11 +1,10 @@
-﻿import { Folder, Play, Settings, Trash2 } from 'lucide-react';
+﻿﻿import { Folder, Play, Settings, Trash2 } from 'lucide-react';
 import { Share } from '../types/devices';
 
 interface ShareRowProps {
   share: Share;
   onToggle: (shareId: string) => void;
   onStartBackup: (shareId: string) => void;
-  onViewBackups: (shareId: string) => void;
   onEdit: (shareId: string) => void;
   onDelete: (shareId: string) => void;
 }

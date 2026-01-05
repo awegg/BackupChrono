@@ -417,58 +417,82 @@ public class ResticService : IResticService
 
     public async Task<SnapshotStats> GetSnapshotStats(string backupId, string? repositoryPath = null)
     {
-        var args = new[] { "stats", backupId, "--json", "--mode=restore-size" };
-        var output = await _client.ExecuteCommand(args, repositoryPathOverride: repositoryPath);
-        
+        var restoreStatsTask = _client.ExecuteCommand(new[] { "stats", backupId, "--json", "--mode=restore-size" }, repositoryPathOverride: repositoryPath);
+        var rawDataStatsTask = _client.ExecuteCommand(new[] { "stats", backupId, "--json", "--mode=raw-data" }, repositoryPathOverride: repositoryPath);
+        var blobStatsTask = _client.ExecuteCommand(new[] { "stats", backupId, "--json", "--mode=blobs-per-file" }, repositoryPathOverride: repositoryPath);
+
+        await Task.WhenAll(restoreStatsTask, blobStatsTask);
+
+        var restoreOutput = await restoreStatsTask;
+        var blobOutput = await blobStatsTask;
+        string rawDataOutput = string.Empty;
         try
         {
-            using var doc = JsonDocument.Parse(output);
-            var stats = doc.RootElement;
-            
-            var totalSize = stats.TryGetProperty("total_size", out var ts) ? ts.GetInt64() : 0;
-            var totalFileCount = stats.TryGetProperty("total_file_count", out var tfc) ? tfc.GetInt64() : 0;
-
-            // Get blob stats for deduplication info
-            var blobArgs = new[] { "stats", backupId, "--json", "--mode=blobs-per-file" };
-            var blobOutput = await _client.ExecuteCommand(blobArgs, repositoryPathOverride: repositoryPath);
-            
-            long totalBlobCount = 0;
-            long totalTreeCount = 0;
-            
-            try
-            {
-                using var blobDoc = JsonDocument.Parse(blobOutput);
-                var blobStats = blobDoc.RootElement;
-                totalBlobCount = blobStats.TryGetProperty("total_blob_count", out var tbc) ? tbc.GetInt64() : 0;
-            }
-            catch (JsonException)
-            {
-                _logger.LogWarning("Failed to parse blob stats for {BackupId}", backupId);
-            }
-
-            // Calculate deduplication metrics
-            // Note: This is a simplified calculation. Real deduplication ratio requires comparing
-            // with original data size vs stored size across all snapshots.
-            var deduplicationRatio = totalSize > 0 ? 1.0 - ((double)totalSize / (totalSize + 1000000)) : 0.0;
-            var spaceSaved = (long)(totalSize * deduplicationRatio);
-
-            return new SnapshotStats
-            {
-                SnapshotId = backupId,
-                TotalBlobCount = totalBlobCount,
-                TotalTreeCount = totalTreeCount,
-                TotalSize = totalSize,
-                TotalUncompressedSize = totalSize, // Restic doesn't expose uncompressed size easily
-                CompressionRatio = 0.0, // Would need more detailed stats
-                DeduplicationSpaceSaved = spaceSaved,
-                DeduplicationRatio = deduplicationRatio
-            };
+            rawDataOutput = await rawDataStatsTask;
         }
-        catch (JsonException ex)
+        catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to parse snapshot stats for {BackupId}", backupId);
-            throw;
+            _logger.LogWarning(ex, "Raw-data stats unavailable for {BackupId}, falling back to restore-size only", backupId);
         }
+
+        long logicalSize = 0;
+        long rawDataSize = 0;
+        long totalBlobCount = 0;
+        long totalTreeCount = 0;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(restoreOutput);
+            var stats = doc.RootElement;
+            logicalSize = stats.TryGetProperty("total_size", out var ts) ? ts.GetInt64() : 0;
+        }
+        catch (JsonException)
+        {
+            _logger.LogWarning("Failed to parse restore-size stats for {BackupId}", backupId);
+        }
+
+        try
+        {
+            using var rawDoc = JsonDocument.Parse(rawDataOutput);
+            var rawStats = rawDoc.RootElement;
+            rawDataSize = rawStats.TryGetProperty("total_size", out var rs) ? rs.GetInt64() : 0;
+        }
+        catch (JsonException)
+        {
+            _logger.LogWarning("Failed to parse raw-data stats for {BackupId}", backupId);
+        }
+
+        try
+        {
+            using var blobDoc = JsonDocument.Parse(blobOutput);
+            var blobStats = blobDoc.RootElement;
+            totalBlobCount = blobStats.TryGetProperty("total_blob_count", out var tbc) ? tbc.GetInt64() : 0;
+        }
+        catch (JsonException)
+        {
+            _logger.LogWarning("Failed to parse blob stats for {BackupId}", backupId);
+        }
+
+        var effectiveLogicalSize = logicalSize;
+        var effectiveRawSize = rawDataSize > 0 ? rawDataSize : effectiveLogicalSize;
+        var spaceSaved = Math.Max(0, effectiveLogicalSize - effectiveRawSize);
+        var deduplicationRatio = effectiveLogicalSize > 0
+            ? Math.Min(1.0, Math.Max(0.0, (double)spaceSaved / effectiveLogicalSize))
+            : 0.0;
+
+        return new SnapshotStats
+        {
+            SnapshotId = backupId,
+            TotalBlobCount = totalBlobCount,
+            TotalTreeCount = totalTreeCount,
+            TotalSize = effectiveRawSize,
+            TotalUncompressedSize = effectiveLogicalSize,
+            CompressionRatio = 0.0,
+            DeduplicationSpaceSaved = spaceSaved,
+            DeduplicationRatio = deduplicationRatio
+        };
+        
+        
     }
 
     /// <summary>
@@ -540,12 +564,22 @@ public class ResticService : IResticService
         var statsTask = _client.ExecuteCommand(new[] { "stats", backupId, "--json" }, repositoryPathOverride: repositoryPath);
         var restoreSizeTask = _client.ExecuteCommand(new[] { "stats", backupId, "--json", "--mode=restore-size" }, repositoryPathOverride: repositoryPath);
         var blobsTask = _client.ExecuteCommand(new[] { "stats", backupId, "--json", "--mode=blobs-per-file" }, repositoryPathOverride: repositoryPath);
+        var rawDataTask = _client.ExecuteCommand(new[] { "stats", backupId, "--json", "--mode=raw-data" }, repositoryPathOverride: repositoryPath);
         
         await Task.WhenAll(statsTask, restoreSizeTask, blobsTask);
         
         var statsOutput = await statsTask;
         var restoreSizeOutput = await restoreSizeTask;
         var blobsOutput = await blobsTask;
+        string rawDataOutput = string.Empty;
+        try
+        {
+            rawDataOutput = await rawDataTask;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Raw-data stats unavailable for {BackupId}, falling back to restore-size only", backupId);
+        }
         
         // Parse stats
         long totalSize = 0;
@@ -576,6 +610,19 @@ public class ResticService : IResticService
             _logger.LogWarning("Failed to parse restore-size stats for {BackupId}", backupId);
         }
 
+        // Parse raw-data stats for actual stored size after deduplication
+        long rawDataSize = 0;
+        try
+        {
+            using var rawDoc = JsonDocument.Parse(rawDataOutput);
+            var rawStats = rawDoc.RootElement;
+            rawDataSize = rawStats.TryGetProperty("total_size", out var rds) ? rds.GetInt64() : 0;
+        }
+        catch (JsonException)
+        {
+            _logger.LogWarning("Failed to parse raw-data stats for {BackupId}", backupId);
+        }
+
         // Parse blobs stats
         long totalBlobCount = 0;
         try
@@ -589,8 +636,12 @@ public class ResticService : IResticService
             _logger.LogWarning("Failed to parse blob stats for {BackupId}", backupId);
         }
 
-        var deduplicationRatio = totalSize > 0 ? 1.0 - ((double)totalSize / (totalSize + 1000000)) : 0.0;
-        var spaceSaved = (long)(totalSize * deduplicationRatio);
+        var logicalSize = restoreSize > 0 ? restoreSize : totalSize;
+        var dedupedSize = rawDataSize > 0 ? rawDataSize : logicalSize;
+        var spaceSaved = Math.Max(0, logicalSize - dedupedSize);
+        var deduplicationRatio = logicalSize > 0
+            ? Math.Min(1.0, Math.Max(0.0, (double)spaceSaved / logicalSize))
+            : 0.0;
 
         var backup = new Backup
         {
@@ -605,7 +656,7 @@ public class ResticService : IResticService
             FilesChanged = metadata.Summary?.FilesChanged ?? 0,
             FilesUnmodified = metadata.Summary?.FilesUnmodified ?? totalFileCount,
             DataAdded = metadata.Summary?.DataAdded ?? 0,
-            DataProcessed = metadata.Summary?.DataProcessed ?? totalSize,
+            DataProcessed = metadata.Summary?.DataProcessed ?? logicalSize,
             Duration = TimeSpan.Zero
         };
 
@@ -614,8 +665,8 @@ public class ResticService : IResticService
             SnapshotId = backupId,
             TotalBlobCount = totalBlobCount,
             TotalTreeCount = 0,
-            TotalSize = totalSize,
-            TotalUncompressedSize = totalSize,
+            TotalSize = dedupedSize,
+            TotalUncompressedSize = logicalSize,
             CompressionRatio = 0.0,
             DeduplicationSpaceSaved = spaceSaved,
             DeduplicationRatio = deduplicationRatio

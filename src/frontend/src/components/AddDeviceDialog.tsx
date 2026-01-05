@@ -89,8 +89,7 @@ export function AddDeviceDialog({ open, onClose, onCreated, editingDeviceId }: A
         resetForm();
       }
     }
-  }, [open, editingDeviceId]);
-
+  }, [open, editingDeviceId, isEditing]);
   useEffect(() => {
     if (!port) {
       setPort(protocolDefaults[protocol].toString());

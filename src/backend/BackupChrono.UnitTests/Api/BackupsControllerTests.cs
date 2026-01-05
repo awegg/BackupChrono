@@ -3,9 +3,11 @@ using BackupChrono.Api.DTOs;
 using BackupChrono.Core.Entities;
 using BackupChrono.Core.Interfaces;
 using BackupChrono.Infrastructure.Services;
+using BackupChrono.Infrastructure.Restic;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
 
@@ -25,7 +27,8 @@ public class BackupsControllerTests
         _mockResticService = new Mock<IResticService>();
         var _mockBackupLogService = new Mock<IBackupLogService>();
         _mockLogger = new Mock<ILogger<BackupsController>>();
-        _controller = new BackupsController(_mockResticService.Object, _mockBackupLogService.Object, _mockLogger.Object);
+        var resticOptions = Options.Create(new ResticOptions { RepositoryBasePath = "./repositories" });
+        _controller = new BackupsController(_mockResticService.Object, _mockBackupLogService.Object, resticOptions, _mockLogger.Object);
     }
 
     [Fact]
@@ -116,10 +119,26 @@ public class BackupsControllerTests
             DataAdded = 1024000,
             Duration = TimeSpan.FromMinutes(5)
         };
+        var metadata = new BackupChrono.Core.DTOs.SnapshotMetadata
+        {
+            Id = backupId,
+            Hostname = "TestDevice",
+            Paths = new List<string> { "/test" },
+            Time = DateTime.UtcNow,
+            Tags = new List<string>()
+        };
+        var stats = new BackupChrono.Core.DTOs.SnapshotStats
+        {
+            SnapshotId = backupId,
+            TotalSize = 1024000,
+            TotalUncompressedSize = 2048000,
+            DeduplicationRatio = 0.5,
+            DeduplicationSpaceSaved = 1024000
+        };
 
         _mockResticService
-            .Setup(s => s.GetBackup(backupId, It.IsAny<string?>()))
-            .ReturnsAsync(backup);
+            .Setup(s => s.GetBackupDetailComplete(backupId, It.IsAny<string?>()))
+            .ReturnsAsync((backup, metadata, stats));
 
         // Act
         var result = await _controller.GetBackup(backupId);
@@ -137,7 +156,7 @@ public class BackupsControllerTests
         // Arrange
         var backupId = "nonexistent";
         _mockResticService
-            .Setup(s => s.GetBackup(backupId, It.IsAny<string?>()))
+            .Setup(s => s.GetBackupDetailComplete(backupId, It.IsAny<string?>()))
             .ThrowsAsync(new KeyNotFoundException($"Backup {backupId} not found"));
 
         // Act
@@ -155,7 +174,7 @@ public class BackupsControllerTests
         // Arrange
         var backupId = "test456";
         _mockResticService
-            .Setup(s => s.GetBackup(backupId, It.IsAny<string?>()))
+            .Setup(s => s.GetBackupDetailComplete(backupId, It.IsAny<string?>()))
             .ThrowsAsync(new InvalidOperationException("repository does not exist"));
 
         // Act

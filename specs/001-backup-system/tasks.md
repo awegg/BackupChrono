@@ -148,7 +148,6 @@ This document organizes implementation tasks by **user story** to enable indepen
 - [X] T058 [US1] Implement POST /devices/{deviceId}/test-connection endpoint in DevicesController to test connectivity before creating device
 - [X] T059 [US1] Implement POST /devices/{deviceId}/wake endpoint in DevicesController for Wake-on-LAN
 - [X] T060 [US1] Create BackupJobsController in BackupChrono.Api/Controllers/BackupJobsController.cs with GET /backup-jobs, POST /backup-jobs (manual trigger), GET /backup-jobs/{id}
-- [ ] T060A [US1] Add backup job log storage and retrieval: Add LogOutput to BackupJob entity, create GET /api/backup-jobs/{id}/logs endpoint, build LogViewerDialog component with "View Logs" buttons in UI
 - [X] T061 [US1] Implement repository initialization logic in ResticService.InitializeRepository when first backup runs
 - [X] T062 [US1] Implement configuration cascade logic in BackupOrchestrator (global → device → share) per data-model.md semantics
 - [X] T063 [US1] Implement retry logic with exponential backoff (5min, 15min, 45min) in BackupOrchestrator for failed backups
@@ -181,6 +180,8 @@ This document organizes implementation tasks by **user story** to enable indepen
 - Can see scheduled jobs and next run times
 
 ### Implementation Tasks
+
+- [ ] T060A [US1] [Non-blocking][Phase 3.5 Observability add-on] Add backup job log storage and retrieval: Add LogOutput to BackupJob entity, create GET /api/backup-jobs/{id}/logs endpoint, build LogViewerDialog component with "View Logs" buttons in UI
 
 - [X] T201 [P] [MinUI] Initialize React 18 project in src/frontend/ with Vite, TypeScript, Tailwind CSS
 - [X] T202 [P] [MinUI] Install minimal dependencies: react-router-dom, axios, @tanstack/react-query, lucide-react
@@ -1017,9 +1018,4 @@ Adds: Discord/Gotify notifications, device auto-discovery, command hooks
 
 ### Implementation Tasks
 
-- [ ] T257 [US12] Add GetFileDiff method to IGitConfigService interface in BackupChrono.Core/Interfaces/IGitConfigService.cs
-  - **Current**: Backend requires deviceId and shareId as query params
-  - **OpenAPI**: Only specifies `path` parameter
-  - **Decision needed**: Either remove params (use backupId to lookup device/share) or update OpenAPI spec
-  - **File**: `src/backend/BackupChrono.Api/Controllers/BackupsController.cs`
 

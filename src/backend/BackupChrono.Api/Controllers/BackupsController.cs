@@ -4,6 +4,7 @@ using BackupChrono.Core.Entities;
 using BackupChrono.Core.Interfaces;
 using BackupChrono.Infrastructure.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
 namespace BackupChrono.Api.Controllers;
 
@@ -16,15 +17,18 @@ public class BackupsController : ControllerBase
 {
     private readonly IResticService _resticService;
     private readonly IBackupLogService _backupLogService;
+    private readonly ResticOptions _resticOptions;
     private readonly ILogger<BackupsController> _logger;
 
     public BackupsController(
         IResticService resticService,
             IBackupLogService backupLogService,
+        IOptions<ResticOptions> resticOptions,
         ILogger<BackupsController> logger)
     {
         _resticService = resticService;
         _backupLogService = backupLogService;
+        _resticOptions = resticOptions.Value;
         _logger = logger;
     }
 
@@ -119,7 +123,7 @@ public class BackupsController : ControllerBase
             // Construct repository path if device/share provided
             if (deviceId.HasValue && shareId.HasValue)
             {
-                repositoryPath = Path.Combine("./repositories", deviceId.Value.ToString(), shareId.Value.ToString());
+                repositoryPath = Path.Combine(_resticOptions.RepositoryBasePath, deviceId.Value.ToString(), shareId.Value.ToString());
                 _logger.LogInformation("Repository path constructed: {RepositoryPath}", repositoryPath);
             }
             else
@@ -254,7 +258,7 @@ public class BackupsController : ControllerBase
             // Construct repository path if device/share provided
             if (deviceId.HasValue && shareId.HasValue)
             {
-                repositoryPath = Path.Combine("./repositories", deviceId.Value.ToString(), shareId.Value.ToString());
+                repositoryPath = Path.Combine(_resticOptions.RepositoryBasePath, deviceId.Value.ToString(), shareId.Value.ToString());
                 _logger.LogInformation("Repository path constructed: {RepositoryPath}", repositoryPath);
             }
             else
@@ -334,7 +338,7 @@ public class BackupsController : ControllerBase
         try
         {
             // Construct repository path
-            var repositoryPath = Path.Combine("./repositories", deviceId.ToString(), shareId.ToString());
+            var repositoryPath = Path.Combine(_resticOptions.RepositoryBasePath, deviceId.ToString(), shareId.ToString());
             
             var files = await _resticService.BrowseBackup(backupId, path, repositoryPath);
             var filesList = files.ToList();
@@ -402,7 +406,7 @@ public class BackupsController : ControllerBase
             }
 
             // Construct repository path
-            var repositoryPath = Path.Combine("./repositories", deviceId.ToString(), shareId.ToString());
+            var repositoryPath = Path.Combine(_resticOptions.RepositoryBasePath, deviceId.ToString(), shareId.ToString());
 
             _logger.LogInformation(
                 "Download requested for file {FilePath} from backup {BackupId}",
@@ -478,7 +482,7 @@ public class BackupsController : ControllerBase
             var includePaths = request.IncludePaths?.ToArray();
 
             // Construct repository path
-            var repositoryPath = Path.Combine("./repositories", deviceId.ToString(), shareId.ToString());
+            var repositoryPath = Path.Combine(_resticOptions.RepositoryBasePath, deviceId.ToString(), shareId.ToString());
             
             _logger.LogInformation(
                 "Restore requested for backup {BackupId} to {TargetPath} with {PathCount} include paths",
