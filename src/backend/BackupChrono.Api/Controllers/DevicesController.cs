@@ -14,6 +14,7 @@ public class DevicesController : ControllerBase
     private readonly IDeviceService _deviceService;
     private readonly IShareService _shareService;
     private readonly IResticService _resticService;
+    private readonly IBackupJobRepository _backupJobRepository;
     private readonly IMappingService _mappingService;
     private readonly ILogger<DevicesController> _logger;
 
@@ -21,12 +22,14 @@ public class DevicesController : ControllerBase
         IDeviceService deviceService,
         IShareService shareService,
         IResticService resticService,
+        IBackupJobRepository backupJobRepository,
         IMappingService mappingService,
         ILogger<DevicesController> logger)
     {
         _deviceService = deviceService;
         _shareService = shareService;
         _resticService = resticService;
+        _backupJobRepository = backupJobRepository;
         _mappingService = mappingService;
         _logger = logger;
     }
@@ -310,6 +313,20 @@ public class DevicesController : ControllerBase
                 {
                     _logger.LogWarning(ex, "Failed to list backups for share {ShareId} on device {DeviceId}", share.Id, deviceId);
                     // Continue with other shares
+                }
+            }
+
+            // Enrich backups with createdByJobId by cross-referencing jobs
+            var allJobs = await _backupJobRepository.ListJobs();
+            var jobsByBackupId = allJobs
+                .Where(j => !string.IsNullOrEmpty(j.BackupId))
+                .ToDictionary(j => j.BackupId!, j => j.Id);
+
+            foreach (var backup in allBackups)
+            {
+                if (jobsByBackupId.TryGetValue(backup.Id, out var jobId))
+                {
+                    backup.CreatedByJobId = jobId;
                 }
             }
 

@@ -101,7 +101,9 @@ builder.Services.Configure<BackupChrono.Infrastructure.Services.ResticOptions>(o
 
 builder.Services.AddSingleton<GitConfigService>(sp => 
     new GitConfigService(configPath));
-builder.Services.AddSingleton<IResticClient, ResticClient>(sp => 
+
+// Register ResticClient both as concrete type and interface because StorageMonitor depends on the concrete type
+builder.Services.AddSingleton<ResticClient>(sp =>
 {
     var resticOptions = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<BackupChrono.Infrastructure.Services.ResticOptions>>().Value;
     var resticPassword = resticOptions.Password;
@@ -125,7 +127,10 @@ builder.Services.AddSingleton<IResticClient, ResticClient>(sp =>
     return new ResticClient(
         resticOptions.BinaryPath,
         resticOptions.RepositoryBasePath,
-        resticPassword);});
+        resticPassword);
+});
+
+builder.Services.AddSingleton<IResticClient>(sp => sp.GetRequiredService<ResticClient>());
 builder.Services.AddSingleton<IResticService, ResticService>();
 
 // Register application services (Phase 3 - User Story 1)

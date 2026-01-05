@@ -1,17 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Backup, FileEntry } from '../types';
-import { BackupsList } from '../components/BackupsList';
 import { FileBrowser } from '../components/FileBrowser';
 import { ChevronLeft, HardDrive, RotateCcw, X } from 'lucide-react';
 import { apiClient } from '../services/api';
 
-export const BackupBrowser: React.FC = () => {
-  const { deviceId } = useParams<{ deviceId: string }>();
+export const FileBrowserPage: React.FC = () => {
+  const { deviceId, backupId } = useParams<{ deviceId: string; backupId: string }>();
   const navigate = useNavigate();
   
-  const [backups, setBackups] = useState<Backup[]>([]);
-  const [selectedBackup, setSelectedBackup] = useState<Backup | null>(null);
+  const [backup, setBackup] = useState<Backup | null>(null);
   const [files, setFiles] = useState<FileEntry[]>([]);
   const [currentPath, setCurrentPath] = useState('/');
   const [loading, setLoading] = useState(false);
@@ -22,32 +20,39 @@ export const BackupBrowser: React.FC = () => {
   const [restoreCurrentFolderOnly, setRestoreCurrentFolderOnly] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [restoreSuccess, setRestoreSuccess] = useState<string | null>(null);
+
   useEffect(() => {
-    loadBackups();
-  }, [deviceId]);
-
-  const loadBackups = async () => {
-    if (!deviceId) return;
+    if (!deviceId || !backupId) return;
     
-    setLoading(true);
-    setError(null);
+    const loadBackupAndFiles = async () => {
+      setLoading(true);
+      setError(null);
+      
+      try {
+        // Load all backups to find the one we need
+        const backupsResponse = await apiClient.get(`/api/devices/${deviceId}/backups`);
+        const foundBackup = backupsResponse.data.find((b: Backup) => b.id === backupId);
+        
+        if (!foundBackup) {
+          setError('Backup not found');
+          setLoading(false);
+          return;
+        }
+        
+        setBackup(foundBackup);
+        
+        // Load files for this backup
+        await loadFiles(foundBackup.id, '/', foundBackup.deviceId, foundBackup.shareId || '');
+      } catch (err) {
+        console.error('Error loading backup:', err);
+        setError('Failed to load backup');
+      } finally {
+        setLoading(false);
+      }
+    };
     
-    try {
-      const response = await apiClient.get(`/api/devices/${deviceId}/backups`);
-      setBackups(response.data);
-    } catch (err) {
-      console.error('Error loading backups:', err);
-      setError('Failed to load backups');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleBackupSelect = async (backup: Backup) => {
-    setSelectedBackup(backup);
-    setCurrentPath('/');
-    await loadFiles(backup.id, '/', backup.deviceId, backup.shareId || '');
-  };
+    loadBackupAndFiles();
+  }, [deviceId, backupId]);
 
   const loadFiles = async (backupId: string, path: string, deviceId: string, shareId: string) => {
     setFilesLoading(true);
@@ -75,22 +80,22 @@ export const BackupBrowser: React.FC = () => {
   };
 
   const handleNavigate = (path: string) => {
-    if (selectedBackup) {
-      loadFiles(selectedBackup.id, path, selectedBackup.deviceId, selectedBackup.shareId || '');
+    if (backup) {
+      loadFiles(backup.id, path, backup.deviceId, backup.shareId || '');
     }
   };
 
   const handleDownload = async (file: FileEntry) => {
-    if (!selectedBackup) return;
+    if (!backup) return;
     
     try {
       const response = await apiClient.get(
-        `/api/backups/${selectedBackup.id}/download`,
+        `/api/backups/${backup.id}/download`,
         {
           params: { 
             filePath: file.path,
-            deviceId: selectedBackup.deviceId,
-            shareId: selectedBackup.shareId || ''
+            deviceId: backup.deviceId,
+            shareId: backup.shareId || ''
           },
           responseType: 'blob'
         }
@@ -112,17 +117,11 @@ export const BackupBrowser: React.FC = () => {
   };
 
   const handleBack = () => {
-    if (selectedBackup) {
-      setSelectedBackup(null);
-      setFiles([]);
-      setCurrentPath('/');
-    } else {
-      navigate('/');
-    }
+    navigate(`/devices/${deviceId}/backups`);
   };
 
   const handleRestore = async () => {
-    if (!selectedBackup || !restoreTargetPath.trim()) {
+    if (!backup || !restoreTargetPath.trim()) {
       setError('Please enter a target path');
       return;
     }
@@ -142,7 +141,7 @@ export const BackupBrowser: React.FC = () => {
       }
 
       const response = await apiClient.post(
-        `/api/backups/${selectedBackup.id}/restore?deviceId=${selectedBackup.deviceId}&shareId=${selectedBackup.shareId || ''}`,
+        `/api/backups/${backup.id}/restore?deviceId=${backup.deviceId}&shareId=${backup.shareId || ''}`,
         payload
       );
 
@@ -167,6 +166,26 @@ export const BackupBrowser: React.FC = () => {
     setRestoreSuccess(null);
   };
 
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex justify-center items-center p-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!backup) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="text-center p-8 text-red-600">
+          {error || 'Backup not found'}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
@@ -176,20 +195,18 @@ export const BackupBrowser: React.FC = () => {
           className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 mb-4"
         >
           <ChevronLeft size={16} className="mr-1" />
-          {selectedBackup ? 'Back to Backups' : 'Back to Devices'}
+          Back to Backups
         </button>
         
         <div className="flex items-center space-x-3">
           <HardDrive className="text-gray-400" size={32} />
           <div>
             <h1 className="text-2xl font-bold text-gray-900">
-              {selectedBackup ? 'Browse Files' : 'Device Backups'}
+              Browse Files
             </h1>
-            {selectedBackup && (
-              <p className="text-sm text-gray-500 mt-1">
-                Backup from {new Date(selectedBackup.timestamp).toLocaleString()}
-              </p>
-            )}
+            <p className="text-sm text-gray-500 mt-1">
+              Backup from {new Date(backup.timestamp).toLocaleString()}
+            </p>
           </div>
         </div>
       </div>
@@ -209,39 +226,26 @@ export const BackupBrowser: React.FC = () => {
       )}
 
       {/* Content */}
-      {!selectedBackup ? (
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">
-            Available Backups
-          </h2>
-          <BackupsList
-            backups={backups}
-            onBackupClick={handleBackupSelect}
-            loading={loading}
-          />
+      <div>
+        <div className="mb-4 flex justify-end">
+          <button
+            onClick={openRestoreDialog}
+            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <RotateCcw size={18} className="mr-2" />
+            Restore Files
+          </button>
         </div>
-      ) : (
-        <div>
-          <div className="mb-4 flex justify-end">
-            <button
-              onClick={openRestoreDialog}
-              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              <RotateCcw size={18} className="mr-2" />
-              Restore Files
-            </button>
-          </div>
-          
-          <FileBrowser
-            backupId={selectedBackup.id}
-            files={files}
-            currentPath={currentPath}
-            onNavigate={handleNavigate}
-            onDownload={handleDownload}
-            loading={filesLoading}
-          />
-        </div>
-      )}
+        
+        <FileBrowser
+          backupId={backup.id}
+          files={files}
+          currentPath={currentPath}
+          onNavigate={handleNavigate}
+          onDownload={handleDownload}
+          loading={filesLoading}
+        />
+      </div>
 
       {/* Restore Dialog */}
       {showRestoreDialog && (

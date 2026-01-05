@@ -136,6 +136,12 @@ public class BackupOrchestrator : IBackupOrchestrator
                 {
                     var backup = await ExecuteShareBackupInternal(device, share, job, cts.Token);
                     backups.Add(backup);
+                    
+                    // For device-level backups, store the last successful backup ID
+                    // (in multi-share device backups, this will be the last share's snapshot)
+                    job.BackupId = backup.Id;
+                    job.ShareId = share.Id; // Track which share this backup belongs to
+                    job.ShareName = share.Name;
                 }
                 catch (OperationCanceledException)
                 {
@@ -469,6 +475,9 @@ public class BackupOrchestrator : IBackupOrchestrator
             }
 
             _logger.LogInformation("Backup completed with snapshot ID: {SnapshotId}", backup.Id);
+            
+            // Link job and backup
+            backup.CreatedByJobId = job.Id;
 
             return backup;
         }
