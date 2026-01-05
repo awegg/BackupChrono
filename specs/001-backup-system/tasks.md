@@ -148,6 +148,7 @@ This document organizes implementation tasks by **user story** to enable indepen
 - [X] T058 [US1] Implement POST /devices/{deviceId}/test-connection endpoint in DevicesController to test connectivity before creating device
 - [X] T059 [US1] Implement POST /devices/{deviceId}/wake endpoint in DevicesController for Wake-on-LAN
 - [X] T060 [US1] Create BackupJobsController in BackupChrono.Api/Controllers/BackupJobsController.cs with GET /backup-jobs, POST /backup-jobs (manual trigger), GET /backup-jobs/{id}
+- [ ] T060A [US1] Add backup job log storage and retrieval: Add LogOutput to BackupJob entity, create GET /api/backup-jobs/{id}/logs endpoint, build LogViewerDialog component with "View Logs" buttons in UI
 - [X] T061 [US1] Implement repository initialization logic in ResticService.InitializeRepository when first backup runs
 - [X] T062 [US1] Implement configuration cascade logic in BackupOrchestrator (global → device → share) per data-model.md semantics
 - [X] T063 [US1] Implement retry logic with exponential backoff (5min, 15min, 45min) in BackupOrchestrator for failed backups

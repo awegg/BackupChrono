@@ -7,6 +7,7 @@ import DeviceDetail from './pages/DeviceDetail';
 import { BackupsListPage } from './pages/BackupsList';
 import { DevicesPage } from './pages/DevicesPage';
 import { FileBrowserPage } from './pages/FileBrowserPage';
+import { BackupLogViewerPage } from './pages/BackupLogViewerPage';
 import { ErrorNotification } from './components/ErrorNotification';
 import { Sidebar } from './components/Sidebar';
 import './App.css';
@@ -57,6 +58,7 @@ function App() {
                 <Route path="/devices/:deviceId/backups" element={<BackupsListPage />} />
                 <Route path="/devices/:deviceId/backups/:backupId/browse" element={<FileBrowserPage />} />
                 <Route path="/backups/:backupId/browse" element={<FileBrowserPage />} />
+                <Route path="/backups/:backupId/logs" element={<BackupLogViewerPage />} />
               </Routes>
             </main>
           </div>

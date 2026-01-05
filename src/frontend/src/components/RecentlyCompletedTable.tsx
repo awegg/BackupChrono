@@ -1,4 +1,4 @@
-﻿import { Server, CheckCircle, AlertTriangle, Eye, FolderOpen } from 'lucide-react';
+﻿import { Server, CheckCircle, AlertTriangle, FolderOpen, FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface CompletedBackup {
@@ -15,10 +15,20 @@ interface CompletedBackup {
 
 interface RecentlyCompletedTableProps {
   backups: CompletedBackup[];
+  onViewLogs?: (backupId: string) => void;
 }
 
-export function RecentlyCompletedTable({ backups }: RecentlyCompletedTableProps) {
+export function RecentlyCompletedTable({ backups, onViewLogs }: RecentlyCompletedTableProps) {
   const navigate = useNavigate();
+
+  const handleViewLogs = (backup: CompletedBackup) => {
+    navigate(`/backups/${backup.backupId}/logs`);
+    
+    // Call optional callback
+    if (onViewLogs) {
+      onViewLogs(backup.backupId);
+    }
+  };
 
   if (backups.length === 0) {
     return (
@@ -107,22 +117,22 @@ export function RecentlyCompletedTable({ backups }: RecentlyCompletedTableProps)
               <td className="px-4 py-3">
                 <div className="flex items-center justify-end gap-2">
                   <button
-                    onClick={() => navigate(`/devices/${backup.deviceId}`)}
+                    onClick={() => handleViewLogs(backup)}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-foreground bg-card hover:bg-muted border border-border rounded-md transition-colors whitespace-nowrap"
                   >
-                    <Eye className="w-3.5 h-3.5" />
+                    <FileText className="w-3.5 h-3.5" />
                     View Details
                   </button>
                   <button
                     onClick={() => {
-                      console.log('Browse files clicked:', { backupId: backup.backupId, deviceId: backup.deviceId, shareId: backup.shareId });
-                      navigate(`/backups/${backup.backupId}/browse?deviceId=${backup.deviceId}&shareId=${backup.shareId || ''}`);
+                      console.log('Browse backups clicked:', { backupId: backup.backupId });
+                      navigate(`/backups/${backup.backupId}/browse`);
                     }}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-foreground bg-card hover:bg-muted border border-border rounded-md transition-colors whitespace-nowrap"
                     disabled={!backup.backupId || !backup.shareId}
                   >
                     <FolderOpen className="w-3.5 h-3.5" />
-                    Browse Files
+                    Browse Backups
                   </button>
                 </div>
               </td>
