@@ -1,0 +1,88 @@
+title = "BackupChrono Gitleaks Configuration"
+
+# Use default gitleaks rules
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Allowlist for BackupChrono"
+
+# Paths to ignore
+paths = [
+  '''\.git/''',
+  '''node_modules/''',
+  '''bin/''',
+  '''obj/''',
+  '''\.exe$''',
+  '''\.dll$''',
+  '''package-lock\.json$''',
+  '''\.csproj$''',
+  '''docs/SECRETS-DETECTION\.md''',
+  '''test-results\.xml$''',
+  '''Tests\.cs$''',
+  '''Test\.cs$''',
+  '''/tests/''',
+  '''/Tests/''',
+  '''specs/''',
+  '''config/''',
+]
+
+# Regex patterns to ignore
+regexes = [
+  '''example\.com''',
+  '''localhost''',
+  '''127\.0\.0\.1''',
+  '''0\.0\.0\.0''',
+  '''YOUR_.*_HERE''',
+  '''REPLACE_WITH_''',
+  '''your-.*-here''',
+  '''placeholder''',
+  '''dummy''',
+  '''changeme''',
+  
+  # C# encrypted credential usage
+  '''new EncryptedCredential\(''',
+  '''GetPlaintext\(\)''',
+  '''DeriveRepositoryKey\(''',
+  
+  # Test fixtures and variable references
+  '''_fixture\.ResticPassword''',
+  '''builder\.Configuration\[''',
+  '''resticOptions\.Password''',
+  '''\$\{RESTIC_PASSWORD''',
+  '''Guid\.NewGuid\(\)''',
+  
+  # Frontend/validation patterns
+  '''password\.trim\(\)''',
+  '''errors\.password''',
+  '''Password is required''',
+]
+
+# Custom rules for BackupChrono-specific secrets
+[[rules]]
+id = "restic-password"
+description = "Restic repository password in config files"
+regex = '''(?i)(restic[_-]?password|repository[_-]?password)\s*[:=]\s*['"]([^'"{}\$]{12,})['"]'''
+secretGroup = 2
+tags = ["restic", "password"]
+
+[[rules]]
+id = "generic-password"
+description = "Generic password in configuration"
+regex = '''(?i)(password|passwd|pwd|secret)\s*[:=]\s*['"]([^'"{}\$]{12,})['"]'''
+secretGroup = 2
+tags = ["password", "generic"]
+
+[[rules]]
+id = "api-key-assignment"
+description = "API key assignment"
+regex = '''(?i)(api[_-]?key|apikey|access[_-]?key)\s*[:=]\s*['"]([a-zA-Z0-9_\-]{20,})['"]'''
+secretGroup = 2
+tags = ["api-key"]
+
+[[rules]]
+id = "smtp-password"
+description = "SMTP password configuration"
+regex = '''(?i)(smtp[_-]?password|mail[_-]?password)\s*[:=]\s*['"]([^'"{}\$]{8,})['"]'''
+secretGroup = 2
+tags = ["smtp", "email", "password"]

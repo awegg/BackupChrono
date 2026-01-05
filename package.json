@@ -1,0 +1,17 @@
+{
+  "name": "backup-chrono",
+  "version": "1.0.0",
+  "private": true,
+  "description": "BackupChrono - Intelligent Backup Management System",
+  "scripts": {
+    "prepare": "husky",
+    "check-secrets": "gitleaks detect --config=.gitleaks.toml --verbose --redact",
+    "check-secrets-staged": "gitleaks protect --staged --config=.gitleaks.toml --verbose --redact"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7"
+  },
+  "workspaces": [
+    "src/frontend"
+  ]
+}

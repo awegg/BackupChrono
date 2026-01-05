@@ -314,6 +314,22 @@ This project follows a specification-driven development approach:
 2. Implementation tracked in `tasks.md`
 3. All changes require passing tests and CI/CD validation
 
+### Secret Detection
+
+A pre-commit hook uses [Gitleaks](https://github.com/gitleaks/gitleaks) to scan for secrets. Install it before contributing:
+
+```bash
+# Windows
+winget install gitleaks
+
+# macOS
+brew install gitleaks
+
+# Linux - see https://github.com/gitleaks/gitleaks#installation
+```
+
+Then run `npm install` to set up the hook. Test with `git hook run pre-commit`.
+
 ## License
 
 See [LICENSE](LICENSE) file for details.
