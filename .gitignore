@@ -114,3 +114,4 @@ _ReSharper*/
 test-repos/
 test-results.xml
 src/backend/BackupChrono.Api/repositories
+src/scripts/output/

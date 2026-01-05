@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { signalRService } from './services/signalr';
 import Dashboard from './pages/Dashboard';
 import DeviceDetail from './pages/DeviceDetail';
-import { BackupBrowser } from './pages/BackupBrowser';
+import { BackupsListPage } from './pages/BackupsList';
 import { DevicesPage } from './pages/DevicesPage';
 import { FileBrowserPage } from './pages/FileBrowserPage';
 import { ErrorNotification } from './components/ErrorNotification';
@@ -17,6 +17,10 @@ function App() {
   const [signalRError, setSignalRError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Set initial theme class (dark by default)
+    const theme = localStorage.getItem('theme') || 'dark';
+    document.documentElement.classList.add(theme);
+
     // Connect to SignalR when app loads
     signalRService.connect().catch((err) => {
       console.error('Failed to connect to SignalR:', err);
@@ -32,12 +36,12 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <div className="min-h-screen bg-background flex">
+        <div className="min-h-screen bg-background text-foreground flex">
           {/* Sidebar */}
           <Sidebar />
 
           {/* Main Content */}
-          <div className="flex-1 ml-64 min-h-screen">
+          <div className="flex-1 ml-64 min-h-screen bg-background">
             {signalRError && (
               <ErrorNotification 
                 message={signalRError} 
@@ -50,7 +54,8 @@ function App() {
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/devices" element={<DevicesPage />} />
                 <Route path="/devices/:deviceId" element={<DeviceDetail />} />
-                <Route path="/devices/:deviceId/backups" element={<BackupBrowser />} />
+                <Route path="/devices/:deviceId/backups" element={<BackupsListPage />} />
+                <Route path="/devices/:deviceId/backups/:backupId/browse" element={<FileBrowserPage />} />
                 <Route path="/backups/:backupId/browse" element={<FileBrowserPage />} />
               </Routes>
             </main>

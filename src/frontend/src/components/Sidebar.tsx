@@ -1,8 +1,10 @@
 ﻿import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Server, RotateCcw, Settings, Database } from 'lucide-react';
+import { LayoutDashboard, Server, RotateCcw, Settings, Database, Sun, Moon } from 'lucide-react';
+import { useTheme } from '../hooks/useTheme';
 
 export function Sidebar() {
   const location = useLocation();
+  const { theme, toggleTheme } = useTheme();
 
   const navigation = [
     { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -48,6 +50,26 @@ export function Sidebar() {
           );
         })}
       </nav>
+
+      {/* Theme Toggle */}
+      <div className="p-4 border-t border-sidebar-border">
+        <button
+          onClick={toggleTheme}
+          className="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors w-full text-sidebar-foreground hover:bg-sidebar-accent/50"
+        >
+          {theme === 'dark' ? (
+            <>
+              <Sun className="w-4 h-4" />
+              <span className="font-medium">Light Mode</span>
+            </>
+          ) : (
+            <>
+              <Moon className="w-4 h-4" />
+              <span className="font-medium">Dark Mode</span>
+            </>
+          )}
+        </button>
+      </div>
     </div>
   );
 }

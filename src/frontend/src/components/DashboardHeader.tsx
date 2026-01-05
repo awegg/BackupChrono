@@ -26,7 +26,7 @@ export function DashboardHeader({ title, subtitle, lastUpdated, isConnected = tr
         <span className={`text-sm font-medium ${
           isConnected ? 'text-status-success-fg' : 'text-status-error-fg'
         }`}>
-          {isConnected ? 'Live' : 'Disconnected'} ÔÇó Updated {lastUpdated}
+          {isConnected ? 'Live' : 'Disconnected'} • Updated {lastUpdated}
         </span>
       </div>
     </div>

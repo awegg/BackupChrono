@@ -36,7 +36,8 @@ export const BackupsListPage: React.FC = () => {
 
   const handleBackupSelect = async (backup: Backup) => {
     // Navigate to the file browser for this specific backup
-    navigate(`/devices/${deviceId}/backups/${backup.id}/browse`);
+    const shareId = backup.shareId || '';
+    navigate(`/devices/${deviceId}/backups/${backup.id}/browse?deviceId=${deviceId}&shareId=${shareId}`);
   };
 
   const handleBack = () => {

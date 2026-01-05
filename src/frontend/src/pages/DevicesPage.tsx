@@ -1,4 +1,5 @@
 ﻿import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Plus, HardDrive, AlertTriangle, RefreshCw } from 'lucide-react';
 import { DeviceCard } from '../components/DeviceCard';
 import { Device } from '../types/devices';
@@ -6,6 +7,7 @@ import { devicesService } from '../services/devicesService';
 
 // Devices management page
 export function DevicesPage() {
+  const navigate = useNavigate();
   const [devices, setDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -46,8 +48,7 @@ export function DevicesPage() {
   };
 
   const handleViewBackups = (deviceId: string) => {
-    console.log('View backups for device:', deviceId);
-    // TODO: Navigate to backups page
+    navigate(`/devices/${deviceId}/backups`);
   };
 
   const handleEditDevice = (deviceId: string) => {
