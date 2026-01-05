@@ -155,21 +155,69 @@ public class ResticService : IResticService
             }
         }, repositoryPathOverride: repositoryPath);
         
-        // TODO: Parse backup result from JSON
+        // Parse backup summary from last JSON line
+        string? snapshotId = null;
+        int filesNew = 0, filesChanged = 0, filesUnmodified = 0;
+        long dataAdded = 0, dataProcessed = 0;
+        
+        try
+        {
+            var lines = output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            // Find the summary message (last message_type=summary line)
+            for (int i = lines.Length - 1; i >= 0; i--)
+            {
+                try
+                {
+                    using var doc = JsonDocument.Parse(lines[i]);
+                    var root = doc.RootElement;
+                    
+                    if (root.TryGetProperty("message_type", out var msgType) && 
+                        msgType.GetString() == "summary")
+                    {
+                        snapshotId = root.TryGetProperty("snapshot_id", out var snapId) 
+                            ? snapId.GetString()?[..8] // Use short ID format
+                            : null;
+                        
+                        filesNew = root.TryGetProperty("files_new", out var fNew) ? fNew.GetInt32() : 0;
+                        filesChanged = root.TryGetProperty("files_changed", out var fChanged) ? fChanged.GetInt32() : 0;
+                        filesUnmodified = root.TryGetProperty("files_unmodified", out var fUnmod) ? fUnmod.GetInt32() : 0;
+                        dataAdded = root.TryGetProperty("data_added", out var dAdded) ? dAdded.GetInt64() : 0;
+                        dataProcessed = root.TryGetProperty("total_bytes_processed", out var dProc) ? dProc.GetInt64() : 0;
+                        
+                        break;
+                    }
+                }
+                catch (JsonException)
+                {
+                    continue;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to parse backup summary for snapshot ID extraction");
+        }
+        
+        if (string.IsNullOrEmpty(snapshotId))
+        {
+            _logger.LogWarning("Snapshot ID not found in restic output, generating fallback ID");
+            snapshotId = Guid.NewGuid().ToString("N")[..8];
+        }
+        
         return new Backup
         {
-            Id = Guid.NewGuid().ToString("N")[..8],
+            Id = snapshotId,
             DeviceId = device.Id,
             ShareId = share?.Id,
             DeviceName = device.Name,
             ShareName = share?.Name,
             Timestamp = DateTime.UtcNow,
             Status = BackupStatus.Success,
-            FilesNew = 0,
-            FilesChanged = 0,
-            FilesUnmodified = 0,
-            DataAdded = 0,
-            DataProcessed = 0,
+            FilesNew = filesNew,
+            FilesChanged = filesChanged,
+            FilesUnmodified = filesUnmodified,
+            DataAdded = dataAdded,
+            DataProcessed = dataProcessed,
             Duration = TimeSpan.Zero
         };
     }

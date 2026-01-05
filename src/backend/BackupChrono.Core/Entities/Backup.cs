@@ -85,5 +85,5 @@ public class Backup
     /// <summary>
     /// Backup job that created this backup (if applicable).
     /// </summary>
-    public Guid? CreatedByJobId { get; init; }
+    public Guid? CreatedByJobId { get; set; }
 }

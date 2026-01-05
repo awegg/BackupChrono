@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { BackupJob, BackupJobStatus as JobStatus } from '../types';
 import { backupService } from '../services/deviceService';
-import { RefreshCw, CheckCircle, XCircle, Clock, Loader, ChevronDown, ChevronRight, Trash2, StopCircle } from 'lucide-react';
+import { RefreshCw, CheckCircle, XCircle, Clock, Loader, ChevronDown, ChevronRight, Trash2, StopCircle, FolderOpen } from 'lucide-react';
 import BackupProgressBar from './BackupProgressBar';
 
 export default function BackupJobStatusList() {
+  const navigate = useNavigate();
   const [jobs, setJobs] = useState<BackupJob[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedErrors, setExpandedErrors] = useState<Set<string>>(new Set());
@@ -71,6 +73,11 @@ export default function BackupJobStatusList() {
       console.error('Failed to cancel backup job:', error);
       alert('Failed to cancel backup job');
     }
+  };
+
+  const handleBrowseBackup = (job: BackupJob) => {
+    // Navigate directly to the file browser for this specific backup
+    navigate(`/devices/${job.deviceId}/backups/${job.backupId}/browse`);
   };
 
   useEffect(() => {
@@ -223,23 +230,34 @@ export default function BackupJobStatusList() {
                       )}
                     </td>
                     <td className="px-3 py-3 whitespace-nowrap text-sm">
-                      {job.status === JobStatus.Running ? (
-                        <button
-                          onClick={() => handleCancelJob(job.id)}
-                          className="text-orange-600 hover:text-orange-900"
-                          title="Stop backup"
-                        >
-                          <StopCircle className="h-4 w-4" />
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => handleDeleteJob(job.id)}
-                          className="text-red-600 hover:text-red-900"
-                          title="Delete job"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {job.status === JobStatus.Completed && job.backupId && (
+                          <button
+                            onClick={() => handleBrowseBackup(job)}
+                            className="text-blue-600 hover:text-blue-900"
+                            title="Browse backup files"
+                          >
+                            <FolderOpen className="h-4 w-4" />
+                          </button>
+                        )}
+                        {job.status === JobStatus.Running ? (
+                          <button
+                            onClick={() => handleCancelJob(job.id)}
+                            className="text-orange-600 hover:text-orange-900"
+                            title="Stop backup"
+                          >
+                            <StopCircle className="h-4 w-4" />
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleDeleteJob(job.id)}
+                            className="text-red-600 hover:text-red-900"
+                            title="Delete job"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                   {job.commandLine && (

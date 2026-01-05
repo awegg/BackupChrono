@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import { signalRService } from './services/signalr';
 import Dashboard from './pages/Dashboard';
 import DeviceDetail from './pages/DeviceDetail';
-import { BackupBrowser } from './pages/BackupBrowser';
+import { BackupsListPage } from './pages/BackupsList';
+import { FileBrowserPage } from './pages/FileBrowser';
 import { ErrorNotification } from './components/ErrorNotification';
 import './App.css';
 
@@ -47,7 +48,8 @@ function App() {
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/devices/:deviceId" element={<DeviceDetail />} />
-            <Route path="/devices/:deviceId/backups" element={<BackupBrowser />} />
+            <Route path="/devices/:deviceId/backups" element={<BackupsListPage />} />
+            <Route path="/devices/:deviceId/backups/:backupId/browse" element={<FileBrowserPage />} />
           </Routes>
         </div>
       </BrowserRouter>
