@@ -7,6 +7,7 @@
 export enum DeviceStatus {
   Active = 'Active',
   Offline = 'Offline',
+  Unknown = 'Unknown',
 }
 
 export interface Share {
@@ -14,7 +15,7 @@ export interface Share {
   name: string;
   path: string;
   enabled: boolean;
-  lastBackup: string;
+  lastBackup?: string;
 }
 
 export interface Device {
@@ -23,6 +24,6 @@ export interface Device {
   host: string;
   protocol: DeviceProtocol;
   status: DeviceStatus;
-  lastBackup: string;
+  lastBackup?: string;
   shares: Share[];
 }

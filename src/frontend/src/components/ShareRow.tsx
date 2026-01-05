@@ -34,7 +34,7 @@ export function ShareRow({ share, onToggle, onStartBackup, onViewBackups, onEdit
       </div>
 
       <div className="text-sm text-muted-foreground whitespace-nowrap">
-        {formatTimestamp(share.lastBackup)}
+        {share.lastBackup ? formatTimestamp(share.lastBackup) : 'No backups yet'}
       </div>
 
       <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">

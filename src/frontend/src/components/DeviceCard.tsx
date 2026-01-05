@@ -75,12 +75,18 @@ export function DeviceCard({
               className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${
                 device.status === DeviceStatus.Active
                   ? 'bg-status-success-bg text-status-success-fg'
-                  : 'bg-status-error-bg text-status-error-fg'
+                  : device.status === DeviceStatus.Offline
+                  ? 'bg-status-error-bg text-status-error-fg'
+                  : 'bg-muted text-muted-foreground'
               }`}
             >
               <span
                 className={`w-1.5 h-1.5 rounded-full ${
-                  device.status === DeviceStatus.Active ? 'bg-status-success' : 'bg-status-error'
+                  device.status === DeviceStatus.Active 
+                    ? 'bg-status-success' 
+                    : device.status === DeviceStatus.Offline
+                    ? 'bg-status-error'
+                    : 'bg-muted-foreground'
                 }`}
               />
               {device.status}
@@ -89,7 +95,8 @@ export function DeviceCard({
           <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
             <span className="font-mono">{device.host}</span>
             <span className="px-2 py-0.5 bg-muted rounded text-xs font-medium">{device.protocol}</span>
-            <span>Last backup: {formatTimestamp(device.lastBackup)}</span>
+            {device.lastBackup && <span>Last backup: {formatTimestamp(device.lastBackup)}</span>}
+            {!device.lastBackup && <span className="text-muted-foreground/70">No backups yet</span>}
           </div>
         </div>
 

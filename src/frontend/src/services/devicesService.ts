@@ -84,12 +84,12 @@ const mapShare = (dto: ShareDto): Share => ({
   name: dto.name,
   path: dto.path,
   enabled: dto.enabled,
-  lastBackup: dto.updatedAt, // Will be replaced with actual backup timestamp from API
+  lastBackup: undefined, // TODO: Get actual backup timestamp from API
 });
 
 const mapDevice = (dto: DeviceDetailDto): Device => {
   // Determine device status based on last backup
-  let status = DeviceStatus.Offline;
+  let status = DeviceStatus.Unknown;
   if (dto.lastBackup) {
     const lastBackupDate = new Date(dto.lastBackup.timestamp);
     const hoursSinceBackup = (Date.now() - lastBackupDate.getTime()) / (1000 * 60 * 60);
@@ -97,6 +97,8 @@ const mapDevice = (dto: DeviceDetailDto): Device => {
     // Consider active if backed up within last 24 hours
     if (hoursSinceBackup < 24) {
       status = DeviceStatus.Active;
+    } else {
+      status = DeviceStatus.Offline;
     }
   }
 
@@ -106,7 +108,7 @@ const mapDevice = (dto: DeviceDetailDto): Device => {
     host: dto.host,
     protocol: mapProtocol(dto.protocol),
     status,
-    lastBackup: dto.lastBackup?.timestamp || dto.updatedAt,
+    lastBackup: dto.lastBackup?.timestamp,
     shares: dto.shares.map(mapShare),
   };
 };
