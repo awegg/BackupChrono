@@ -237,6 +237,8 @@ public class DeduplicationInfoDto
     public int TreeBlobs { get; set; }
     public string Ratio { get; set; } = string.Empty;
     public string SpaceSaved { get; set; } = string.Empty;
+    public string ContentDedup { get; set; } = string.Empty;
+    public string UniqueStorage { get; set; } = string.Empty;
 }
 
 public class BackupShareDto

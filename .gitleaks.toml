@@ -24,7 +24,6 @@ paths = [
   '''/tests/''',
   '''/Tests/''',
   '''specs/''',
-  '''config/''',
 ]
 
 # Regex patterns to ignore

@@ -49,7 +49,7 @@ export function ActiveJobsTable({ jobs, onStopJob = () => {} }: ActiveJobsTableP
               Speed
             </th>
             <th className="text-right px-4 py-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">
-              ETA
+              Elapsed
             </th>
             <th className="text-right px-4 py-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">
               Actions

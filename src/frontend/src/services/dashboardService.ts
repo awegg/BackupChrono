@@ -35,13 +35,13 @@ export const dashboardService = {
         .reduce((sum, b) => sum + (b.dataAdded || 0), 0);
       
       // Calculate average speed from active jobs
-      const avgSpeedMBs = jobs
-        .filter(j => j.status === 'Running' && j.bytesTransferred && j.startedAt)
+      const runningJobs = jobs.filter(j => j.status === 'Running' && j.bytesTransferred && j.startedAt);
+      const avgSpeedMBs = runningJobs
         .map(j => {
           const elapsed = (new Date().getTime() - new Date(j.startedAt!).getTime()) / 1000;
           return elapsed > 0 ? (j.bytesTransferred! / elapsed / 1024 / 1024) : 0;
         })
-        .reduce((sum, speed) => sum + speed, 0) / Math.max(activeJobs, 1);
+        .reduce((sum, speed) => sum + speed, 0) / Math.max(runningJobs.length, 1);
       
       return {
         activeJobs,
@@ -133,10 +133,10 @@ export const dashboardService = {
   },
 
   formatBytes(bytes: number): string {
-    if (bytes === 0) return '0 B';
+    if (!isFinite(bytes) || bytes <= 0) return '0 B';
     const k = 1024;
     const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    const i = Math.max(0, Math.min(Math.floor(Math.log(bytes) / Math.log(k)), sizes.length - 1));
     return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
   },
 

@@ -58,7 +58,7 @@ function Get-BackupDetail {
         [guid]$DeviceId,
         [guid]$ShareId
     )
-    $uri = "$BaseUrl/api/backups/$BackupId?deviceId=$DeviceId&shareId=$ShareId"
+    $uri = "{0}/api/backups/{1}?deviceId={2}&shareId={3}" -f $BaseUrl, $BackupId, $DeviceId, $ShareId
     Invoke-Api -Method GET -Uri $uri
 }
 
@@ -69,7 +69,7 @@ function Get-BackupLogs {
         [guid]$DeviceId,
         [guid]$ShareId
     )
-    $uri = "$BaseUrl/api/backups/$BackupId/logs?deviceId=$DeviceId&shareId=$ShareId"
+    $uri = "{0}/api/backups/{1}/logs?deviceId={2}&shareId={3}" -f $BaseUrl, $BackupId, $DeviceId, $ShareId
     Invoke-Api -Method GET -Uri $uri
 }
 
@@ -141,23 +141,18 @@ if (-not $shareId) {
 $backupId = $latestSuccessJob.backupId
 
 Write-Host "Step 4: Fetching backup metadata and logs" -ForegroundColor Yellow
-try {
-    $detail = Get-BackupDetail -BaseUrl $BaseUrl -BackupId $backupId -DeviceId $deviceId -ShareId $shareId
-    $logs = Get-BackupLogs -BaseUrl $BaseUrl -BackupId $backupId -DeviceId $deviceId -ShareId $shareId
+$detail = Get-BackupDetail -BaseUrl $BaseUrl -BackupId $backupId -DeviceId $deviceId -ShareId $shareId
+$logs = Get-BackupLogs -BaseUrl $BaseUrl -BackupId $backupId -DeviceId $deviceId -ShareId $shareId
 
-    Write-Host "  Metadata: snapshotId=$($detail.id) parent=$($detail.snapshotInfo.parentSnapshot) status=$($detail.status) files new/changed/unmodified: $($detail.fileStats.new)/$($detail.fileStats.changed)/$($detail.fileStats.unmodified)" -ForegroundColor Gray
-    Write-Host "  Logs: warnings=$($logs.warnings.Count) errors=$($logs.errors.Count) progress entries=$($logs.progressLog.Count)" -ForegroundColor Gray
+Write-Host "  Metadata: snapshotId=$($detail.id) parent=$($detail.snapshotInfo.parentSnapshot) status=$($detail.status) files new/changed/unmodified: $($detail.fileStats.new)/$($detail.fileStats.changed)/$($detail.fileStats.unmodified)" -ForegroundColor Gray
+Write-Host "  Logs: warnings=$($logs.warnings.Count) errors=$($logs.errors.Count) progress entries=$($logs.progressLog.Count)" -ForegroundColor Gray
 
-    $detailPath = Join-Path -Path $DownloadDir -ChildPath "backup-$backupId-detail.json"
-    $logsPath = Join-Path -Path $DownloadDir -ChildPath "backup-$backupId-logs.json"
-    $detail | ConvertTo-Json -Depth 8 | Out-File -FilePath $detailPath -Encoding UTF8
-    $logs | ConvertTo-Json -Depth 8 | Out-File -FilePath $logsPath -Encoding UTF8
-    Write-Host "  Saved detail to $detailPath" -ForegroundColor DarkGray
-    Write-Host "  Saved logs to   $logsPath" -ForegroundColor DarkGray
-} catch {
-    Write-Host "  Warning: Could not fetch metadata/logs (404 - backup may predate logging feature)" -ForegroundColor Yellow
-    Write-Host "  Continuing with file browsing test..." -ForegroundColor Yellow
-}
+$detailPath = Join-Path -Path $DownloadDir -ChildPath "backup-$backupId-detail.json"
+$logsPath = Join-Path -Path $DownloadDir -ChildPath "backup-$backupId-logs.json"
+$detail | ConvertTo-Json -Depth 8 | Out-File -FilePath $detailPath -Encoding UTF8
+$logs | ConvertTo-Json -Depth 8 | Out-File -FilePath $logsPath -Encoding UTF8
+Write-Host "  Saved detail to $detailPath" -ForegroundColor DarkGray
+Write-Host "  Saved logs to   $logsPath" -ForegroundColor DarkGray
 
 Write-Host "Step 5: Browsing backup snapshot (searching for first file)" -ForegroundColor Yellow
 Write-Host "  Starting at root directory..." -ForegroundColor Gray

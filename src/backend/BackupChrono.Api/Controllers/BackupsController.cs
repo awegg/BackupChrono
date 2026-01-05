@@ -177,7 +177,9 @@ public class BackupsController : ControllerBase
                     DataBlobs = (int)(stats?.TotalBlobCount ?? 0),
                     TreeBlobs = (int)(stats?.TotalTreeCount ?? 0),
                     Ratio = stats != null ? $"{stats.DeduplicationRatio:P1}" : "0%",
-                    SpaceSaved = stats != null ? FormatBytes(stats.DeduplicationSpaceSaved) : "0 B"
+                    SpaceSaved = stats != null ? FormatBytes(stats.DeduplicationSpaceSaved) : "0 B",
+                    ContentDedup = CalculateContentDedup(metadata?.Summary?.DataAdded ?? backup.DataAdded, metadata?.Summary?.DataProcessed ?? backup.DataProcessed),
+                    UniqueStorage = stats != null ? FormatBytes(stats.TotalSize) : "0 B"
                 },
                 Shares = metadata?.Paths.Select(path => new BackupShareDto
                 {
@@ -545,5 +547,12 @@ public class BackupsController : ControllerBase
         // TODO: Implement file history tracking
         // For now return empty list
         return Ok(new List<FileVersion>());
+    }
+
+    private static string CalculateContentDedup(long dataAdded, long dataProcessed)
+    {
+        if (dataProcessed <= 0) return "0%";
+        var contentDedup = dataProcessed > 0 ? 1.0 - ((double)dataAdded / dataProcessed) : 0.0;
+        return $"{contentDedup:P1}";
     }
 }

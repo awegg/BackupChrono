@@ -43,6 +43,8 @@ export interface BackupDetail {
     treeBlobs: number;
     ratio: string;
     spaceSaved: string;
+    contentDedup: string;
+    uniqueStorage: string;
   };
   shares: Array<{
     name: string;
@@ -102,6 +104,8 @@ export interface BackupLogData {
     treeBlobs: number;
     ratio: string;
     spaceSaved: string;
+    contentDedup: string;
+    uniqueStorage: string;
   };
   // From BackupLogs
   warnings: string[];
@@ -185,6 +189,7 @@ export function BackupLogViewerPage() {
   const [snapshotExpanded, setSnapshotExpanded] = useState(true);
   const [metricsExpanded, setMetricsExpanded] = useState(true);
   const [warningsExpanded, setWarningsExpanded] = useState(true);
+  const [errorsExpanded, setErrorsExpanded] = useState(false);
   const [progressLogExpanded, setProgressLogExpanded] = useState(false);
 
   useEffect(() => {
@@ -499,18 +504,25 @@ export function BackupLogViewerPage() {
                       <div className="text-xl font-semibold text-gray-900 dark:text-white">{logData.deduplicationInfo.treeBlobs.toLocaleString()}</div>
                     </div>
                   </div>
-                  <div className="mt-4 bg-white dark:bg-slate-700/50 p-4 rounded-lg border border-teal-200 dark:border-teal-600 shadow-md">
-                    <div className="flex items-center justify-between">
+                  <div className="mt-4 grid grid-cols-2 gap-4">
+                    <div className="bg-white dark:bg-slate-700/50 p-4 rounded-lg border border-teal-200 dark:border-teal-600 shadow-md">
                       <div className="flex items-center gap-3">
                         <TrendingUp className="h-8 w-8 text-teal-600 dark:text-teal-400" />
                         <div>
-                          <div className="text-sm text-gray-600 dark:text-gray-400">Deduplication Ratio</div>
-                          <div className="text-2xl font-bold text-gray-900 dark:text-white">{logData.deduplicationInfo.ratio}</div>
+                          <div className="text-sm text-gray-600 dark:text-gray-400">Content Deduplication</div>
+                          <div className="text-2xl font-bold text-gray-900 dark:text-white">{logData.deduplicationInfo.contentDedup}</div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">File data reuse ratio</div>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <div className="text-sm text-gray-600 dark:text-gray-400">Space Saved</div>
-                        <div className="text-2xl font-bold text-teal-700 dark:text-teal-300">{logData.deduplicationInfo.spaceSaved}</div>
+                    </div>
+                    <div className="bg-white dark:bg-slate-700/50 p-4 rounded-lg border border-blue-200 dark:border-blue-600 shadow-md">
+                      <div className="flex items-center gap-3">
+                        <FolderOpen className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+                        <div>
+                          <div className="text-sm text-gray-600 dark:text-gray-400">Unique Storage</div>
+                          <div className="text-2xl font-bold text-gray-900 dark:text-white">{logData.deduplicationInfo.uniqueStorage}</div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">This snapshot's storage</div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -554,15 +566,15 @@ export function BackupLogViewerPage() {
           {logData.errors.length > 0 && (
             <div className="bg-white dark:bg-slate-800 border rounded-lg border-red-200 dark:border-red-700 shadow-md">
               <button
-                onClick={() => setWarningsExpanded(!warningsExpanded)}
+                onClick={() => setErrorsExpanded(!errorsExpanded)}
                 className="w-full flex items-center justify-between p-4 hover:bg-red-50 dark:hover:bg-slate-700 transition-colors"
               >
                 <div className="flex items-center gap-2 font-semibold text-red-800 dark:text-red-400">
-                  {warningsExpanded ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
+                  {errorsExpanded ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
                   Errors ({logData.errors.length})
                 </div>
               </button>
-              {warningsExpanded && (
+              {errorsExpanded && (
                 <div className="p-4 pt-0 space-y-3">
                   {logData.errors.map((error, index) => (
                     <div key={index} className="bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-lg p-3 flex items-start gap-3 shadow-md">

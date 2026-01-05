@@ -363,7 +363,7 @@ export function AddDeviceDialog({ open, onClose, onCreated, editingDeviceId }: A
         <div className="flex-1 overflow-y-auto px-6 py-4">
           {error && <div className="mb-4"><ErrorDisplay error={error} /></div>}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form id="add-device-form" onSubmit={handleSubmit} className="space-y-4">
             {/* Device Name */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -804,9 +804,9 @@ export function AddDeviceDialog({ open, onClose, onCreated, editingDeviceId }: A
             </button>
             <button
               type="submit"
+              form="add-device-form"
               disabled={!isFormValid || submitting || testing}
               className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
-              onClick={handleSubmit}
             >
               {submitting ? (isEditing ? 'Updating...' : 'Adding...') : (isEditing ? 'Update Device' : 'Add Device')}
             </button>
