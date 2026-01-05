@@ -21,6 +21,7 @@ public class BackupOrchestrator : IBackupOrchestrator
     private readonly IResticService _resticService;
     private readonly IStorageMonitor _storageMonitor;
     private readonly IBackupJobRepository _backupJobRepository;
+    private readonly IBackupLogService _backupLogService;
     private readonly ILogger<BackupOrchestrator> _logger;
     private readonly string _repositoryBasePath;
     private readonly ConcurrentDictionary<Guid, BackupJob> _activeJobs = new();
@@ -40,6 +41,7 @@ public class BackupOrchestrator : IBackupOrchestrator
         IResticService resticService,
         IStorageMonitor storageMonitor,
         IBackupJobRepository backupJobRepository,
+        IBackupLogService backupLogService,
         ILogger<BackupOrchestrator> logger,
         IOptions<ResticOptions> resticOptions)
     {
@@ -49,6 +51,7 @@ public class BackupOrchestrator : IBackupOrchestrator
         _resticService = resticService;
         _storageMonitor = storageMonitor;
         _backupJobRepository = backupJobRepository;
+        _backupLogService = backupLogService;
         _logger = logger;
         _repositoryBasePath = resticOptions.Value.RepositoryBasePath;
     }
@@ -374,6 +377,9 @@ public class BackupOrchestrator : IBackupOrchestrator
     {
         var plugin = _pluginLoader.GetPlugin(device.Protocol);
         string? mountPath = null;
+        var progressEntries = new List<ProgressLogEntry>();
+        var warnings = new List<string>();
+        var errors = new List<string>();
 
         try
         {
@@ -416,6 +422,7 @@ public class BackupOrchestrator : IBackupOrchestrator
                 _logger.LogWarning(
                     "Storage critical at {Path}: {Message}. Backup will proceed but may fail.",
                     repositoryPath, storageStatus.Message);
+                warnings.Add($"Storage critical: {storageStatus.Message}");
             }
 
             // Check cancellation before repository initialization
@@ -464,8 +471,20 @@ public class BackupOrchestrator : IBackupOrchestrator
                     ErrorMessage = progress.ErrorMessage
                 };
                 lastProgress = updatedProgress;
+                progressEntries.Add(ToProgressLogEntry(updatedProgress));
                 RaiseProgressUpdate(updatedProgress);
-            }, cancellationToken);
+            },
+            warning =>
+            {
+                warnings.Add(warning);
+                _logger.LogWarning("Restic warning for job {JobId}: {Warning}", job.Id, warning);
+            },
+            error =>
+            {
+                errors.Add(error);
+                _logger.LogError("Restic error for job {JobId}: {Error}", job.Id, error);
+            },
+            cancellationToken);
 
             // Save final statistics to job
             if (lastProgress != null)
@@ -479,7 +498,27 @@ public class BackupOrchestrator : IBackupOrchestrator
             // Link job and backup
             backup.CreatedByJobId = job.Id;
 
+            // Persist captured logs against the backup
+            progressEntries.Add(new ProgressLogEntry
+            {
+                Timestamp = DateTime.UtcNow,
+                Message = "Backup completed",
+                PercentDone = 100,
+                FilesDone = lastProgress?.FilesProcessed ?? 0,
+                BytesDone = lastProgress?.BytesProcessed ?? 0,
+                CurrentFile = null
+            });
+            await PersistBackupLog(backup.Id, job, progressEntries, warnings, errors);
+
             return backup;
+        }
+        catch (Exception ex)
+        {
+            // Persist whatever we captured so far under the job ID when snapshot ID is unavailable
+            errors.Add(ex.Message);
+            var logKey = job.BackupId ?? job.Id.ToString();
+            await PersistBackupLog(logKey, job, progressEntries, warnings, errors);
+            throw;
         }
         finally
         {
@@ -687,6 +726,39 @@ public class BackupOrchestrator : IBackupOrchestrator
         foreach (var job in activeJobs)
         {
             await CancelJob(job.Id);
+        }
+    }
+
+    private static ProgressLogEntry ToProgressLogEntry(BackupProgress progress)
+    {
+        return new ProgressLogEntry
+        {
+            Timestamp = DateTime.UtcNow,
+            Message = progress.CurrentFile ?? "Progress update",
+            PercentDone = (int)Math.Round(progress.PercentComplete),
+            CurrentFile = progress.CurrentFile,
+            FilesDone = progress.FilesProcessed,
+            BytesDone = progress.BytesProcessed
+        };
+    }
+
+    private async Task PersistBackupLog(string backupId, BackupJob job, List<ProgressLogEntry> progressEntries, List<string> warnings, List<string> errors)
+    {
+        await _backupLogService.GetOrCreateLog(backupId, job.Id.ToString());
+
+        foreach (var entry in progressEntries)
+        {
+            await _backupLogService.AddProgressEntry(backupId, entry);
+        }
+
+        foreach (var warning in warnings)
+        {
+            await _backupLogService.AddWarning(backupId, warning);
+        }
+
+        foreach (var error in errors)
+        {
+            await _backupLogService.AddError(backupId, error);
         }
     }
 }

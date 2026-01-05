@@ -1,16 +1,20 @@
 using BackupChrono.Infrastructure.Restic;
+using Microsoft.Extensions.Logging;
+using Moq;
 using Xunit;
 
 namespace BackupChrono.UnitTests.Infrastructure.Restic;
 
 public class ResticClientValidationTests
 {
+    private readonly ILogger<ResticClient> _mockLogger = new Mock<ILogger<ResticClient>>().Object;
+
     [Fact]
     public void Constructor_ThrowsException_WhenPasswordIsEmpty()
     {
         // Arrange & Act & Assert
         var exception = Assert.Throws<ArgumentException>(() =>
-            new ResticClient("restic", "/repo", ""));
+            new ResticClient("restic", "/repo", "", _mockLogger));
         
         Assert.Equal("password", exception.ParamName);
         Assert.Contains("cannot be empty", exception.Message);
@@ -22,7 +26,7 @@ public class ResticClientValidationTests
     {
         // Arrange & Act & Assert
         var exception = Assert.Throws<ArgumentException>(() =>
-            new ResticClient("restic", "/repo", null!));
+            new ResticClient("restic", "/repo", null!, _mockLogger));
         
         Assert.Equal("password", exception.ParamName);
     }
@@ -32,7 +36,7 @@ public class ResticClientValidationTests
     {
         // Arrange & Act & Assert
         var exception = Assert.Throws<ArgumentException>(() =>
-            new ResticClient("restic", "/repo", "   "));
+            new ResticClient("restic", "/repo", "   ", _mockLogger));
         
         Assert.Equal("password", exception.ParamName);
     }
@@ -42,7 +46,7 @@ public class ResticClientValidationTests
     {
         // Arrange & Act & Assert
         var exception = Assert.Throws<ArgumentException>(() =>
-            new ResticClient("", "/repo", "password123"));
+            new ResticClient("", "/repo", "password123", _mockLogger));
         
         Assert.Equal("resticPath", exception.ParamName);
         Assert.Contains("Restic binary path cannot be empty", exception.Message);
@@ -53,7 +57,7 @@ public class ResticClientValidationTests
     {
         // Arrange & Act & Assert
         var exception = Assert.Throws<ArgumentException>(() =>
-            new ResticClient("restic", "", "password123"));
+            new ResticClient("restic", "", "password123", _mockLogger));
         
         Assert.Equal("repositoryPath", exception.ParamName);
         Assert.Contains("Repository path cannot be empty", exception.Message);
@@ -63,7 +67,7 @@ public class ResticClientValidationTests
     public void Constructor_Succeeds_WhenAllParametersAreValid()
     {
         // Arrange & Act
-        var client = new ResticClient("restic", "/repo", "validPassword123");
+        var client = new ResticClient("restic", "/repo", "validPassword123", _mockLogger);
         
         // Assert
         Assert.NotNull(client);
@@ -77,7 +81,7 @@ public class ResticClientValidationTests
     public void Constructor_Succeeds_WithVariousValidPasswords(string password)
     {
         // Arrange & Act
-        var client = new ResticClient("restic", "/repo", password);
+        var client = new ResticClient("restic", "/repo", password, _mockLogger);
         
         // Assert
         Assert.NotNull(client);

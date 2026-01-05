@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
 
 namespace BackupChrono.Infrastructure.Restic;
 
@@ -12,10 +13,11 @@ public class ResticClient : IResticClient
     private readonly string _resticPath;
     private readonly string _repositoryPath;
     private readonly string _password;
+    private readonly ILogger<ResticClient> _logger;
 
     public string RepositoryPath => _repositoryPath;
 
-    public ResticClient(string resticPath, string repositoryPath, string password)
+    public ResticClient(string resticPath, string repositoryPath, string password, ILogger<ResticClient> logger)
     {
         if (string.IsNullOrWhiteSpace(resticPath))
             throw new ArgumentException("Restic binary path cannot be empty.", nameof(resticPath));
@@ -29,17 +31,22 @@ public class ResticClient : IResticClient
         _resticPath = resticPath;
         _repositoryPath = repositoryPath;
         _password = password;
+        _logger = logger;
     }
 
     /// <summary>
     /// Executes a restic command and returns the JSON output.
     /// </summary>
-    public async Task<string> ExecuteCommand(string[] args, CancellationToken cancellationToken = default, TimeSpan? timeout = null, Action<string>? onOutputLine = null, string? repositoryPathOverride = null)
+    public async Task<string> ExecuteCommand(string[] args, CancellationToken cancellationToken = default, TimeSpan? timeout = null, Action<string>? onOutputLine = null, string? repositoryPathOverride = null, Action<string>? onErrorLine = null)
     {
         // Default timeout: 30 minutes for long-running operations
         var effectiveTimeout = timeout ?? TimeSpan.FromMinutes(30);
         using var timeoutCts = new CancellationTokenSource(effectiveTimeout);
         using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
+        
+        // Set environment variables - use override if provided, otherwise use default
+        var effectiveRepositoryPath = repositoryPathOverride ?? _repositoryPath;
+        _logger.LogInformation("ExecuteCommand: args={Args}, effectiveRepositoryPath={RepositoryPath}", string.Join(" ", args), effectiveRepositoryPath);
         
         var startInfo = new ProcessStartInfo
         {
@@ -57,8 +64,6 @@ public class ResticClient : IResticClient
             startInfo.ArgumentList.Add(arg);
         }
 
-        // Set environment variables - use override if provided, otherwise use default
-        var effectiveRepositoryPath = repositoryPathOverride ?? _repositoryPath;
         startInfo.Environment["RESTIC_REPOSITORY"] = effectiveRepositoryPath;
         startInfo.Environment["RESTIC_PASSWORD"] = _password;
 
@@ -90,6 +95,9 @@ public class ResticClient : IResticClient
                 {
                     errorBuilder.AppendLine(e.Data);
                 }
+
+                // Invoke callback for each error line if provided
+                onErrorLine?.Invoke(e.Data);
             }
         };
 
@@ -132,8 +140,11 @@ public class ResticClient : IResticClient
         lock (outputLock) { output = outputBuilder.ToString(); }
         lock (errorLock) { error = errorBuilder.ToString(); }
 
+        _logger.LogInformation("Restic command exit code: {ExitCode}, output length: {OutputLength}, error length: {ErrorLength}", process.ExitCode, output.Length, error.Length);
+
         if (process.ExitCode != 0)
         {
+            _logger.LogError("Restic command failed with exit code {ExitCode}: {Error}", process.ExitCode, error);
             throw new InvalidOperationException(
                 $"Restic command failed with exit code {process.ExitCode}. Error: {error}");
         }

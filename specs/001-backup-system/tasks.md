@@ -728,6 +728,11 @@ This document organizes implementation tasks by **user story** to enable indepen
 - [ ] T254 Finalize README.md with complete setup instructions, architecture diagrams, contribution guidelines
 - [ ] T255 Create CHANGELOG.md documenting feature implementation and version history
 - [ ] T256 Add .editorconfig for consistent code formatting
+- [ ] T262 [P] Remove or document `deviceId`/`shareId` query parameters from `/backups/{backupId}/files` endpoint (current: backend requires params; OpenAPI: only path param; decision: remove params or update OpenAPI)
+- [ ] T263 [P] Remove or document `deviceId`/`shareId` query parameters from `/backups/{backupId}/restore` endpoint (current: backend requires params; OpenAPI: only backupId + body; decision: remove params or update OpenAPI)
+- [ ] T264 [P] Review and align nullable field handling across Backup/BackupDto (current: backend uses int?/long?, OpenAPI doesn't specify nullable; decision: make required or keep nullable)
+- [ ] T265 [P] Implement population of BackupDetail extended fields from restic metadata (directoryStats from snapshot summary, snapshotInfo.parentSnapshot from metadata, deduplicationInfo from stats command, shares from backup metadata)
+- [ ] T266 [P] Implement actual log retrieval for `/backups/{backupId}/logs` endpoint (store warnings/errors/progress during execution, retrieve from job execution logs or database, may need to extend BackupJob entity)
 
 **Checkpoint**: All production features implemented, tests passing, documentation complete, Docker images published.
 
@@ -749,21 +754,21 @@ This document organizes implementation tasks by **user story** to enable indepen
 
 ### Implementation Tasks
 
-- [ ] T257 [US12] Add GetFileDiff method to IGitConfigService interface in BackupChrono.Core/Interfaces/IGitConfigService.cs
-- [ ] T258 [US12] Implement LibGit2Sharp diff generation in GitConfigService with unified and side-by-side formats
-- [ ] T259 [US12] Add GetFileBlame method to IGitConfigService returning line-by-line authorship
-- [ ] T260 [US12] Add RollbackToCommit method to IGitConfigService for restoring configuration to specific commit
-- [ ] T261 [US12] Implement GetCommitHistory method returning paginated commit log with messages, authors, timestamps
-- [ ] T262 [US12] Create ConfigHistoryController in BackupChrono.Api/Controllers/ConfigHistoryController.cs with:
+- [ ] T267 [US12] Add GetFileDiff method to IGitConfigService interface in BackupChrono.Core/Interfaces/IGitConfigService.cs
+- [ ] T268 [US12] Implement LibGit2Sharp diff generation in GitConfigService with unified and side-by-side formats
+- [ ] T269 [US12] Add GetFileBlame method to IGitConfigService returning line-by-line authorship
+- [ ] T270 [US12] Add RollbackToCommit method to IGitConfigService for restoring configuration to specific commit
+- [ ] T271 [US12] Implement GetCommitHistory method returning paginated commit log with messages, authors, timestamps
+- [ ] T272 [US12] Create ConfigHistoryController in BackupChrono.Api/Controllers/ConfigHistoryController.cs with:
   - GET /config/history - paginated commit log
   - GET /config/diff/{commitId} - diff view
   - GET /config/blame/{filePath} - blame view
   - POST /config/rollback/{commitId} - rollback action
   - GET /config/export/{commitId} - export as ZIP
-- [ ] T263 [US12] Add validation to prevent rollback during active backups
-- [ ] T264 [US12] Create audit log entry for rollback operations in logs/config-audit.jsonl
-- [ ] T265 [US12] Create GitConfigServiceTests in BackupChrono.Infrastructure.Tests/Git/GitConfigServiceTests.cs for diff, blame, rollback
-- [ ] T266 [US12] Create integration test in BackupChrono.Integration.Tests/GitConfigTests.cs verifying full workflow
+- [ ] T273 [US12] Add validation to prevent rollback during active backups
+- [ ] T274 [US12] Create audit log entry for rollback operations in logs/config-audit.jsonl
+- [ ] T275 [US12] Create GitConfigServiceTests in BackupChrono.Infrastructure.Tests/Git/GitConfigServiceTests.cs for diff, blame, rollback
+- [ ] T276 [US12] Create integration test in BackupChrono.Integration.Tests/GitConfigTests.cs verifying full workflow
 
 **Checkpoint**: Can view diffs and blame, rollback works with validation, commit history browsable, audit log tracks rollbacks.
 
@@ -993,3 +998,28 @@ Adds: Discord/Gotify notifications, device auto-discovery, command hooks
 - Testing time included in estimates (unit, integration, e2e)
 - No major architectural changes during implementation
 - 6-hour productive coding days (actual work time, not calendar time)
+
+---
+
+## Phase 14: User Story 12 - Git Configuration Enhancements (P2) 🎯 **EXPANDED**
+
+**Story Goal**: As a homelab admin, I want advanced Git features (diff viewer, blame, rollback), so I can understand configuration changes and quickly recover from mistakes.
+
+**Effort Estimate**: 3-4 days
+
+**Independent Test Criteria**:
+- Can view diff of any configuration file compared to previous commit
+- Can see who changed what and when (git blame view)
+- Can rollback to previous configuration with one click
+- Diff viewer shows side-by-side changes with syntax highlighting
+- Can browse full commit history with messages
+- Can export configuration as ZIP at any commit
+
+### Implementation Tasks
+
+- [ ] T257 [US12] Add GetFileDiff method to IGitConfigService interface in BackupChrono.Core/Interfaces/IGitConfigService.cs
+  - **Current**: Backend requires deviceId and shareId as query params
+  - **OpenAPI**: Only specifies `path` parameter
+  - **Decision needed**: Either remove params (use backupId to lookup device/share) or update OpenAPI spec
+  - **File**: `src/backend/BackupChrono.Api/Controllers/BackupsController.cs`
+

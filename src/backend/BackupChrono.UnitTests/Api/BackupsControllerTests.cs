@@ -2,6 +2,7 @@ using BackupChrono.Api.Controllers;
 using BackupChrono.Api.DTOs;
 using BackupChrono.Core.Entities;
 using BackupChrono.Core.Interfaces;
+using BackupChrono.Infrastructure.Services;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -22,8 +23,9 @@ public class BackupsControllerTests
     public BackupsControllerTests()
     {
         _mockResticService = new Mock<IResticService>();
+        var _mockBackupLogService = new Mock<IBackupLogService>();
         _mockLogger = new Mock<ILogger<BackupsController>>();
-        _controller = new BackupsController(_mockResticService.Object, _mockLogger.Object);
+        _controller = new BackupsController(_mockResticService.Object, _mockBackupLogService.Object, _mockLogger.Object);
     }
 
     [Fact]
@@ -124,7 +126,7 @@ public class BackupsControllerTests
 
         // Assert
         var okResult = result.Result.Should().BeOfType<OkObjectResult>().Subject;
-        var returnedBackup = okResult.Value.Should().BeOfType<BackupDto>().Subject;
+        var returnedBackup = okResult.Value.Should().BeOfType<BackupDetailDto>().Subject;
         returnedBackup.Id.Should().Be(backupId);
         returnedBackup.DeviceName.Should().Be("TestDevice");
     }

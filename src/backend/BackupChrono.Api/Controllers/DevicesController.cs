@@ -340,11 +340,17 @@ public class DevicesController : ControllerBase
                 Timestamp = b.Timestamp,
                 Status = b.Status.ToString(),
                 SharesPaths = b.SharesPaths,
-                FilesNew = b.FilesNew,
-                FilesChanged = b.FilesChanged,
-                FilesUnmodified = b.FilesUnmodified,
-                DataAdded = b.DataAdded,
-                DataProcessed = b.DataProcessed,
+                FileStats = new FileStatsDto
+                {
+                    New = b.FilesNew,
+                    Changed = b.FilesChanged,
+                    Unmodified = b.FilesUnmodified
+                },
+                DataStats = new DataStatsDto
+                {
+                    Added = b.DataAdded,
+                    Processed = b.DataProcessed
+                },
                 Duration = b.Duration.ToString(),
                 ErrorMessage = b.ErrorMessage,
                 CreatedByJobId = b.CreatedByJobId

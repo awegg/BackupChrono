@@ -2,6 +2,7 @@ using BackupChrono.Api.DTOs;
 using BackupChrono.Core.DTOs;
 using BackupChrono.Core.Entities;
 using BackupChrono.Core.Interfaces;
+using BackupChrono.Infrastructure.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BackupChrono.Api.Controllers;
@@ -14,13 +15,16 @@ namespace BackupChrono.Api.Controllers;
 public class BackupsController : ControllerBase
 {
     private readonly IResticService _resticService;
+    private readonly IBackupLogService _backupLogService;
     private readonly ILogger<BackupsController> _logger;
 
     public BackupsController(
         IResticService resticService,
+            IBackupLogService backupLogService,
         ILogger<BackupsController> logger)
     {
         _resticService = resticService;
+        _backupLogService = backupLogService;
         _logger = logger;
     }
 
@@ -39,12 +43,18 @@ public class BackupsController : ControllerBase
             Timestamp = backup.Timestamp,
             Status = backup.Status.ToString(),
             SharesPaths = backup.SharesPaths,
-            FilesNew = backup.FilesNew,
-            FilesChanged = backup.FilesChanged,
-            FilesUnmodified = backup.FilesUnmodified,
-            DataAdded = backup.DataAdded,
-            DataProcessed = backup.DataProcessed,
-            Duration = backup.Duration.ToString(),
+            FileStats = new FileStatsDto
+            {
+                New = backup.FilesNew,
+                Changed = backup.FilesChanged,
+                Unmodified = backup.FilesUnmodified
+            },
+            DataStats = new DataStatsDto
+            {
+                Added = backup.DataAdded,
+                Processed = backup.DataProcessed
+            },
+            Duration = System.Xml.XmlConvert.ToString(backup.Duration), // ISO 8601 format
             ErrorMessage = backup.ErrorMessage,
             CreatedByJobId = backup.CreatedByJobId
         };
@@ -92,19 +102,91 @@ public class BackupsController : ControllerBase
     /// Get backup details by ID
     /// </summary>
     [HttpGet("{backupId}")]
-    [ProducesResponseType(typeof(BackupDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(BackupDetailDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<BackupDto>> GetBackup(string backupId)
+    public async Task<ActionResult<BackupDetailDto>> GetBackup(
+        string backupId,
+        [FromQuery] Guid? deviceId = null,
+        [FromQuery] Guid? shareId = null)
     {
+        // Declare repositoryPath outside try block so it can be accessed in catch blocks
+        string? repositoryPath = null;
+        
         try
         {
-            var backup = await _resticService.GetBackup(backupId);
-            var backupDto = MapToBackupDto(backup);
+            _logger.LogInformation("GetBackup called: backupId={BackupId}, deviceId={DeviceId}, shareId={ShareId}", backupId, deviceId, shareId);
+            
+            // Construct repository path if device/share provided
+            if (deviceId.HasValue && shareId.HasValue)
+            {
+                repositoryPath = Path.Combine("./repositories", deviceId.Value.ToString(), shareId.Value.ToString());
+                _logger.LogInformation("Repository path constructed: {RepositoryPath}", repositoryPath);
+            }
+            else
+            {
+                _logger.LogWarning("No deviceId/shareId provided, repository path will be null");
+            }
 
-            return Ok(backupDto);
+            _logger.LogInformation("Calling ResticService.GetBackupDetailComplete with repositoryPath={RepositoryPath}", repositoryPath);
+            var (backup, metadata, stats) = await _resticService.GetBackupDetailComplete(backupId, repositoryPath);
+            
+            var backupDetail = new BackupDetailDto
+            {
+                Id = backup.Id,
+                DeviceId = backup.DeviceId,
+                ShareId = backup.ShareId,
+                DeviceName = backup.DeviceName,
+                ShareName = backup.ShareName,
+                Timestamp = backup.Timestamp,
+                Status = backup.Status.ToString(),
+                SharesPaths = backup.SharesPaths,
+                FileStats = new FileStatsDto
+                {
+                    New = metadata?.Summary?.FilesNew ?? backup.FilesNew,
+                    Changed = metadata?.Summary?.FilesChanged ?? backup.FilesChanged,
+                    Unmodified = metadata?.Summary?.FilesUnmodified ?? backup.FilesUnmodified
+                },
+                DataStats = new DataStatsDto
+                {
+                    Added = metadata?.Summary?.DataAdded ?? backup.DataAdded,
+                    Processed = metadata?.Summary?.DataProcessed ?? backup.DataProcessed
+                },
+                Duration = System.Xml.XmlConvert.ToString(backup.Duration),
+                ErrorMessage = backup.ErrorMessage,
+                CreatedByJobId = backup.CreatedByJobId,
+                
+                // Extended fields from metadata
+                DirectoryStats = new DirectoryStatsDto
+                {
+                    New = metadata?.Summary?.DirsNew ?? 0,
+                    Changed = metadata?.Summary?.DirsChanged ?? 0,
+                    Unmodified = metadata?.Summary?.DirsUnmodified ?? 0
+                },
+                SnapshotInfo = new SnapshotInfoDto
+                {
+                    SnapshotId = backup.Id,
+                    ParentSnapshot = metadata?.Parent,
+                    ExitCode = backup.Status == BackupStatus.Success ? 0 : 1
+                },
+                DeduplicationInfo = new DeduplicationInfoDto
+                {
+                    DataBlobs = (int)(stats?.TotalBlobCount ?? 0),
+                    TreeBlobs = (int)(stats?.TotalTreeCount ?? 0),
+                    Ratio = stats != null ? $"{stats.DeduplicationRatio:P1}" : "0%",
+                    SpaceSaved = stats != null ? FormatBytes(stats.DeduplicationSpaceSaved) : "0 B"
+                },
+                Shares = metadata?.Paths.Select(path => new BackupShareDto
+                {
+                    Name = System.IO.Path.GetFileName(path) ?? path,
+                    Path = path
+                }).ToList() ?? new List<BackupShareDto>()
+            };
+
+            return Ok(backupDetail);
         }
-        catch (KeyNotFoundException)
+        catch (KeyNotFoundException ex)
         {
+            _logger.LogError(ex, "Backup not found: {BackupId} with repositoryPath={RepositoryPath}", backupId, repositoryPath ?? "null");
             return NotFound(new ErrorResponse
             {
                 Error = "Backup not found",
@@ -117,6 +199,7 @@ public class BackupsController : ControllerBase
             ex.Message.Contains("exit code 1") ||
             ex.Message.Contains("unable to open config file"))
         {
+            _logger.LogError(ex, "Repository error for backup {BackupId} with repositoryPath={RepositoryPath}, message: {Message}", backupId, repositoryPath ?? "null", ex.Message);
             return NotFound(new ErrorResponse
             {
                 Error = "Backup not found",
@@ -125,10 +208,112 @@ public class BackupsController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting backup {BackupId}", backupId);
+            _logger.LogError(ex, "Error getting backup {BackupId} with repositoryPath={RepositoryPath}", backupId, repositoryPath ?? "null");
             return StatusCode(500, new ErrorResponse
             {
                 Error = "Failed to get backup",
+                Detail = ex.Message
+            });
+        }
+    }
+
+    /// <summary>
+    /// Formats bytes to human-readable string.
+    /// </summary>
+    private static string FormatBytes(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB", "TB" };
+        double len = bytes;
+        int order = 0;
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len /= 1024;
+        }
+        return $"{len:0.##} {sizes[order]}";
+    }
+
+    /// <summary>
+    /// Get backup execution logs
+    /// </summary>
+    [HttpGet("{backupId}/logs")]
+    [ProducesResponseType(typeof(BackupLogsDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<BackupLogsDto>> GetBackupLogs(
+        string backupId,
+        [FromQuery] Guid? deviceId = null,
+        [FromQuery] Guid? shareId = null)
+    {
+        // Declare repositoryPath outside try block so it can be accessed in catch blocks
+        string? repositoryPath = null;
+        
+        try
+        {
+            _logger.LogInformation("GetBackupLogs called: backupId={BackupId}, deviceId={DeviceId}, shareId={ShareId}", backupId, deviceId, shareId);
+            
+            // Construct repository path if device/share provided
+            if (deviceId.HasValue && shareId.HasValue)
+            {
+                repositoryPath = Path.Combine("./repositories", deviceId.Value.ToString(), shareId.Value.ToString());
+                _logger.LogInformation("Repository path constructed: {RepositoryPath}", repositoryPath);
+            }
+            else
+            {
+                _logger.LogWarning("No deviceId/shareId provided for logs, repository path will be null");
+            }
+
+            // Verify backup exists
+            _logger.LogInformation("Verifying backup exists: {BackupId} with repositoryPath={RepositoryPath}", backupId, repositoryPath ?? "null");
+            var backup = await _resticService.GetBackup(backupId, repositoryPath);
+            
+                // Get logs from backup log service
+                var executionLog = await _backupLogService.GetLog(backupId);
+            
+                var logs = new BackupLogsDto
+                {
+                    Warnings = executionLog?.Warnings ?? new List<string>(),
+                    Errors = executionLog?.Errors ?? new List<string>(),
+                    ProgressLog = executionLog?.ProgressLog.Select(p => new ProgressLogEntryDto
+                    {
+                        Timestamp = p.Timestamp,
+                        Message = p.Message,
+                        PercentDone = p.PercentDone,
+                        CurrentFiles = p.CurrentFile != null ? new List<string> { p.CurrentFile } : null,
+                        FilesDone = (int?)p.FilesDone,
+                        BytesDone = p.BytesDone
+                    }).ToList() ?? new List<ProgressLogEntryDto>()
+                };
+
+            return Ok(logs);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            _logger.LogError(ex, "Backup not found for logs: {BackupId} with repositoryPath={RepositoryPath}", backupId, repositoryPath ?? "null");
+            return NotFound(new ErrorResponse
+            {
+                Error = "Backup not found",
+                Detail = $"No backup with ID {backupId}"
+            });
+        }
+        catch (InvalidOperationException ex) when (
+            ex.Message.Contains("repository does not exist") || 
+            ex.Message.Contains("exit code 10") ||
+            ex.Message.Contains("exit code 1") ||
+            ex.Message.Contains("unable to open config file"))
+        {
+            _logger.LogError(ex, "Repository error for backup logs {BackupId} with repositoryPath={RepositoryPath}, message: {Message}", backupId, repositoryPath ?? "null", ex.Message);
+            return NotFound(new ErrorResponse
+            {
+                Error = "Backup not found",
+                Detail = $"No backup with ID {backupId} (repository does not exist)"
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting backup logs {BackupId} with repositoryPath={RepositoryPath}", backupId, repositoryPath ?? "null");
+            return StatusCode(500, new ErrorResponse
+            {
+                Error = "Failed to get backup logs",
                 Detail = ex.Message
             });
         }

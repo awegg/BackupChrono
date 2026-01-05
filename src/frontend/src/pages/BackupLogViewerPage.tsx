@@ -1,16 +1,83 @@
 import { Download, Copy, ChevronDown, ChevronRight, AlertTriangle, CheckCircle2, XCircle, Clock, FileText, HardDrive, ArrowLeft, TrendingUp, FolderOpen } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
+import { AxiosError } from 'axios';
+import { getBackupDetail, getBackupLogs } from '../services/backupsApi';
 
+// OpenAPI: BackupDetail schema
+export interface BackupDetail {
+  // From Backup
+  id: string;
+  deviceId: string;
+  shareId?: string | null;
+  deviceName: string;
+  shareName?: string | null;
+  timestamp: string;
+  status: 'Success' | 'Partial' | 'Failed';
+  sharesPaths: Record<string, string>;
+  fileStats: {
+    new: number;
+    changed: number;
+    unmodified: number;
+  };
+  dataStats: {
+    added: number; // bytes
+    processed: number; // bytes
+  };
+  duration: string;
+  errorMessage?: string | null;
+  createdByJobId?: string;
+  // BackupDetail specific
+  directoryStats: {
+    new: number;
+    changed: number;
+    unmodified: number;
+  };
+  snapshotInfo: {
+    snapshotId: string;
+    parentSnapshot: string | null;
+    exitCode: number;
+  };
+  deduplicationInfo: {
+    dataBlobs: number;
+    treeBlobs: number;
+    ratio: string;
+    spaceSaved: string;
+  };
+  shares: Array<{
+    name: string;
+    path: string;
+    fileCount: number;
+    size: number;
+  }>;
+}
+
+// OpenAPI: BackupLogs schema
+export interface BackupLogs {
+  warnings: string[];
+  errors: string[];
+  progressLog: Array<{
+    timestamp: string;
+    message: string;
+    percentDone?: number;
+    currentFiles?: string[];
+    filesDone?: number;
+    bytesDone?: number;
+  }>;
+}
+
+// Combined data for UI display
 export interface BackupLogData {
+  // Computed/formatted display fields
   status: 'success' | 'warning' | 'error';
   duration: string;
   filesProcessed: number;
   dataProcessed: string;
   message: string;
+  // From BackupDetail
   snapshotInfo: {
     snapshotId: string;
-    parentSnapshot: string;
+    parentSnapshot: string | null;
     timestamp: string;
     exitCode: number;
   };
@@ -29,61 +96,77 @@ export interface BackupLogData {
   dataStats: {
     totalProcessed: string;
     dataAdded: string;
+  };
+  deduplicationInfo: {
     dataBlobs: number;
     treeBlobs: number;
-    deduplicationRatio: string;
+    ratio: string;
     spaceSaved: string;
   };
+  // From BackupLogs
   warnings: string[];
   errors: string[];
   progressLog: any[];
 }
 
-// Mock data generator - will be replaced with API call
-function getMockLogData(): BackupLogData {
+// Helper function to format bytes to human-readable string
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+}
+
+// Helper function to merge BackupDetail and BackupLogs into display format
+function mergeBackupData(detail: BackupDetail, logs: BackupLogs): BackupLogData {
+  const totalFiles = detail.fileStats.new + detail.fileStats.changed + detail.fileStats.unmodified;
+  const totalDirs = detail.directoryStats.new + detail.directoryStats.changed + detail.directoryStats.unmodified;
+  
+  // Determine status based on errors/warnings
+  let status: 'success' | 'warning' | 'error' = 'success';
+  if (logs.errors.length > 0) {
+    status = 'error';
+  } else if (logs.warnings.length > 0 || detail.status === 'Partial') {
+    status = 'warning';
+  } else if (detail.status === 'Failed') {
+    status = 'error';
+  }
+  
+  // Create message
+  let message = 'Backup completed successfully. All files processed without errors.';
+  if (status === 'error') {
+    message = `Backup failed with ${logs.errors.length} error(s). Please review the error log below.`;
+  } else if (status === 'warning') {
+    message = `Backup completed with ${logs.warnings.length} warning(s). Some files may have been skipped.`;
+  }
+  
   return {
-    status: 'success',
-    duration: '2m 34s',
-    filesProcessed: 12547,
-    dataProcessed: '4.2 GB',
-    message: 'Backup completed successfully. All files processed without errors.',
+    status,
+    duration: detail.duration,
+    filesProcessed: totalFiles,
+    dataProcessed: formatBytes(detail.dataStats.processed),
+    message,
     snapshotInfo: {
-      snapshotId: 'a1b2c3d4',
-      parentSnapshot: 'e5f6g7h8',
-      timestamp: '2024-01-15 14:32:18',
-      exitCode: 0,
+      ...detail.snapshotInfo,
+      timestamp: detail.timestamp, // Add timestamp from root level
     },
     fileStats: {
-      total: 12547,
-      new: 234,
-      changed: 156,
-      unmodified: 12157,
+      total: totalFiles,
+      ...detail.fileStats,
     },
     directoryStats: {
-      total: 1847,
-      new: 12,
-      changed: 8,
-      unmodified: 1827,
+      total: totalDirs,
+      ...detail.directoryStats,
     },
     dataStats: {
-      totalProcessed: '4.2 GB',
-      dataAdded: '892 MB',
-      dataBlobs: 456,
-      treeBlobs: 89,
-      deduplicationRatio: '78.5%',
-      spaceSaved: '3.3 GB',
+      totalProcessed: formatBytes(detail.dataStats.processed),
+      dataAdded: formatBytes(detail.dataStats.added),
     },
-    warnings: [
-      'File "C:\\Users\\Documents\\temp.lock" is in use and was skipped',
-      'Permission denied for "C:\\System Volume Information"',
-    ],
-    errors: [],
-    progressLog: [
-      { timestamp: '2024-01-15T14:30:00Z', message: 'Starting backup process', percent_done: 0 },
-      { timestamp: '2024-01-15T14:31:00Z', message: 'Scanning files...', percent_done: 25 },
-      { timestamp: '2024-01-15T14:32:00Z', message: 'Processing data...', percent_done: 75 },
-      { timestamp: '2024-01-15T14:32:18Z', message: 'Backup complete', percent_done: 100 },
-    ],
+    deduplicationInfo: detail.deduplicationInfo,
+    warnings: logs.warnings,
+    errors: logs.errors,
+    progressLog: logs.progressLog,
   };
 }
 
@@ -91,14 +174,94 @@ export function BackupLogViewerPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { backupId } = useParams<{ backupId: string }>();
-  
-  // TODO: Fetch actual log data based on backupId from API
-  const logData = getMockLogData();
+
+  const deviceId = searchParams.get('deviceId') ?? undefined;
+  const shareId = searchParams.get('shareId') ?? undefined;
+
+  const [logData, setLogData] = useState<BackupLogData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const [snapshotExpanded, setSnapshotExpanded] = useState(true);
   const [metricsExpanded, setMetricsExpanded] = useState(true);
   const [warningsExpanded, setWarningsExpanded] = useState(true);
   const [progressLogExpanded, setProgressLogExpanded] = useState(false);
+
+  useEffect(() => {
+    if (!backupId) return;
+
+    let isCancelled = false;
+    setLoading(true);
+    setError(null);
+
+    (async () => {
+      try {
+        const [detail, logs] = await Promise.all([
+          getBackupDetail(backupId, deviceId, shareId),
+          getBackupLogs(backupId, deviceId, shareId)
+        ]);
+
+        if (!isCancelled) {
+          setLogData(mergeBackupData(detail as BackupDetail, logs as BackupLogs));
+        }
+      } catch (err: any) {
+        if (!isCancelled) {
+          const axiosErr = err as AxiosError<{ error?: string; detail?: string }>;
+          const detail = axiosErr.response?.data?.detail;
+          const friendly = detail || axiosErr.response?.data?.error || axiosErr.message;
+          setError(friendly ?? 'Failed to load backup logs');
+        }
+      } finally {
+        if (!isCancelled) {
+          setLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [backupId, deviceId, shareId]);
+
+  if (!backupId) {
+    return (
+      <div className="p-6 text-red-600 dark:text-red-400">Backup ID is missing from the URL.</div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center">
+        <div className="text-gray-600 dark:text-gray-300">Loading backup logs...</div>
+      </div>
+    );
+  }
+
+  if (error || !logData) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center">
+        <div className="space-y-3">
+          <div className="bg-red-100 dark:bg-red-900/40 border border-red-300 dark:border-red-700 text-red-800 dark:text-red-200 px-4 py-3 rounded">
+            {error ?? 'Unable to load backup log data.'}
+          </div>
+          <div className="flex justify-center gap-3">
+            <button
+              onClick={() => navigate(-1)}
+              className="px-4 py-2 rounded border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-700"
+            >
+              Go Back
+            </button>
+            <button
+              onClick={() => navigate('/backups')}
+              className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
+            >
+              View Backups
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const handleExport = () => {
     const dataStr = JSON.stringify(logData, null, 2);
@@ -224,7 +387,9 @@ export function BackupLogViewerPage() {
                 </div>
                 <div className="space-y-2">
                   <div className="text-sm text-gray-500 dark:text-gray-400">Parent Snapshot</div>
-                  <code className="text-sm text-gray-900 dark:text-gray-200 bg-gray-100 dark:bg-slate-700 px-3 py-1 rounded block">{logData.snapshotInfo.parentSnapshot}</code>
+                  <code className="text-sm text-gray-900 dark:text-gray-200 bg-gray-100 dark:bg-slate-700 px-3 py-1 rounded block">
+                    {logData.snapshotInfo.parentSnapshot || 'None (Initial Backup)'}
+                  </code>
                 </div>
                 <div className="space-y-2">
                   <div className="text-sm text-gray-500 dark:text-gray-400">Timestamp</div>
@@ -322,11 +487,11 @@ export function BackupLogViewerPage() {
                     </div>
                     <div className="bg-white dark:bg-slate-700 p-3 rounded-lg shadow-md border border-gray-100 dark:border-slate-600">
                       <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">Data Blobs</div>
-                      <div className="text-xl font-semibold text-gray-900 dark:text-white">{logData.dataStats.dataBlobs.toLocaleString()}</div>
+                      <div className="text-xl font-semibold text-gray-900 dark:text-white">{logData.deduplicationInfo.dataBlobs.toLocaleString()}</div>
                     </div>
                     <div className="bg-white dark:bg-slate-700 p-3 rounded-lg shadow-md border border-gray-100 dark:border-slate-600">
                       <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">Tree Blobs</div>
-                      <div className="text-xl font-semibold text-gray-900 dark:text-white">{logData.dataStats.treeBlobs.toLocaleString()}</div>
+                      <div className="text-xl font-semibold text-gray-900 dark:text-white">{logData.deduplicationInfo.treeBlobs.toLocaleString()}</div>
                     </div>
                   </div>
                   <div className="mt-4 bg-white dark:bg-slate-700/50 p-4 rounded-lg border border-teal-200 dark:border-teal-600 shadow-md">
@@ -335,12 +500,12 @@ export function BackupLogViewerPage() {
                         <TrendingUp className="h-8 w-8 text-teal-600 dark:text-teal-400" />
                         <div>
                           <div className="text-sm text-gray-600 dark:text-gray-400">Deduplication Ratio</div>
-                          <div className="text-2xl font-bold text-gray-900 dark:text-white">{logData.dataStats.deduplicationRatio}</div>
+                          <div className="text-2xl font-bold text-gray-900 dark:text-white">{logData.deduplicationInfo.ratio}</div>
                         </div>
                       </div>
                       <div className="text-right">
                         <div className="text-sm text-gray-600 dark:text-gray-400">Space Saved</div>
-                        <div className="text-2xl font-bold text-teal-700 dark:text-teal-300">{logData.dataStats.spaceSaved}</div>
+                        <div className="text-2xl font-bold text-teal-700 dark:text-teal-300">{logData.deduplicationInfo.spaceSaved}</div>
                       </div>
                     </div>
                   </div>

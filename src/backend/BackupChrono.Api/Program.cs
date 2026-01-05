@@ -127,7 +127,8 @@ builder.Services.AddSingleton<ResticClient>(sp =>
     return new ResticClient(
         resticOptions.BinaryPath,
         resticOptions.RepositoryBasePath,
-        resticPassword);
+        resticPassword,
+        sp.GetRequiredService<ILogger<ResticClient>>());
 });
 
 builder.Services.AddSingleton<IResticClient>(sp => sp.GetRequiredService<ResticClient>());
@@ -135,6 +136,7 @@ builder.Services.AddSingleton<IResticService, ResticService>();
 
 // Register application services (Phase 3 - User Story 1)
 builder.Services.AddSingleton<IMappingService, MappingService>();
+builder.Services.AddSingleton<IBackupLogService, InMemoryBackupLogService>();
 
 // Protocol plugins
 builder.Services.AddSingleton<SmbPlugin>();

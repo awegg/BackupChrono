@@ -1,5 +1,5 @@
 param(
-    [string]$BaseUrl = "http://localhost:5000",
+    [string]$BaseUrl = "http://localhost:5192",
     [int]$MaxBackups = 50,
     [int]$PrintCount = 10,
     [string]$DownloadDir = "$PSScriptRoot/output"
@@ -49,6 +49,28 @@ function Download-FileFromBackup {
     $uri = "$BaseUrl/api/backups/$BackupId/download?deviceId=$DeviceId&shareId=$ShareId&filePath=$encodedPath"
     Write-Host "[DOWNLOAD] $FilePath -> $OutputPath" -ForegroundColor Yellow
     Invoke-WebRequest -Method GET -Uri $uri -OutFile $OutputPath | Out-Null
+}
+
+function Get-BackupDetail {
+    param(
+        [string]$BaseUrl,
+        [string]$BackupId,
+        [guid]$DeviceId,
+        [guid]$ShareId
+    )
+    $uri = "$BaseUrl/api/backups/$BackupId?deviceId=$DeviceId&shareId=$ShareId"
+    Invoke-Api -Method GET -Uri $uri
+}
+
+function Get-BackupLogs {
+    param(
+        [string]$BaseUrl,
+        [string]$BackupId,
+        [guid]$DeviceId,
+        [guid]$ShareId
+    )
+    $uri = "$BaseUrl/api/backups/$BackupId/logs?deviceId=$DeviceId&shareId=$ShareId"
+    Invoke-Api -Method GET -Uri $uri
 }
 
 Write-Host ""
@@ -118,7 +140,26 @@ if (-not $shareId) {
 
 $backupId = $latestSuccessJob.backupId
 
-Write-Host "Step 4: Browsing backup snapshot (searching for first file)" -ForegroundColor Yellow
+Write-Host "Step 4: Fetching backup metadata and logs" -ForegroundColor Yellow
+try {
+    $detail = Get-BackupDetail -BaseUrl $BaseUrl -BackupId $backupId -DeviceId $deviceId -ShareId $shareId
+    $logs = Get-BackupLogs -BaseUrl $BaseUrl -BackupId $backupId -DeviceId $deviceId -ShareId $shareId
+
+    Write-Host "  Metadata: snapshotId=$($detail.id) parent=$($detail.snapshotInfo.parentSnapshot) status=$($detail.status) files new/changed/unmodified: $($detail.fileStats.new)/$($detail.fileStats.changed)/$($detail.fileStats.unmodified)" -ForegroundColor Gray
+    Write-Host "  Logs: warnings=$($logs.warnings.Count) errors=$($logs.errors.Count) progress entries=$($logs.progressLog.Count)" -ForegroundColor Gray
+
+    $detailPath = Join-Path -Path $DownloadDir -ChildPath "backup-$backupId-detail.json"
+    $logsPath = Join-Path -Path $DownloadDir -ChildPath "backup-$backupId-logs.json"
+    $detail | ConvertTo-Json -Depth 8 | Out-File -FilePath $detailPath -Encoding UTF8
+    $logs | ConvertTo-Json -Depth 8 | Out-File -FilePath $logsPath -Encoding UTF8
+    Write-Host "  Saved detail to $detailPath" -ForegroundColor DarkGray
+    Write-Host "  Saved logs to   $logsPath" -ForegroundColor DarkGray
+} catch {
+    Write-Host "  Warning: Could not fetch metadata/logs (404 - backup may predate logging feature)" -ForegroundColor Yellow
+    Write-Host "  Continuing with file browsing test..." -ForegroundColor Yellow
+}
+
+Write-Host "Step 5: Browsing backup snapshot (searching for first file)" -ForegroundColor Yellow
 Write-Host "  Starting at root directory..." -ForegroundColor Gray
 $rootEntries = Get-Files -BaseUrl $BaseUrl -BackupId $backupId -DeviceId $deviceId -ShareId $shareId -Path "/"
 
@@ -147,7 +188,7 @@ if (-not $fileToDownload) {
 }
 Write-Host ""
 
-Write-Host "Step 5: Downloading file from backup" -ForegroundColor Yellow
+Write-Host "Step 6: Downloading file from backup" -ForegroundColor Yellow
 Write-Host "  File path:  $($fileToDownload.path)" -ForegroundColor Gray
 Write-Host "  File size:  $($fileToDownload.size) bytes" -ForegroundColor Gray
 
@@ -160,7 +201,7 @@ Download-FileFromBackup -BaseUrl $BaseUrl -BackupId $backupId -DeviceId $deviceI
 Write-Host "  Download successful!" -ForegroundColor Green
 Write-Host ""
 
-Write-Host "Step 6: Validating file size" -ForegroundColor Yellow
+Write-Host "Step 7: Validating file size" -ForegroundColor Yellow
 $downloadedFileInfo = Get-Item -Path $outFilePath
 $downloadedSize = $downloadedFileInfo.Length
 $expectedSize = $fileToDownload.size
@@ -176,7 +217,7 @@ if ($downloadedSize -eq $expectedSize) {
 }
 Write-Host ""
 
-Write-Host "Step 7: Verifying file content" -ForegroundColor Yellow
+Write-Host "Step 8: Verifying file content" -ForegroundColor Yellow
 $fileBytes = [System.IO.File]::ReadAllBytes($outFilePath)
 $sampleSize = [Math]::Min(100, $fileBytes.Length)
 

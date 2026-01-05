@@ -12,7 +12,8 @@ public interface IResticClient
         CancellationToken cancellationToken = default,
         TimeSpan? timeout = null,
         Action<string>? onOutputLine = null,
-        string? repositoryPathOverride = null);
+        string? repositoryPathOverride = null,
+        Action<string>? onErrorLine = null);
 
     Task<byte[]> ExecuteCommandBinary(
         string[] args,

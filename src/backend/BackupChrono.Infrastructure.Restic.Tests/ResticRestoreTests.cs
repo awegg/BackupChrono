@@ -23,7 +23,8 @@ public class ResticRestoreTests : IClassFixture<ResticTestFixture>
         _resticClient = new ResticClient(
             "/usr/local/bin/restic",
             _fixture.RepositoryPath,
-            _fixture.ResticPassword);
+            _fixture.ResticPassword,
+            NullLogger<ResticClient>.Instance);
         _resticService = new ResticService(_resticClient, NullLogger<ResticService>.Instance);
     }
 

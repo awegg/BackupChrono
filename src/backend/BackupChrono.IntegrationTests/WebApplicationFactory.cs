@@ -72,7 +72,7 @@ public class BackupChronoWebApplicationFactory : WebApplicationFactory<Program>
             });
             
             // Provide a real ResticClient with test repository
-            services.AddSingleton(new ResticClient("restic", _repositoryPath, "test-password"));
+            services.AddSingleton(sp => new ResticClient("restic", _repositoryPath, "test-password", sp.GetRequiredService<ILogger<ResticClient>>()));
         });
     }
 

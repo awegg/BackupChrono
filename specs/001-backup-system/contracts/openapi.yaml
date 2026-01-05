@@ -444,6 +444,27 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /backups/{backupId}/logs:
+    parameters:
+      - $ref: '#/components/parameters/BackupId'
+    
+    get:
+      tags: [backups]
+      summary: Get backup execution logs
+      operationId: getBackupLogs
+      description: |
+        Returns backup execution logs including warnings, errors, and detailed progress information.
+        Basic backup statistics should be retrieved from GET /backups/{backupId}.
+      responses:
+        '200':
+          description: Backup execution logs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BackupLogs'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /backups/{backupId}/files:
     parameters:
       - $ref: '#/components/parameters/BackupId'
@@ -1058,18 +1079,31 @@ components:
           description: Share names to paths mapping (all shares for device-level, single entry for share-level)
           additionalProperties:
             type: string
-        filesNew:
-          type: integer
-        filesChanged:
-          type: integer
-        filesUnmodified:
-          type: integer
-        dataAdded:
-          type: integer
-          format: int64
-        dataProcessed:
-          type: integer
-          format: int64
+        fileStats:
+          type: object
+          description: File statistics
+          properties:
+            new:
+              type: integer
+              description: Number of new files
+            changed:
+              type: integer
+              description: Number of changed files
+            unmodified:
+              type: integer
+              description: Number of unmodified files
+        dataStats:
+          type: object
+          description: Data processing statistics
+          properties:
+            added:
+              type: integer
+              format: int64
+              description: Bytes of new data added
+            processed:
+              type: integer
+              format: int64
+              description: Total bytes processed
         duration:
           type: string
           description: ISO 8601 duration
@@ -1085,6 +1119,49 @@ components:
         - $ref: '#/components/schemas/Backup'
         - type: object
           properties:
+            directoryStats:
+              type: object
+              description: Directory statistics
+              properties:
+                new:
+                  type: integer
+                  description: Number of new directories
+                changed:
+                  type: integer
+                  description: Number of changed directories
+                unmodified:
+                  type: integer
+                  description: Number of unmodified directories
+            snapshotInfo:
+              type: object
+              description: Snapshot metadata
+              properties:
+                snapshotId:
+                  type: string
+                  description: Unique identifier for this snapshot
+                parentSnapshot:
+                  type: string
+                  description: Parent snapshot ID (for incremental backups)
+                  nullable: true
+                exitCode:
+                  type: integer
+                  description: Backup process exit code (0 = success)
+            deduplicationInfo:
+              type: object
+              description: Deduplication and blob statistics
+              properties:
+                dataBlobs:
+                  type: integer
+                  description: Number of data blobs created
+                treeBlobs:
+                  type: integer
+                  description: Number of tree blobs created
+                ratio:
+                  type: string
+                  description: Deduplication ratio (e.g., "78.5%" or "2.87:1")
+                spaceSaved:
+                  type: string
+                  description: Human-readable space saved by deduplication (e.g., "3.3 GB")
             shares:
               type: array
               items:
@@ -1340,6 +1417,11 @@ components:
         uniqueSize:
           type: integer
           format: int64
+        compressionRatio:
+          type: number
+          format: float
+        snapshotCount:
+          type: integer
         deduplicationSavings:
           type: integer
           format: int64
@@ -1348,6 +1430,61 @@ components:
           description: Total number of backups in repository
         fileCount:
           type: integer
+
+    # ========== BACKUP LOGS SCHEMAS ==========
+    BackupLogs:
+      description: |
+        Backup execution logs including warnings, errors, and progress information.
+        All backup statistics and metadata should be retrieved from GET /backups/{backupId}.
+      type: object
+      properties:
+        warnings:
+          type: array
+          items:
+            type: string
+          description: List of warning messages encountered during backup
+          default: []
+        errors:
+          type: array
+          items:
+            type: string
+          description: List of error messages encountered during backup
+          default: []
+        progressLog:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProgressLogEntry'
+          description: Detailed progress log entries from backup execution
+          default: []
+
+    ProgressLogEntry:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: Log entry timestamp
+        message:
+          type: string
+          description: Log message
+        percentDone:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 100
+          description: Backup completion percentage
+        currentFiles:
+          type: array
+          items:
+            type: string
+          description: Files currently being processed
+        filesDone:
+          type: integer
+          description: Number of files completed
+        bytesDone:
+          type: integer
+          format: int64
+          description: Number of bytes processed
 
     # ========== ERROR SCHEMA ==========
     Error:

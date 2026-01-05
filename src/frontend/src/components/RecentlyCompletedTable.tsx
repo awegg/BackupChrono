@@ -22,7 +22,12 @@ export function RecentlyCompletedTable({ backups, onViewLogs }: RecentlyComplete
   const navigate = useNavigate();
 
   const handleViewLogs = (backup: CompletedBackup) => {
-    navigate(`/backups/${backup.backupId}/logs`);
+    const params = new URLSearchParams();
+    if (backup.deviceId) params.append('deviceId', backup.deviceId);
+    if (backup.shareId) params.append('shareId', backup.shareId);
+    const query = params.toString();
+    const url = query ? `/backups/${backup.backupId}/logs?${query}` : `/backups/${backup.backupId}/logs`;
+    navigate(url);
     
     // Call optional callback
     if (onViewLogs) {
