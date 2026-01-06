@@ -130,8 +130,7 @@ export function RecentlyCompletedTable({ backups, onViewLogs }: RecentlyComplete
                   </button>
                   <button
                     onClick={() => {
-                      console.log('Browse backups clicked:', { backupId: backup.backupId });
-                      navigate(`/backups/${backup.backupId}/browse`);
+                      navigate(`/backups/${backup.backupId}/browse?deviceId=${backup.deviceId}&shareId=${backup.shareId}`);
                     }}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-foreground bg-card hover:bg-muted border border-border rounded-md transition-colors whitespace-nowrap"
                     disabled={!backup.backupId || !backup.shareId}

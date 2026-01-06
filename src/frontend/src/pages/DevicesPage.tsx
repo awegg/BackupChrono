@@ -4,7 +4,7 @@ import { Plus, HardDrive, AlertTriangle, RefreshCw } from 'lucide-react';
 import { DeviceCard } from '../components/DeviceCard';
 import { AddDeviceDialog } from '../components/AddDeviceDialog';
 import { AddShareDialog } from '../components/AddShareDialog';
-import { Device } from '../types/devices';
+import { Device, Share } from '../types';
 import { devicesService } from '../services/devicesService';
 
 // Devices management page
@@ -17,7 +17,7 @@ export function DevicesPage() {
   const [editingDeviceId, setEditingDeviceId] = useState<string | undefined>();
   const [showAddShareDialog, setShowAddShareDialog] = useState(false);
   const [selectedDeviceForShare, setSelectedDeviceForShare] = useState<Device | null>(null);
-  const [editingShare, setEditingShare] = useState<any>(null);
+  const [editingShare, setEditingShare] = useState<Share | null>(null);
 
   const loadDevices = async () => {
     try {
@@ -42,7 +42,7 @@ export function DevicesPage() {
     setShowAddDialog(true);
   };
 
-  const handleToggleDevice = async (deviceId: string) => {
+  const handleStartDeviceBackup = async (deviceId: string) => {
     try {
       console.log('Start backup for device:', deviceId);
       await devicesService.triggerBackup(deviceId);
@@ -116,8 +116,7 @@ export function DevicesPage() {
   };
 
   const handleViewShareBackups = (deviceId: string, shareId: string) => {
-    console.log('View backups for share:', shareId, 'on device:', deviceId);
-    // TODO: Navigate to share backups
+    navigate(`/devices/${deviceId}/backups?shareId=${encodeURIComponent(shareId)}`);
   };
 
   const handleEditShare = (deviceId: string, shareId: string) => {
@@ -196,7 +195,7 @@ export function DevicesPage() {
             <DeviceCard
               key={device.id}
               device={device}
-              onToggleDevice={handleToggleDevice}
+              onStartDeviceBackup={handleStartDeviceBackup}
               onViewBackups={handleViewBackups}
               onEdit={handleEditDevice}
               onDelete={handleDeleteDevice}

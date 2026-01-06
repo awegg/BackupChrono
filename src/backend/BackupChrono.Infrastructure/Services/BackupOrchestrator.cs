@@ -183,6 +183,19 @@ public class BackupOrchestrator : IBackupOrchestrator
                 _logger.LogError("Device backup failed for '{DeviceName}' - all shares failed", device.Name);
                 RaiseProgressUpdate(job);
             }
+
+            // Persist execution logs for all backups
+            foreach (var backup in backups)
+            {
+                try
+                {
+                    await _backupLogService.PersistLog(backup.Id);
+                }
+                catch (Exception persistEx)
+                {
+                    _logger.LogError(persistEx, "Failed to persist execution log for backup {BackupId}", backup.Id);
+                }
+            }
         }
         catch (OperationCanceledException)
         {
@@ -264,6 +277,16 @@ public class BackupOrchestrator : IBackupOrchestrator
 
             _logger.LogInformation("Share backup completed successfully for '{DeviceName}/{ShareName}'", device.Name, share.Name);
             RaiseProgressUpdate(job, percentComplete: 100);
+
+            // Persist execution log
+            try
+            {
+                await _backupLogService.PersistLog(backup.Id);
+            }
+            catch (Exception persistEx)
+            {
+                _logger.LogError(persistEx, "Failed to persist execution log for backup {BackupId}", backup.Id);
+            }
         }
         catch (OperationCanceledException)
         {
@@ -711,6 +734,19 @@ public class BackupOrchestrator : IBackupOrchestrator
             "Tracked failed job {JobId} with error: {Error}",
             failedJob.Id,
             failedJob.ErrorMessage);
+
+        // Persist execution log for failed job if it has a backup ID
+        if (!string.IsNullOrEmpty(failedJob.BackupId))
+        {
+            try
+            {
+                await _backupLogService.PersistLog(failedJob.BackupId);
+            }
+            catch (Exception persistEx)
+            {
+                _logger.LogError(persistEx, "Failed to persist execution log for failed job {JobId}", failedJob.Id);
+            }
+        }
     }
 
     public int GetActiveJobCount()

@@ -373,40 +373,7 @@ public class ResticService : IResticService
             }
             
             var snapshot = snapshots[0];
-            
-            var metadata = new SnapshotMetadata
-            {
-                Id = snapshot.GetProperty("short_id").GetString() ?? backupId,
-                Parent = snapshot.TryGetProperty("parent", out var parent) && parent.ValueKind != JsonValueKind.Null
-                    ? parent.GetString()
-                    : null,
-                Hostname = snapshot.GetProperty("hostname").GetString() ?? "unknown",
-                Paths = snapshot.GetProperty("paths").EnumerateArray().Select(p => p.GetString() ?? "").ToList(),
-                Time = snapshot.GetProperty("time").GetDateTime(),
-                Tags = snapshot.TryGetProperty("tags", out var tags)
-                    ? tags.EnumerateArray().Select(t => t.GetString() ?? "").ToList()
-                    : new List<string>()
-            };
-
-            // Try to get summary from snapshot
-            if (snapshot.TryGetProperty("summary", out var summaryElem))
-            {
-                metadata.Summary = new SnapshotSummary
-                {
-                    FilesNew = summaryElem.TryGetProperty("files_new", out var fn) ? fn.GetInt32() : 0,
-                    FilesChanged = summaryElem.TryGetProperty("files_changed", out var fc) ? fc.GetInt32() : 0,
-                    FilesUnmodified = summaryElem.TryGetProperty("files_unmodified", out var fu) ? fu.GetInt32() : 0,
-                    DirsNew = summaryElem.TryGetProperty("dirs_new", out var dn) ? dn.GetInt32() : 0,
-                    DirsChanged = summaryElem.TryGetProperty("dirs_changed", out var dc) ? dc.GetInt32() : 0,
-                    DirsUnmodified = summaryElem.TryGetProperty("dirs_unmodified", out var du) ? du.GetInt32() : 0,
-                    DataAdded = summaryElem.TryGetProperty("data_added", out var da) ? da.GetInt64() : 0,
-                    DataProcessed = summaryElem.TryGetProperty("total_bytes_processed", out var tbp) ? tbp.GetInt64() : 0,
-                    TotalFilesProcessed = summaryElem.TryGetProperty("total_files_processed", out var tfp) ? tfp.GetInt32() : 0,
-                    TotalBytesProcessed = summaryElem.TryGetProperty("total_bytes_processed", out var tbp2) ? tbp2.GetInt64() : 0
-                };
-            }
-
-            return metadata;
+            return ParseSnapshotMetadata(snapshot, backupId);
         }
         catch (JsonException ex)
         {
@@ -421,7 +388,7 @@ public class ResticService : IResticService
         var rawDataStatsTask = _client.ExecuteCommand(new[] { "stats", backupId, "--json", "--mode=raw-data" }, repositoryPathOverride: repositoryPath);
         var blobStatsTask = _client.ExecuteCommand(new[] { "stats", backupId, "--json", "--mode=blobs-per-file" }, repositoryPathOverride: repositoryPath);
 
-        await Task.WhenAll(restoreStatsTask, blobStatsTask);
+        await Task.WhenAll(restoreStatsTask, rawDataStatsTask, blobStatsTask);
 
         var restoreOutput = await restoreStatsTask;
         var blobOutput = await blobStatsTask;
@@ -521,38 +488,7 @@ public class ResticService : IResticService
             }
             
             var snapshot = snapshots[0];
-            
-            metadata = new SnapshotMetadata
-            {
-                Id = snapshot.GetProperty("short_id").GetString() ?? backupId,
-                Parent = snapshot.TryGetProperty("parent", out var parent) && parent.ValueKind != JsonValueKind.Null
-                    ? parent.GetString()
-                    : null,
-                Hostname = snapshot.GetProperty("hostname").GetString() ?? "unknown",
-                Paths = snapshot.GetProperty("paths").EnumerateArray().Select(p => p.GetString() ?? "").ToList(),
-                Time = snapshot.GetProperty("time").GetDateTime(),
-                Tags = snapshot.TryGetProperty("tags", out var tags)
-                    ? tags.EnumerateArray().Select(t => t.GetString() ?? "").ToList()
-                    : new List<string>()
-            };
-
-            // Try to get summary from snapshot
-            if (snapshot.TryGetProperty("summary", out var summaryElem))
-            {
-                metadata.Summary = new SnapshotSummary
-                {
-                    FilesNew = summaryElem.TryGetProperty("files_new", out var fn) ? fn.GetInt32() : 0,
-                    FilesChanged = summaryElem.TryGetProperty("files_changed", out var fc) ? fc.GetInt32() : 0,
-                    FilesUnmodified = summaryElem.TryGetProperty("files_unmodified", out var fu) ? fu.GetInt32() : 0,
-                    DirsNew = summaryElem.TryGetProperty("dirs_new", out var dn) ? dn.GetInt32() : 0,
-                    DirsChanged = summaryElem.TryGetProperty("dirs_changed", out var dc) ? dc.GetInt32() : 0,
-                    DirsUnmodified = summaryElem.TryGetProperty("dirs_unmodified", out var du) ? du.GetInt32() : 0,
-                    DataAdded = summaryElem.TryGetProperty("data_added", out var da) ? da.GetInt64() : 0,
-                    DataProcessed = summaryElem.TryGetProperty("total_bytes_processed", out var tbp) ? tbp.GetInt64() : 0,
-                    TotalFilesProcessed = summaryElem.TryGetProperty("total_files_processed", out var tfp) ? tfp.GetInt32() : 0,
-                    TotalBytesProcessed = summaryElem.TryGetProperty("total_bytes_processed", out var tbp2) ? tbp2.GetInt64() : 0
-                };
-            }
+            metadata = ParseSnapshotMetadata(snapshot, backupId);
         }
         catch (JsonException ex)
         {
@@ -566,7 +502,7 @@ public class ResticService : IResticService
         var blobsTask = _client.ExecuteCommand(new[] { "stats", backupId, "--json", "--mode=blobs-per-file" }, repositoryPathOverride: repositoryPath);
         var rawDataTask = _client.ExecuteCommand(new[] { "stats", backupId, "--json", "--mode=raw-data" }, repositoryPathOverride: repositoryPath);
         
-        await Task.WhenAll(statsTask, restoreSizeTask, blobsTask);
+        await Task.WhenAll(statsTask, restoreSizeTask, blobsTask, rawDataTask);
         
         var statsOutput = await statsTask;
         var restoreSizeOutput = await restoreSizeTask;
@@ -938,5 +874,42 @@ public class ResticService : IResticService
             BytesRestored = 0,
             PercentComplete = 0
         });
+    }
+
+    private static SnapshotMetadata ParseSnapshotMetadata(JsonElement snapshot, string backupId)
+    {
+        var metadata = new SnapshotMetadata
+        {
+            Id = snapshot.GetProperty("short_id").GetString() ?? backupId,
+            Parent = snapshot.TryGetProperty("parent", out var parent) && parent.ValueKind != JsonValueKind.Null
+                ? parent.GetString()
+                : null,
+            Hostname = snapshot.GetProperty("hostname").GetString() ?? "unknown",
+            Paths = snapshot.GetProperty("paths").EnumerateArray().Select(p => p.GetString() ?? "").ToList(),
+            Time = snapshot.GetProperty("time").GetDateTime(),
+            Tags = snapshot.TryGetProperty("tags", out var tags)
+                ? tags.EnumerateArray().Select(t => t.GetString() ?? "").ToList()
+                : new List<string>()
+        };
+
+        // Try to get summary from snapshot
+        if (snapshot.TryGetProperty("summary", out var summaryElem))
+        {
+            metadata.Summary = new SnapshotSummary
+            {
+                FilesNew = summaryElem.TryGetProperty("files_new", out var fn) ? fn.GetInt32() : 0,
+                FilesChanged = summaryElem.TryGetProperty("files_changed", out var fc) ? fc.GetInt32() : 0,
+                FilesUnmodified = summaryElem.TryGetProperty("files_unmodified", out var fu) ? fu.GetInt32() : 0,
+                DirsNew = summaryElem.TryGetProperty("dirs_new", out var dn) ? dn.GetInt32() : 0,
+                DirsChanged = summaryElem.TryGetProperty("dirs_changed", out var dc) ? dc.GetInt32() : 0,
+                DirsUnmodified = summaryElem.TryGetProperty("dirs_unmodified", out var du) ? du.GetInt32() : 0,
+                DataAdded = summaryElem.TryGetProperty("data_added", out var da) ? da.GetInt64() : 0,
+                DataProcessed = summaryElem.TryGetProperty("total_bytes_processed", out var tbp) ? tbp.GetInt64() : 0,
+                TotalFilesProcessed = summaryElem.TryGetProperty("total_files_processed", out var tfp) ? tfp.GetInt32() : 0,
+                TotalBytesProcessed = summaryElem.TryGetProperty("total_bytes_processed", out var _) ? tbp.GetInt64() : 0
+            };
+        }
+
+        return metadata;
     }
 }

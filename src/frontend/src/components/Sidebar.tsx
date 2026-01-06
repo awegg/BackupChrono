@@ -55,6 +55,7 @@ export function Sidebar() {
       <div className="p-4 border-t border-sidebar-border">
         <button
           onClick={toggleTheme}
+          aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
           className="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors w-full text-sidebar-foreground hover:bg-sidebar-accent/50"
         >
           {theme === 'dark' ? (

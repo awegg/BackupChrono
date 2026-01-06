@@ -123,7 +123,7 @@ public class BackupsController : ControllerBase
             // Construct repository path if device/share provided
             if (deviceId.HasValue && shareId.HasValue)
             {
-                repositoryPath = Path.Combine(_resticOptions.RepositoryBasePath, deviceId.Value.ToString(), shareId.Value.ToString());
+                repositoryPath = GetRepositoryPath(deviceId.Value, shareId.Value);
                 _logger.LogInformation("Repository path constructed: {RepositoryPath}", repositoryPath);
             }
             else
@@ -260,7 +260,7 @@ public class BackupsController : ControllerBase
             // Construct repository path if device/share provided
             if (deviceId.HasValue && shareId.HasValue)
             {
-                repositoryPath = Path.Combine(_resticOptions.RepositoryBasePath, deviceId.Value.ToString(), shareId.Value.ToString());
+                repositoryPath = GetRepositoryPath(deviceId.Value, shareId.Value);
                 _logger.LogInformation("Repository path constructed: {RepositoryPath}", repositoryPath);
             }
             else
@@ -272,23 +272,23 @@ public class BackupsController : ControllerBase
             _logger.LogInformation("Verifying backup exists: {BackupId} with repositoryPath={RepositoryPath}", backupId, repositoryPath ?? "null");
             var backup = await _resticService.GetBackup(backupId, repositoryPath);
             
-                // Get logs from backup log service
-                var executionLog = await _backupLogService.GetLog(backupId);
+            // Get logs from backup log service
+            var executionLog = await _backupLogService.GetLog(backupId);
             
-                var logs = new BackupLogsDto
+            var logs = new BackupLogsDto
+            {
+                Warnings = executionLog?.Warnings ?? new List<string>(),
+                Errors = executionLog?.Errors ?? new List<string>(),
+                ProgressLog = executionLog?.ProgressLog.Select(p => new ProgressLogEntryDto
                 {
-                    Warnings = executionLog?.Warnings ?? new List<string>(),
-                    Errors = executionLog?.Errors ?? new List<string>(),
-                    ProgressLog = executionLog?.ProgressLog.Select(p => new ProgressLogEntryDto
-                    {
-                        Timestamp = p.Timestamp,
-                        Message = p.Message,
-                        PercentDone = p.PercentDone,
-                        CurrentFiles = p.CurrentFile != null ? new List<string> { p.CurrentFile } : null,
-                        FilesDone = (int?)p.FilesDone,
-                        BytesDone = p.BytesDone
-                    }).ToList() ?? new List<ProgressLogEntryDto>()
-                };
+                    Timestamp = p.Timestamp,
+                    Message = p.Message,
+                    PercentDone = p.PercentDone,
+                    CurrentFiles = p.CurrentFile != null ? new List<string> { p.CurrentFile } : null,
+                    FilesDone = (int?)p.FilesDone,
+                    BytesDone = p.BytesDone
+                }).ToList() ?? new List<ProgressLogEntryDto>()
+            };
 
             return Ok(logs);
         }
@@ -340,7 +340,7 @@ public class BackupsController : ControllerBase
         try
         {
             // Construct repository path
-            var repositoryPath = Path.Combine(_resticOptions.RepositoryBasePath, deviceId.ToString(), shareId.ToString());
+            var repositoryPath = GetRepositoryPath(deviceId, shareId);
             
             var files = await _resticService.BrowseBackup(backupId, path, repositoryPath);
             var filesList = files.ToList();
@@ -408,7 +408,7 @@ public class BackupsController : ControllerBase
             }
 
             // Construct repository path
-            var repositoryPath = Path.Combine(_resticOptions.RepositoryBasePath, deviceId.ToString(), shareId.ToString());
+            var repositoryPath = GetRepositoryPath(deviceId, shareId);
 
             _logger.LogInformation(
                 "Download requested for file {FilePath} from backup {BackupId}",
@@ -484,7 +484,7 @@ public class BackupsController : ControllerBase
             var includePaths = request.IncludePaths?.ToArray();
 
             // Construct repository path
-            var repositoryPath = Path.Combine(_resticOptions.RepositoryBasePath, deviceId.ToString(), shareId.ToString());
+            var repositoryPath = GetRepositoryPath(deviceId, shareId);
             
             _logger.LogInformation(
                 "Restore requested for backup {BackupId} to {TargetPath} with {PathCount} include paths",
@@ -552,7 +552,12 @@ public class BackupsController : ControllerBase
     private static string CalculateContentDedup(long dataAdded, long dataProcessed)
     {
         if (dataProcessed <= 0) return "0%";
-        var contentDedup = dataProcessed > 0 ? 1.0 - ((double)dataAdded / dataProcessed) : 0.0;
+        var contentDedup = 1.0 - ((double)dataAdded / dataProcessed);
         return $"{contentDedup:P1}";
+    }
+
+    private string GetRepositoryPath(Guid deviceId, Guid shareId)
+    {
+        return Path.Combine(_resticOptions.RepositoryBasePath, deviceId.ToString(), shareId.ToString());
     }
 }

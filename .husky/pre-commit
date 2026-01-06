@@ -53,6 +53,7 @@ done
 
 # Run Gitleaks on the diff
 cat "$TMPFILE" | gitleaks detect \
+  --config=.gitleaks.toml \
   --pipe \
   --verbose
 

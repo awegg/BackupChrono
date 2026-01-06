@@ -196,12 +196,16 @@ public class BackupDto
     public Guid? CreatedByJobId { get; set; }
 }
 
-public class FileStatsDto
+public class ChangeStatsDto
 {
     public int New { get; set; }
     public int Changed { get; set; }
     public int Unmodified { get; set; }
 }
+
+// Alias for backwards compatibility and API clarity
+public class FileStatsDto : ChangeStatsDto { }
+public class DirectoryStatsDto : ChangeStatsDto { }
 
 public class DataStatsDto
 {
@@ -215,13 +219,6 @@ public class BackupDetailDto : BackupDto
     public SnapshotInfoDto SnapshotInfo { get; set; } = new();
     public DeduplicationInfoDto DeduplicationInfo { get; set; } = new();
     public List<BackupShareDto> Shares { get; set; } = new();
-}
-
-public class DirectoryStatsDto
-{
-    public int New { get; set; }
-    public int Changed { get; set; }
-    public int Unmodified { get; set; }
 }
 
 public class SnapshotInfoDto

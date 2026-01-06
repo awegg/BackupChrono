@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+﻿import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Folder, File, Download, ChevronRight, Home, ArrowLeft } from 'lucide-react';
 import { backupService } from '../services/backupService';
@@ -23,19 +23,12 @@ export function FileBrowserPage() {
     setShareId(share);
   }, []);
 
-  useEffect(() => {
-    if (backupId && deviceId && shareId) {
-      loadFiles(currentPath);
-    }
-  }, [backupId, deviceId, shareId, currentPath]);
-
-  const loadFiles = async (path: string) => {
+  const loadFiles = useCallback(async (path: string) => {
     if (!backupId || !deviceId || !shareId) return;
     
     setLoading(true);
     setError(null);
     try {
-      console.log('Loading files:', { backupId, deviceId, shareId, path });
       const fileList = await backupService.browseBackupFiles(backupId, deviceId, shareId, path);
       setFiles(fileList);
     } catch (err) {
@@ -44,7 +37,13 @@ export function FileBrowserPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [backupId, deviceId, shareId]);
+
+  useEffect(() => {
+    if (backupId && deviceId && shareId) {
+      loadFiles(currentPath);
+    }
+  }, [backupId, deviceId, shareId, currentPath, loadFiles]);
 
   const navigateToFolder = (folderPath: string) => {
     setCurrentPath(folderPath);

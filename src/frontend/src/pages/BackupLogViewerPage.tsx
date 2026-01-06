@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import { AxiosError } from 'axios';
 import { getBackupDetail, getBackupLogs } from '../services/backupsApi';
+import { BackupLogData } from '../types/backupLogs';
 
 // OpenAPI: BackupDetail schema
 export interface BackupDetail {
@@ -68,51 +69,6 @@ export interface BackupLogs {
   }>;
 }
 
-// Combined data for UI display
-export interface BackupLogData {
-  // Computed/formatted display fields
-  status: 'success' | 'warning' | 'error';
-  duration: string;
-  filesProcessed: number;
-  dataProcessed: string;
-  message: string;
-  // From BackupDetail
-  snapshotInfo: {
-    snapshotId: string;
-    parentSnapshot: string | null;
-    timestamp: string;
-    exitCode: number;
-  };
-  fileStats: {
-    total: number;
-    new: number;
-    changed: number;
-    unmodified: number;
-  };
-  directoryStats: {
-    total: number;
-    new: number;
-    changed: number;
-    unmodified: number;
-  };
-  dataStats: {
-    totalProcessed: string;
-    dataAdded: string;
-  };
-  deduplicationInfo: {
-    dataBlobs: number;
-    treeBlobs: number;
-    ratio: string;
-    spaceSaved: string;
-    contentDedup: string;
-    uniqueStorage: string;
-  };
-  // From BackupLogs
-  warnings: string[];
-  errors: string[];
-  progressLog: any[];
-}
-
 // Helper function to format bytes to human-readable string
 function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 B';
@@ -129,12 +85,10 @@ function mergeBackupData(detail: BackupDetail, logs: BackupLogs): BackupLogData 
   
   // Determine status based on errors/warnings
   let status: 'success' | 'warning' | 'error' = 'success';
-  if (logs.errors.length > 0) {
+  if (logs.errors.length > 0 || detail.status === 'Failed') {
     status = 'error';
   } else if (logs.warnings.length > 0 || detail.status === 'Partial') {
     status = 'warning';
-  } else if (detail.status === 'Failed') {
-    status = 'error';
   }
   
   // Create message

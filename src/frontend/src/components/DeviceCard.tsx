@@ -2,10 +2,11 @@
 import { ChevronDown, Server, Play, FolderOpen, Edit, Trash2, Plus } from 'lucide-react';
 import { Device, DeviceStatus } from '../types/devices';
 import { ShareRow } from './ShareRow';
+import { formatTimestamp } from '../utils/timeFormat';
 
 interface DeviceCardProps {
   device: Device;
-  onToggleDevice: (deviceId: string) => void;
+  onStartDeviceBackup: (deviceId: string) => void;
   onViewBackups: (deviceId: string) => void;
   onEdit: (deviceId: string) => void;
   onDelete: (deviceId: string) => void;
@@ -19,7 +20,7 @@ interface DeviceCardProps {
 
 export function DeviceCard({
   device,
-  onToggleDevice,
+  onStartDeviceBackup,
   onViewBackups,
   onEdit,
   onDelete,
@@ -31,19 +32,6 @@ export function DeviceCard({
   onDeleteShare,
 }: DeviceCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
-
-  const formatTimestamp = (timestamp: string) => {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 60) return `${diffMins} minutes ago`;
-    if (diffHours < 24) return `${diffHours} hours ago`;
-    return `${diffDays} days ago`;
-  };
 
   return (
     <div className="bg-card rounded-lg shadow-sm border border-border overflow-hidden">
@@ -102,7 +90,7 @@ export function DeviceCard({
 
         <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
           <button
-            onClick={() => onToggleDevice(device.id)}
+            onClick={() => onStartDeviceBackup(device.id)}
             className="p-2 hover:bg-muted rounded-md transition-colors"
             title="Start backup"
           >

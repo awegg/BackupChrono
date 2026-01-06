@@ -1,28 +1,17 @@
 ﻿﻿import { Folder, Play, Settings, Trash2 } from 'lucide-react';
 import { Share } from '../types/devices';
+import { formatTimestamp } from '../utils/timeFormat';
 
 interface ShareRowProps {
   share: Share;
   onToggle: (shareId: string) => void;
   onStartBackup: (shareId: string) => void;
+  onViewBackups: (shareId: string) => void;
   onEdit: (shareId: string) => void;
   onDelete: (shareId: string) => void;
 }
 
 export function ShareRow({ share, onToggle, onStartBackup, onViewBackups, onEdit, onDelete }: ShareRowProps) {
-  const formatTimestamp = (timestamp: string) => {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 60) return `${diffMins} minutes ago`;
-    if (diffHours < 24) return `${diffHours} hours ago`;
-    return `${diffDays} days ago`;
-  };
-
   return (
     <div className="flex items-center gap-4 py-3 px-4 hover:bg-muted/30 rounded-md transition-colors group">
       <Folder className="w-4 h-4 text-muted-foreground flex-shrink-0" />

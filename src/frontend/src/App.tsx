@@ -18,10 +18,6 @@ function App() {
   const [signalRError, setSignalRError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Set initial theme class (dark by default)
-    const theme = localStorage.getItem('theme') || 'dark';
-    document.documentElement.classList.add(theme);
-
     // Connect to SignalR when app loads
     signalRService.connect().catch((err) => {
       console.error('Failed to connect to SignalR:', err);

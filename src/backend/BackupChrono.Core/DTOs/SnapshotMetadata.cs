@@ -28,7 +28,7 @@ public class SnapshotMetadata
     /// <summary>
     /// Snapshot creation timestamp.
     /// </summary>
-    public DateTime Time { get; set; }
+    public required DateTime Time { get; set; }
 
     /// <summary>
     /// Tags associated with the snapshot.
@@ -82,7 +82,7 @@ public class SnapshotSummary
     public long DataAdded { get; set; }
 
     /// <summary>
-    /// Total bytes processed (includes duplicates).
+    /// Total bytes processed before deduplication (raw data scanned).
     /// </summary>
     public long DataProcessed { get; set; }
 
@@ -92,7 +92,7 @@ public class SnapshotSummary
     public int TotalFilesProcessed { get; set; }
 
     /// <summary>
-    /// Total bytes processed (sum of all file sizes).
+    /// Total bytes processed (sum of all file sizes scanned, may differ from DataProcessed due to compression/metadata).
     /// </summary>
     public long TotalBytesProcessed { get; set; }
 }

@@ -1,6 +1,5 @@
 ﻿import { useState, useEffect, useRef } from 'react';
 import { RefreshCw, AlertTriangle } from 'lucide-react';
-import { healthService } from '../services/healthService';
 import { dashboardService } from '../services/dashboardService';
 import { backupService } from '../services/deviceService';
 import { DashboardHeader } from '../components/DashboardHeader';
@@ -102,7 +101,7 @@ export default function Dashboard() {
       : '0 MB/s',
     eta: job.startedAt 
       ? dashboardService.formatDuration(job.startedAt)
-      : 'Unknown',
+      : 'Calculating...',
   }));
 
   const completedBackupsData = recentBackups.map(backup => ({
@@ -116,9 +115,6 @@ export default function Dashboard() {
     dataTransferred: dashboardService.formatBytes(backup.dataAdded || 0),
     completedAt: new Date(backup.timestamp).toLocaleTimeString(),
   }));
-
-  console.log('Dashboard - recentBackups count:', recentBackups.length);
-  console.log('Dashboard - completedBackupsData count:', completedBackupsData.length);
 
   const handleStopJob = async (jobId: string) => {
     try {

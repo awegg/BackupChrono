@@ -14,10 +14,10 @@ interface AddShareDialogProps {
 const getDeviceConfig = (device: Device) => ({
   schedule: device.schedule || '0 2 * * *',
   scheduleDesc: device.schedule ? 'Device schedule' : '2 AM daily (global)',
-  retention: device.retentionPolicy || {
-    latest: 7,
-    daily: 7,
-    weekly: 4,
+  retention: {
+    latest: device.retentionPolicy?.keepLatest ?? 7,
+    daily: device.retentionPolicy?.keepDaily ?? 7,
+    weekly: device.retentionPolicy?.keepWeekly ?? 4,
     monthly: 12,
     yearly: 3,
   },
@@ -533,7 +533,7 @@ export function AddShareDialog({ open, onClose, device, onCreated, editingShare 
             disabled={!isFormValid}
             className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Add Share
+            {share ? 'Update Share' : 'Add Share'}
           </button>
         </div>
       </div>

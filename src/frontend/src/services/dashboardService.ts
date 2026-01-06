@@ -1,5 +1,5 @@
 ﻿import { apiClient } from './api';
-import { BackupJob, Backup } from '../types';
+import { BackupJob, Backup, BackupStatus } from '../types';
 
 export interface DashboardStats {
   activeJobs: number;
@@ -102,13 +102,6 @@ export const dashboardService = {
       } else {
         backupStatus = 'Failed'; // Failed or Cancelled
       }
-      
-      console.log('Mapping BackupJob to Backup:', { 
-        jobId: job.id, 
-        backupId: job.backupId,
-        deviceId: job.deviceId,
-        shareId: job.shareId
-      });
       
       return {
         id: job.backupId || job.id,

@@ -46,7 +46,7 @@ public class ResticClient : IResticClient
         
         // Set environment variables - use override if provided, otherwise use default
         var effectiveRepositoryPath = repositoryPathOverride ?? _repositoryPath;
-        _logger.LogInformation("ExecuteCommand: args={Args}, effectiveRepositoryPath={RepositoryPath}", string.Join(" ", args), effectiveRepositoryPath);
+        _logger.LogDebug("ExecuteCommand: args={Args}, effectiveRepositoryPath={RepositoryPath}", string.Join(" ", args), effectiveRepositoryPath);
         
         var startInfo = new ProcessStartInfo
         {

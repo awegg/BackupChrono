@@ -251,15 +251,7 @@ export function AddDeviceDialog({ open, onClose, onCreated, editingDeviceId }: A
       .filter(Boolean);
 
   const handleTestConnection = async () => {
-    if (!isFormValid) {
-      setError('Please fix validation errors before testing the connection.');
-      return;
-    }
-    setError(null);
-    setTesting(true);
-    setTimeout(() => {
-      setTesting(false);
-    }, 1200);
+    alert('Test Connection feature is not yet implemented.\n\nThis will be added in a future release to validate device credentials and network connectivity before saving.');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

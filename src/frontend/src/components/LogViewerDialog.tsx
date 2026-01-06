@@ -1,42 +1,6 @@
 import { Download, Copy, ChevronDown, ChevronRight, AlertTriangle, CheckCircle2, XCircle, Clock, FileText, HardDrive, X, TrendingUp } from 'lucide-react';
 import { useState } from 'react';
-
-export interface BackupLogData {
-  status: 'success' | 'warning' | 'error';
-  duration: string;
-  filesProcessed: number;
-  dataProcessed: string;
-  message: string;
-  snapshotInfo: {
-    snapshotId: string;
-    parentSnapshot: string;
-    timestamp: string;
-    exitCode: number;
-  };
-  fileStats: {
-    total: number;
-    new: number;
-    changed: number;
-    unmodified: number;
-  };
-  directoryStats: {
-    total: number;
-    new: number;
-    changed: number;
-    unmodified: number;
-  };
-  dataStats: {
-    totalProcessed: string;
-    dataAdded: string;
-    dataBlobs: number;
-    treeBlobs: number;
-    deduplicationRatio: string;
-    spaceSaved: string;
-  };
-  warnings: string[];
-  errors: string[];
-  progressLog: any[];
-}
+import { BackupLogData } from '../types/backupLogs';
 
 interface LogViewerDialogProps {
   open: boolean;
@@ -49,7 +13,9 @@ export function LogViewerDialog({ open, onOpenChange, logData, jobId }: LogViewe
   const [snapshotExpanded, setSnapshotExpanded] = useState(true);
   const [metricsExpanded, setMetricsExpanded] = useState(true);
   const [warningsExpanded, setWarningsExpanded] = useState(true);
+  const [errorsExpanded, setErrorsExpanded] = useState(true);
   const [progressLogExpanded, setProgressLogExpanded] = useState(false);
+  const [copySuccess, setCopySuccess] = useState(false);
 
   if (!open) return null;
 
@@ -64,8 +30,14 @@ export function LogViewerDialog({ open, onOpenChange, logData, jobId }: LogViewe
     URL.revokeObjectURL(url);
   };
 
-  const handleCopyId = () => {
-    navigator.clipboard.writeText(logData.snapshotInfo.snapshotId);
+  const handleCopyId = async () => {
+    try {
+      await navigator.clipboard.writeText(logData.snapshotInfo.snapshotId);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy to clipboard:', err);
+    }
   };
 
   const statusIcon = {
@@ -92,8 +64,17 @@ export function LogViewerDialog({ open, onOpenChange, logData, jobId }: LogViewe
               onClick={handleCopyId}
               className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-md hover:bg-gray-50 dark:hover:bg-slate-600 transition-colors"
             >
-              <Copy className="h-4 w-4" />
-              Copy ID
+              {copySuccess ? (
+                <>
+                  <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+                  Copied!
+                </>
+              ) : (
+                <>
+                  <Copy className="h-4 w-4" />
+                  Copy ID
+                </>
+              )}
             </button>
             <button
               onClick={() => onOpenChange(false)}
@@ -269,11 +250,11 @@ export function LogViewerDialog({ open, onOpenChange, logData, jobId }: LogViewe
                     </div>
                     <div className="bg-white dark:bg-slate-700 p-3 rounded-lg shadow-md border border-gray-100 dark:border-slate-600">
                       <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">Data Blobs</div>
-                      <div className="text-xl font-semibold text-gray-900 dark:text-white">{logData.dataStats.dataBlobs.toLocaleString()}</div>
+                      <div className="text-xl font-semibold text-gray-900 dark:text-white">{logData.deduplicationInfo.dataBlobs.toLocaleString()}</div>
                     </div>
                     <div className="bg-white dark:bg-slate-700 p-3 rounded-lg shadow-md border border-gray-100 dark:border-slate-600">
                       <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">Tree Blobs</div>
-                      <div className="text-xl font-semibold text-gray-900 dark:text-white">{logData.dataStats.treeBlobs.toLocaleString()}</div>
+                      <div className="text-xl font-semibold text-gray-900 dark:text-white">{logData.deduplicationInfo.treeBlobs.toLocaleString()}</div>
                     </div>
                   </div>
                   <div className="mt-4 bg-white dark:bg-slate-700/50 p-4 rounded-lg border border-teal-200 dark:border-teal-600 shadow-md">
@@ -282,12 +263,12 @@ export function LogViewerDialog({ open, onOpenChange, logData, jobId }: LogViewe
                         <TrendingUp className="h-8 w-8 text-teal-600 dark:text-teal-400" />
                         <div>
                           <div className="text-sm text-gray-600 dark:text-gray-400">Deduplication Ratio</div>
-                          <div className="text-2xl font-bold text-gray-900 dark:text-white">{logData.dataStats.deduplicationRatio}</div>
+                          <div className="text-2xl font-bold text-gray-900 dark:text-white">{logData.deduplicationInfo.ratio}</div>
                         </div>
                       </div>
                       <div className="text-right">
                         <div className="text-sm text-gray-600 dark:text-gray-400">Space Saved</div>
-                        <div className="text-2xl font-bold text-teal-700 dark:text-teal-300">{logData.dataStats.spaceSaved}</div>
+                        <div className="text-2xl font-bold text-teal-700 dark:text-teal-300">{logData.deduplicationInfo.spaceSaved}</div>
                       </div>
                     </div>
                   </div>
@@ -331,15 +312,15 @@ export function LogViewerDialog({ open, onOpenChange, logData, jobId }: LogViewe
           {logData.errors.length > 0 && (
             <div className="bg-white dark:bg-slate-800 border rounded-lg border-red-200 dark:border-red-700 shadow-md">
               <button
-                onClick={() => setWarningsExpanded(!warningsExpanded)}
+                onClick={() => setErrorsExpanded(!errorsExpanded)}
                 className="w-full flex items-center justify-between p-4 hover:bg-red-50 dark:hover:bg-slate-700 transition-colors"
               >
                 <div className="flex items-center gap-2 font-semibold text-red-800 dark:text-red-400">
-                  {warningsExpanded ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
+                  {errorsExpanded ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
                   Errors ({logData.errors.length})
                 </div>
               </button>
-              {warningsExpanded && (
+              {errorsExpanded && (
                 <div className="p-4 pt-0 space-y-3">
                   {logData.errors.map((error, index) => (
                     <div key={index} className="bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-lg p-3 flex items-start gap-3 shadow-md">

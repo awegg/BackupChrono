@@ -141,8 +141,14 @@ if (-not $shareId) {
 $backupId = $latestSuccessJob.backupId
 
 Write-Host "Step 4: Fetching backup metadata and logs" -ForegroundColor Yellow
-$detail = Get-BackupDetail -BaseUrl $BaseUrl -BackupId $backupId -DeviceId $deviceId -ShareId $shareId
-$logs = Get-BackupLogs -BaseUrl $BaseUrl -BackupId $backupId -DeviceId $deviceId -ShareId $shareId
+try {
+    $detail = Get-BackupDetail -BaseUrl $BaseUrl -BackupId $backupId -DeviceId $deviceId -ShareId $shareId
+    $logs = Get-BackupLogs -BaseUrl $BaseUrl -BackupId $backupId -DeviceId $deviceId -ShareId $shareId
+}
+catch {
+    Write-Error "Failed to retrieve backup metadata or logs for backup $backupId : $_"
+    exit 1
+}
 
 Write-Host "  Metadata: snapshotId=$($detail.id) parent=$($detail.snapshotInfo.parentSnapshot) status=$($detail.status) files new/changed/unmodified: $($detail.fileStats.new)/$($detail.fileStats.changed)/$($detail.fileStats.unmodified)" -ForegroundColor Gray
 Write-Host "  Logs: warnings=$($logs.warnings.Count) errors=$($logs.errors.Count) progress entries=$($logs.progressLog.Count)" -ForegroundColor Gray

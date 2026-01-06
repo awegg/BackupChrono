@@ -1,5 +1,6 @@
 using BackupChrono.Core.Entities;
 using BackupChrono.Core.Interfaces;
+using BackupChrono.Infrastructure.Services;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -8,17 +9,21 @@ namespace BackupChrono.Api.Services;
 /// <summary>
 /// Background service that cleans up stale "Running" jobs on application startup.
 /// Jobs that were running when the app crashed or was terminated are marked as Failed.
+/// Also marks incomplete execution logs with crash indicator.
 /// </summary>
 public class JobCleanupService : IHostedService
 {
     private readonly IBackupJobRepository _backupJobRepository;
+    private readonly IBackupLogService _backupLogService;
     private readonly ILogger<JobCleanupService> _logger;
 
     public JobCleanupService(
         IBackupJobRepository backupJobRepository,
+        IBackupLogService backupLogService,
         ILogger<JobCleanupService> logger)
     {
         _backupJobRepository = backupJobRepository;
+        _backupLogService = backupLogService;
         _logger = logger;
     }
 
@@ -45,6 +50,21 @@ public class JobCleanupService : IHostedService
                     job.CompletedAt = DateTime.UtcNow;
 
                     await _backupJobRepository.SaveJob(job);
+
+                    // Add crash marker to execution log if this job has a backup ID
+                    if (!string.IsNullOrEmpty(job.BackupId))
+                    {
+                        try
+                        {
+                            await _backupLogService.AddError(job.BackupId, 
+                                "⚠️ CRASH RECOVERY: Backup was interrupted by application shutdown/crash");
+                            await _backupLogService.PersistLog(job.BackupId);
+                        }
+                        catch (Exception logEx)
+                        {
+                            _logger.LogError(logEx, "Failed to add crash marker to execution log for job {JobId}", job.Id);
+                        }
+                    }
                 }
 
                 _logger.LogInformation("Successfully cleaned up {Count} stale jobs", staleJobs.Count);

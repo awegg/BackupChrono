@@ -16,6 +16,13 @@ export function MetricCard({ label, value, icon: Icon, variant = 'default', subt
     error: 'text-status-error',
   };
 
+  const valueTextStyles = {
+    default: 'text-foreground',
+    success: 'text-status-success',
+    warning: 'text-foreground',
+    error: 'text-status-error',
+  };
+
   const bgStyles = {
     default: '',
     success: 'bg-status-success-bg',
@@ -32,11 +39,11 @@ export function MetricCard({ label, value, icon: Icon, variant = 'default', subt
         <Icon className={`w-4 h-4 ${variantStyles[variant]}`} />
       </div>
       
-      <div className={`text-2xl font-medium ${variant === 'error' ? 'text-status-error' : variant === 'success' ? 'text-status-success' : 'text-foreground'}`}>
+      <div className={`text-2xl font-medium ${valueTextStyles[variant]}`}>
         {value}
       </div>
       
-      {subtitle && variant === 'error' && (
+      {subtitle && (
         <div className={`mt-1 text-xs px-2 py-0.5 rounded inline-block ${bgStyles[variant]}`}>
           <span className="text-status-error-fg font-medium">{subtitle}</span>
         </div>

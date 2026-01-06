@@ -43,6 +43,7 @@ export const backupService = {
       shareId,
       filePath
     });
-    return `${apiClient.defaults.baseURL}/api/backups/${backupId}/download?${params}`;
+    const baseURL = apiClient.defaults.baseURL || '';
+    return `${baseURL}/api/backups/${backupId}/download?${params}`;
   }
 };
