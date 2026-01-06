@@ -17,8 +17,10 @@ interface ShareLike {
   schedule?: Schedule;
   retentionPolicy?: RetentionPolicy;
   includeExcludeRules?: {
-    includePatterns?: string[];
     excludePatterns?: string[];
+    excludeRegex?: string[];
+    includeOnlyRegex?: string[];
+    excludeIfPresent?: string[];
   };
 }
 
@@ -99,7 +101,8 @@ export function AddShareDialog({ open, onClose, device, onCreated, editingShare 
       setRetentionWeekly(editingShare.retentionPolicy?.keepWeekly?.toString() || '');
       setRetentionMonthly(editingShare.retentionPolicy?.keepMonthly?.toString() || '');
       setRetentionYearly(editingShare.retentionPolicy?.keepYearly?.toString() || '');
-      setIncludePatterns(editingShare.includeExcludeRules?.includePatterns?.join('\n') || '');
+      // Note: Backend uses excludePatterns, not includePatterns
+      setIncludePatterns(''); // Not used in backend - keeping for future enhancement
       setExcludePatterns(editingShare.includeExcludeRules?.excludePatterns?.join('\n') || '');
       setShowSchedule(!!editingShare.schedule);
       setShowRetention(!!editingShare.retentionPolicy);
@@ -167,7 +170,8 @@ export function AddShareDialog({ open, onClose, device, onCreated, editingShare 
     const excludes = excludePatterns ? excludePatterns.split('\n').filter(p => p.trim()) : [];
     if (includes.length || excludes.length) {
       payload.includeExcludeRules = {
-        includePatterns: includes.length ? includes : undefined,
+        // Backend schema: excludePatterns, excludeRegex, includeOnlyRegex, excludeIfPresent
+        // For now, only sending excludePatterns. includePatterns UI field is reserved for future use.
         excludePatterns: excludes.length ? excludes : undefined,
       };
     }

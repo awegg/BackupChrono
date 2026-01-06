@@ -34,8 +34,10 @@ export interface RetentionPolicy {
 }
 
 export interface IncludeExcludeRules {
-  includePatterns?: string[];
   excludePatterns?: string[];
+  excludeRegex?: string[];
+  includeOnlyRegex?: string[];
+  excludeIfPresent?: string[];
 }
 
 export interface Device {
@@ -66,6 +68,7 @@ export interface DeviceCreateDto {
   wakeOnLanMacAddress?: string;
   schedule?: Schedule;
   retentionPolicy?: RetentionPolicy;
+  includeExcludeRules?: IncludeExcludeRules;
 }
 
 export interface Share {

@@ -125,7 +125,8 @@ export function AddDeviceDialog({ open, onClose, onCreated, editingDeviceId }: A
     setRetentionWeekly(device.retentionPolicy?.keepWeekly?.toString() || '');
     setRetentionMonthly(device.retentionPolicy?.keepMonthly?.toString() || '');
     setRetentionYearly(device.retentionPolicy?.keepYearly?.toString() || '');
-    setIncludePatterns(device.includeExcludeRules?.includePatterns?.join('\n') || '');
+    // Note: Backend uses excludePatterns, not includePatterns
+    setIncludePatterns(''); // Not used in backend - keeping for future enhancement
     setExcludePatterns(device.includeExcludeRules?.excludePatterns?.join('\n') || '');
     setShowAdvanced(!!device.schedule || !!device.retentionPolicy);
   };
@@ -284,7 +285,8 @@ export function AddDeviceDialog({ open, onClose, onCreated, editingDeviceId }: A
     const excludes = buildPatterns(excludePatterns);
     if (includes.length || excludes.length) {
       payload.includeExcludeRules = {
-        includePatterns: includes.length ? includes : undefined,
+        // Backend schema: excludePatterns, excludeRegex, includeOnlyRegex, excludeIfPresent
+        // For now, only sending excludePatterns. includePatterns UI field is reserved for future use.
         excludePatterns: excludes.length ? excludes : undefined,
       };
     }
