@@ -125,8 +125,8 @@ export function AddDeviceDialog({ open, onClose, onCreated, editingDeviceId }: A
     setRetentionWeekly(device.retentionPolicy?.keepWeekly?.toString() || '');
     setRetentionMonthly(device.retentionPolicy?.keepMonthly?.toString() || '');
     setRetentionYearly(device.retentionPolicy?.keepYearly?.toString() || '');
-    setIncludePatterns((device as any).includeExcludeRules?.includePatterns?.join('\n') || '');
-    setExcludePatterns((device as any).includeExcludeRules?.excludePatterns?.join('\n') || '');
+    setIncludePatterns(device.includeExcludeRules?.includePatterns?.join('\n') || '');
+    setExcludePatterns(device.includeExcludeRules?.excludePatterns?.join('\n') || '');
     setShowAdvanced(!!device.schedule || !!device.retentionPolicy);
   };
 

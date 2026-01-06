@@ -50,6 +50,7 @@ export interface Device {
   wakeOnLanMacAddress?: string;
   schedule?: Schedule;
   retentionPolicy?: RetentionPolicy;
+  includeExcludeRules?: IncludeExcludeRules;
   createdAt: string;
   updatedAt: string;
 }

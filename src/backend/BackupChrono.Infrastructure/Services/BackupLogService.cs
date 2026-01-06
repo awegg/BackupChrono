@@ -192,11 +192,11 @@ public class InMemoryBackupLogService : IBackupLogService
 
     public async Task Clear()
     {
+        await EnsureInitializedAsync();
         lock (_lock)
         {
             _logs.Clear();
         }
         _repository.Clear();
-        await Task.CompletedTask;
     }
 }
