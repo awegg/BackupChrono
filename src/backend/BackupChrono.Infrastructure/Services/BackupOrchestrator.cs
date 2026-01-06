@@ -537,10 +537,9 @@ public class BackupOrchestrator : IBackupOrchestrator
         }
         catch (Exception ex)
         {
-            // Persist whatever we captured so far under the job ID when snapshot ID is unavailable
+            // Persist whatever we captured so far - use job ID as the log key since we don't have a snapshot ID yet
             errors.Add(ex.Message);
-            var logKey = job.BackupId ?? job.Id.ToString();
-            await PersistBackupLog(logKey, job, progressEntries, warnings, errors);
+            await PersistBackupLog(job.Id.ToString(), job, progressEntries, warnings, errors);
             throw;
         }
         finally

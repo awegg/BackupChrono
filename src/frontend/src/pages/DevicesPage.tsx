@@ -4,7 +4,7 @@ import { Plus, HardDrive, AlertTriangle, RefreshCw } from 'lucide-react';
 import { DeviceCard } from '../components/DeviceCard';
 import { AddDeviceDialog } from '../components/AddDeviceDialog';
 import { AddShareDialog } from '../components/AddShareDialog';
-import { Device, Share } from '../types';
+import { Device, Share } from '../types/devices';
 import { devicesService } from '../services/devicesService';
 
 // Devices management page
@@ -121,7 +121,7 @@ export function DevicesPage() {
 
   const handleEditShare = (deviceId: string, shareId: string) => {
     const device = devices.find(d => d.id === deviceId);
-    const share = device?.shares.find(s => s.id === shareId);
+    const share = device?.shares.find((s: Share) => s.id === shareId);
     if (device && share) {
       setSelectedDeviceForShare(device);
       setEditingShare(share);

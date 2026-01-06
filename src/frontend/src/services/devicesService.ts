@@ -139,7 +139,7 @@ export const devicesService = {
   },
 
   async updateDevice(deviceId: string, updates: DeviceUpdateDto): Promise<Device> {
-    const response = await apiClient.put<DeviceDto>(`/api/devices/${deviceId}`, updates);
+    await apiClient.put<DeviceDto>(`/api/devices/${deviceId}`, updates);
     // Fetch full details including shares
     const detailResponse = await apiClient.get<DeviceDetailDto>(`/api/devices/${deviceId}`);
     return mapDevice(detailResponse.data);

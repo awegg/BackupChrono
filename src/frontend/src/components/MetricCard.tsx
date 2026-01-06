@@ -45,7 +45,7 @@ export function MetricCard({ label, value, icon: Icon, variant = 'default', subt
       
       {subtitle && (
         <div className={`mt-1 text-xs px-2 py-0.5 rounded inline-block ${bgStyles[variant]}`}>
-          <span className="text-status-error-fg font-medium">{subtitle}</span>
+          <span className={`${valueTextStyles[variant]} font-medium`}>{subtitle}</span>
         </div>
       )}
     </div>

@@ -1,17 +1,37 @@
 import React, { useState, useEffect } from 'react';
-import { Device, Share, ShareCreateDto } from '../types';
+import { ShareCreateDto, Schedule, RetentionPolicy } from '../types';
 import { shareService } from '../services/deviceService';
+
+interface DeviceLike {
+  id: string;
+  name: string;
+  schedule?: Schedule;
+  retentionPolicy?: RetentionPolicy;
+}
+
+interface ShareLike {
+  id: string;
+  name: string;
+  path: string;
+  enabled: boolean;
+  schedule?: Schedule;
+  retentionPolicy?: RetentionPolicy;
+  includeExcludeRules?: {
+    includePatterns?: string[];
+    excludePatterns?: string[];
+  };
+}
 
 interface AddShareDialogProps {
   open: boolean;
   onClose: () => void;
-  device: Device | null;
+  device: DeviceLike | null;
   onCreated?: () => void;
-  editingShare?: Share | null;
+  editingShare?: ShareLike | null;
 }
 
 // Mock device-level inherited config
-const getDeviceConfig = (device: Device) => ({
+const getDeviceConfig = (device: DeviceLike) => ({
   schedule: device.schedule || '0 2 * * *',
   scheduleDesc: device.schedule ? 'Device schedule' : '2 AM daily (global)',
   retention: {
@@ -533,7 +553,7 @@ export function AddShareDialog({ open, onClose, device, onCreated, editingShare 
             disabled={!isFormValid}
             className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {share ? 'Update Share' : 'Add Share'}
+            {editingShare ? 'Update Share' : 'Add Share'}
           </button>
         </div>
       </div>

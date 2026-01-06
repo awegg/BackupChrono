@@ -11,7 +11,7 @@ interface ShareRowProps {
   onDelete: (shareId: string) => void;
 }
 
-export function ShareRow({ share, onToggle, onStartBackup, onViewBackups, onEdit, onDelete }: ShareRowProps) {
+export function ShareRow({ share, onToggle, onStartBackup, onViewBackups: _onViewBackups, onEdit, onDelete }: ShareRowProps) {
   return (
     <div className="flex items-center gap-4 py-3 px-4 hover:bg-muted/30 rounded-md transition-colors group">
       <Folder className="w-4 h-4 text-muted-foreground flex-shrink-0" />

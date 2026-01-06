@@ -51,7 +51,7 @@ export function AddDeviceDialog({ open, onClose, onCreated, editingDeviceId }: A
   const [excludePatterns, setExcludePatterns] = useState('');
 
   const [submitting, setSubmitting] = useState(false);
-  const [testing, setTesting] = useState(false);
+  const [testing, _setTesting] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showRetention, setShowRetention] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -125,8 +125,8 @@ export function AddDeviceDialog({ open, onClose, onCreated, editingDeviceId }: A
     setRetentionWeekly(device.retentionPolicy?.keepWeekly?.toString() || '');
     setRetentionMonthly(device.retentionPolicy?.keepMonthly?.toString() || '');
     setRetentionYearly(device.retentionPolicy?.keepYearly?.toString() || '');
-    setIncludePatterns('');
-    setExcludePatterns('');
+    setIncludePatterns((device as any).includeExcludeRules?.includePatterns?.join('\n') || '');
+    setExcludePatterns((device as any).includeExcludeRules?.excludePatterns?.join('\n') || '');
     setShowAdvanced(!!device.schedule || !!device.retentionPolicy);
   };
 

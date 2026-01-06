@@ -43,7 +43,7 @@ export const backupService = {
       shareId,
       filePath
     });
-    const baseURL = apiClient.defaults.baseURL || '';
+    const baseURL = apiClient.defaults.baseURL || window.location.origin;
     return `${baseURL}/api/backups/${backupId}/download?${params}`;
   }
 };

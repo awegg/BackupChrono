@@ -53,5 +53,17 @@ export interface BackupLogData {
   // Logs
   warnings: string[];
   errors: string[];
-  progressLog: any[];
+  progressLog: ProgressLogEntry[];
+}
+
+export interface ProgressLogEntry {
+  timestamp: string;
+  messageType?: 'status' | 'summary' | 'error' | 'verbose';
+  message: string;
+  percentDone?: number;
+  totalFiles?: number;
+  filesDone?: number;
+  totalBytes?: number;
+  bytesDone?: number;
+  currentFile?: string | null;
 }

@@ -35,20 +35,18 @@ public class BackupExecutionLogRepository
     /// <summary>
     /// Persists a backup execution log to JSONL file (append-only).
     /// </summary>
-    public Task SaveLog(BackupExecutionLog log)
+    public async Task SaveLog(BackupExecutionLog log)
     {
         try
         {
             var json = JsonSerializer.Serialize(log, _jsonOptions);
             
-            lock (_fileLock)
-            {
-                // Append to JSONL file (one JSON object per line)
-                File.AppendAllText(_logFilePath, json + Environment.NewLine);
-            }
+            // Use semaphore for async-safe file access
+            using var fileStream = new FileStream(_logFilePath, FileMode.Append, FileAccess.Write, FileShare.Read, 4096, true);
+            using var writer = new StreamWriter(fileStream);
+            await writer.WriteLineAsync(json);
             
             _logger.LogDebug("Persisted execution log for backup {BackupId}", log.BackupId);
-            return Task.CompletedTask;
         }
         catch (Exception ex)
         {
@@ -61,25 +59,23 @@ public class BackupExecutionLogRepository
     /// Loads all backup execution logs from JSONL file.
     /// Returns dictionary keyed by BackupId for quick lookup.
     /// </summary>
-    public Task<Dictionary<string, BackupExecutionLog>> LoadLogs()
+    public async Task<Dictionary<string, BackupExecutionLog>> LoadLogs()
     {
         var logs = new Dictionary<string, BackupExecutionLog>();
 
         if (!File.Exists(_logFilePath))
         {
             _logger.LogInformation("No existing execution logs found at {LogFilePath}", _logFilePath);
-            return Task.FromResult(logs);
+            return logs;
         }
 
         try
         {
-            string[] lines;
-            lock (_fileLock)
-            {
-                lines = File.ReadAllLines(_logFilePath);
-            }
-
-            foreach (var line in lines)
+            using var fileStream = new FileStream(_logFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite, 4096, true);
+            using var reader = new StreamReader(fileStream);
+            
+            string? line;
+            while ((line = await reader.ReadLineAsync()) != null)
             {
                 if (string.IsNullOrWhiteSpace(line))
                 {
@@ -102,24 +98,13 @@ public class BackupExecutionLogRepository
             }
 
             _logger.LogInformation("Loaded {Count} execution logs from {LogFilePath}", logs.Count, _logFilePath);
-            return Task.FromResult(logs);
+            return logs;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to load execution logs from {LogFilePath}", _logFilePath);
             throw;
         }
-    }
-
-    /// <summary>
-    /// Gets a specific log by backup ID (loads all logs and filters).
-    /// For performance-critical scenarios, use LoadLogs() once and cache.
-    /// </summary>
-    public async Task<BackupExecutionLog?> GetLog(string backupId)
-    {
-        var logs = await LoadLogs();
-        logs.TryGetValue(backupId, out var log);
-        return log;
     }
 
     /// <summary>

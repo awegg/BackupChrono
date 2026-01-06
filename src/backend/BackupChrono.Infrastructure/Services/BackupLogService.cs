@@ -54,14 +54,15 @@ public class InMemoryBackupLogService : IBackupLogService
     private readonly object _lock = new();
     private readonly BackupExecutionLogRepository _repository;
     private readonly ILogger<InMemoryBackupLogService> _logger;
+    private readonly Lazy<Task> _initTask;
 
     public InMemoryBackupLogService(BackupExecutionLogRepository repository, ILogger<InMemoryBackupLogService> logger)
     {
         _repository = repository;
         _logger = logger;
 
-        // Load existing logs on initialization
-        Task.Run(async () =>
+        // Use lazy initialization to avoid blocking constructor
+        _initTask = new Lazy<Task>(async () =>
         {
             try
             {
@@ -79,11 +80,17 @@ public class InMemoryBackupLogService : IBackupLogService
             {
                 _logger.LogError(ex, "Failed to load persisted execution logs on initialization");
             }
-        }).Wait();
+        });
     }
 
-    public Task<BackupExecutionLog> GetOrCreateLog(string backupId, string? jobId = null)
+    private async Task EnsureInitializedAsync()
     {
+        await _initTask.Value;
+    }
+
+    public async Task<BackupExecutionLog> GetOrCreateLog(string backupId, string? jobId = null)
+    {
+        await EnsureInitializedAsync();
         lock (_lock)
         {
             if (!_logs.TryGetValue(backupId, out var log))
@@ -95,24 +102,30 @@ public class InMemoryBackupLogService : IBackupLogService
                 };
                 _logs[backupId] = log;
             }
-            return Task.FromResult(log);
+            return log;
         }
     }
 
-    public Task<BackupExecutionLog?> GetLog(string backupId)
+    public async Task<BackupExecutionLog?> GetLog(string backupId)
     {
+        await EnsureInitializedAsync();
         lock (_lock)
         {
             _logs.TryGetValue(backupId, out var log);
-            return Task.FromResult(log);
+            return log;
         }
     }
 
     public async Task AddWarning(string backupId, string warning)
     {
-        var log = await GetOrCreateLog(backupId);
+        await EnsureInitializedAsync();
         lock (_lock)
         {
+            if (!_logs.TryGetValue(backupId, out var log))
+            {
+                log = new BackupExecutionLog { BackupId = backupId, CreatedAt = DateTime.UtcNow };
+                _logs[backupId] = log;
+            }
             log.Warnings.Add(warning);
             log.UpdatedAt = DateTime.UtcNow;
         }
@@ -120,9 +133,14 @@ public class InMemoryBackupLogService : IBackupLogService
 
     public async Task AddError(string backupId, string error)
     {
-        var log = await GetOrCreateLog(backupId);
+        await EnsureInitializedAsync();
         lock (_lock)
         {
+            if (!_logs.TryGetValue(backupId, out var log))
+            {
+                log = new BackupExecutionLog { BackupId = backupId, CreatedAt = DateTime.UtcNow };
+                _logs[backupId] = log;
+            }
             log.Errors.Add(error);
             log.UpdatedAt = DateTime.UtcNow;
         }
@@ -130,9 +148,14 @@ public class InMemoryBackupLogService : IBackupLogService
 
     public async Task AddProgressEntry(string backupId, ProgressLogEntry entry)
     {
-        var log = await GetOrCreateLog(backupId);
+        await EnsureInitializedAsync();
         lock (_lock)
         {
+            if (!_logs.TryGetValue(backupId, out var log))
+            {
+                log = new BackupExecutionLog { BackupId = backupId, CreatedAt = DateTime.UtcNow };
+                _logs[backupId] = log;
+            }
             log.ProgressLog.Add(entry);
             log.UpdatedAt = DateTime.UtcNow;
         }
@@ -140,19 +163,31 @@ public class InMemoryBackupLogService : IBackupLogService
 
     public async Task PersistLog(string backupId)
     {
-        BackupExecutionLog? log;
+        await EnsureInitializedAsync();
+        BackupExecutionLog snapshot;
         lock (_lock)
         {
-            if (!_logs.TryGetValue(backupId, out log))
+            if (!_logs.TryGetValue(backupId, out var log))
             {
                 _logger.LogWarning("Attempted to persist non-existent log for backup {BackupId}", backupId);
                 return;
             }
+            // Create snapshot to avoid concurrent modifications during persistence
+            snapshot = new BackupExecutionLog
+            {
+                BackupId = log.BackupId,
+                JobId = log.JobId,
+                Warnings = new List<string>(log.Warnings),
+                Errors = new List<string>(log.Errors),
+                ProgressLog = new List<ProgressLogEntry>(log.ProgressLog),
+                CreatedAt = log.CreatedAt,
+                UpdatedAt = log.UpdatedAt
+            };
         }
 
-        await _repository.SaveLog(log);
+        await _repository.SaveLog(snapshot);
         _logger.LogInformation("Persisted execution log for backup {BackupId} ({Warnings} warnings, {Errors} errors, {Progress} progress entries)",
-            backupId, log.Warnings.Count, log.Errors.Count, log.ProgressLog.Count);
+            backupId, snapshot.Warnings.Count, snapshot.Errors.Count, snapshot.ProgressLog.Count);
     }
 
     public async Task Clear()

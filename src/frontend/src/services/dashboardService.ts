@@ -94,13 +94,13 @@ export const dashboardService = {
     // Map BackupJob to Backup format for the UI
     return completedJobs.map(job => {
       // Map BackupJobStatus to BackupStatus
-      let backupStatus: 'Success' | 'Partial' | 'Failed';
+      let backupStatus: BackupStatus;
       if (job.status === 'Completed') {
-        backupStatus = 'Success';
+        backupStatus = BackupStatus.Success;
       } else if (job.status === 'PartiallyCompleted') {
-        backupStatus = 'Partial';
+        backupStatus = BackupStatus.Partial;
       } else {
-        backupStatus = 'Failed'; // Failed or Cancelled
+        backupStatus = BackupStatus.Failed; // Failed or Cancelled
       }
       
       return {
