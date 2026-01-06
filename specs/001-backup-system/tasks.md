@@ -286,6 +286,68 @@ This document organizes implementation tasks by **user story** to enable indepen
 
 ---
 
+## Phase 4.5: MVP Critical Features (P1) 🎯 **NEW - STABILITY FOCUS**
+
+**Goal**: Address critical gaps in MVP to ensure complete backup management lifecycle.
+
+**Effort Estimate**: 3-4 days
+
+**Context**: After Phase 4 completion, identified missing core functionality needed for production use:
+1. **Backup Overview**: No clean summary view of all devices with backup status (BackupPC-style)
+2. **Delete Backup**: No endpoint or UI to remove snapshots (retention policy exists but never executes)
+3. **Retention Policy Execution**: ResticService.ApplyRetentionPolicy implemented but never called
+
+**User Story Priority**: These are stability/completeness tasks, not new features. Essential for MVP.
+
+**Design Philosophy**: Follow BackupPC's hierarchical approach - clean device summary first, drill-down for details.
+
+### Tasks
+
+#### Feature 1: Backup Overview (Operational Dashboard with Device/Share List)
+
+**Design Notes**: Operational dashboard showing all devices with shares (flat list), quick actions, detailed status states, health + storage + recent failures summary
+
+- [ ] T229 [MVP] [P] Create GET /api/dashboard/summary endpoint returning global stats (health summary, storage metrics, recent failures) and device+share list with statistics
+- [ ] T230 [MVP] [P] Implement summary calculation per device/share: last backup time, backup count, total size, status (Success/Failed/Running/Warning/Disabled/Partial), next scheduled backup
+- [ ] T231 [MVP] [P] Add share-level data to response (flat list: each share is a separate row under its device)
+- [ ] T232 [MVP] [MinUI] Create BackupOverviewPage component in src/frontend/src/pages/BackupOverviewPage.tsx with summary cards + device/share table
+- [ ] T233 [MVP] [MinUI] Create DeviceShareTable component with columns: Device/Share, Last Backup, Status, Size, Files, Actions (Backup Now, Browse, Logs)
+- [ ] T234 [MVP] [MinUI] Implement flat list display: device row followed by share rows (visual hierarchy via indentation/styling, not collapsible)
+- [ ] T235 [MVP] [MinUI] Add 6 status states with colored left border + badge: Success (green), Failed (red), Running (blue), Warning (yellow), Disabled (gray), Partial (orange)
+- [ ] T236 [MVP] [MinUI] Add quick action buttons per row: "Backup Now", "Browse Latest", "View Logs" (icon buttons with tooltips)
+- [ ] T237 [MVP] [MinUI] Implement smart timestamps: relative if <48h ("2 hours ago"), absolute if older ("2026-01-04 14:30") with hover tooltip showing both
+- [ ] T238 [MVP] [MinUI] Create 3 summary cards at top: "Devices Needing Attention" (yellow/red count), "Total Protected Data" (size), "Recent Failures" (last 24h count)
+- [ ] T239 [MVP] [MinUI] Replace current Dashboard with BackupOverviewPage as home page
+- [ ] T240 [MVP] Create integration tests in BackupOverviewFlowTests.cs for summary statistics and device/share list
+
+#### Feature 2: Delete Backup (Snapshot Removal)
+
+- [ ] T239 [MVP] [P] Create DELETE /api/backups/{id} endpoint in BackupsController.cs
+- [ ] T240 [MVP] [P] Implement ResticService.DeleteSnapshot method using restic forget {snapshotId}
+- [ ] T241 [MVP] [P] Add validation to DELETE endpoint: prevent deletion of last backup, check backup exists
+- [ ] T242 [MVP] [P] Add confirmation dialog requirement (backend returns 202 Accepted, requires confirmationToken)
+- [ ] T243 [MVP] [MinUI] Add "Delete" action button to AllBackupsTable with trash icon
+- [ ] T244 [MVP] [MinUI] Create ConfirmDeleteDialog component with warning message and confirmation input
+- [ ] T245 [MVP] [MinUI] Wire delete button to confirmation dialog → DELETE API call → refresh table
+- [ ] T246 [MVP] Create integration tests in DeleteBackupFlowTests.cs for snapshot deletion
+
+#### Feature 3: Retention Policy Execution
+
+- [ ] T247 [MVP] [P] Create IRetentionPolicyService interface in BackupChrono.Core/Interfaces/
+- [ ] T248 [MVP] [P] Implement RetentionPolicyService in BackupChrono.Infrastructure/Services/ calling ResticService.ApplyRetentionPolicy
+- [ ] T249 [MVP] [P] Create RetentionPolicyJob in BackupChrono.Infrastructure/Scheduling/ as Quartz job
+- [ ] T250 [MVP] [P] Schedule RetentionPolicyJob to run daily at 3 AM (configurable via appsettings.json)
+- [ ] T251 [MVP] [P] Create POST /api/retention-policy/execute endpoint in new RetentionPolicyController.cs for manual trigger
+- [ ] T252 [MVP] [P] Add retention policy execution logging to logs/retention-policy.jsonl
+- [ ] T253 [MVP] [P] Add retention policy statistics to dashboard: last run, snapshots pruned, space reclaimed
+- [ ] T254 [MVP] [MinUI] Add "Run Retention Policy Now" button to global settings page or dashboard
+- [ ] T255 [MVP] [MinUI] Show retention policy last run timestamp and results in dashboard
+- [ ] T256 [MVP] Create integration tests in RetentionPolicyFlowTests.cs for policy execution
+
+**Checkpoint**: Can view all backups across devices with filtering, delete individual snapshots with confirmation, retention policy runs automatically and can be triggered manually, all features tested via integration tests.
+
+---
+
 ## Phase 5: User Story 9 - Infrastructure-as-Code Configuration (P2) 🎯 **ENHANCED**
 
 **Story Goal**: As a homelab admin, I want Git-versioned configuration with visual diff/blame tools and one-click rollback, so I can manage infrastructure as code with confidence.

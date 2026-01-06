@@ -1,5 +1,5 @@
 ﻿import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Server, RotateCcw, Settings, Database, Sun, Moon } from 'lucide-react';
+import { LayoutDashboard, Server, RotateCcw, Settings, Database, Sun, Moon, Clock } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme';
 
 export function Sidebar() {
@@ -8,6 +8,7 @@ export function Sidebar() {
 
   const navigation = [
     { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+    { name: 'All Backups', href: '/overview', icon: Clock },
     { name: 'Devices', href: '/devices', icon: Server },
     { name: 'Restore', href: '/restore', icon: RotateCcw },
     { name: 'Settings', href: '/settings', icon: Settings },
