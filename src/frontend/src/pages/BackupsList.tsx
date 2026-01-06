@@ -36,7 +36,11 @@ export const BackupsListPage: React.FC = () => {
 
   const handleBackupSelect = async (backup: Backup) => {
     // Navigate to the file browser for this specific backup
-    navigate(`/devices/${deviceId}/backups/${backup.id}/browse`);
+    const params = new URLSearchParams({
+      deviceId: deviceId || '',
+      shareId: backup.shareId || ''
+    });
+    navigate(`/devices/${deviceId}/backups/${backup.id}/browse?${params}`);
   };
 
   const handleBack = () => {

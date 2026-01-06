@@ -1,5 +1,19 @@
 # BackupChrono
 
+> **⚠️ DISCLAIMER: ALPHA SOFTWARE - NOT PRODUCTION READY**
+> 
+> BackupChrono is currently in **active development** and should **NOT** be used for production backup purposes. The software is **incomplete, untested in real-world scenarios, and may contain critical bugs** that could result in data loss or backup failure.
+> 
+> **Current Status (January 2026)**:
+> - ✅ **MVP Complete**: Core backup and restore functionality working
+> - ✅ **Minimal UI**: Basic web interface for testing
+> - ⚠️ **No Data Retention Guarantees**: Repository format may change
+> - ⚠️ **Breaking Changes Expected**: Configuration format not stable
+> - ⚠️ **Limited Protocol Support**: SMB only, SSH/Rsync incomplete
+> - ⚠️ **No Security Audit**: Authentication and encryption not production-hardened
+> 
+> **Use this software at your own risk.** 
+
 **Version-controlled backup orchestration system using Restic and Git.**
 
 ## Overview
@@ -313,6 +327,22 @@ This project follows a specification-driven development approach:
 1. Features defined in `specs/001-backup-system/`
 2. Implementation tracked in `tasks.md`
 3. All changes require passing tests and CI/CD validation
+
+### Secret Detection
+
+A pre-commit hook uses [Gitleaks](https://github.com/gitleaks/gitleaks) to scan for secrets. Install it before contributing:
+
+```bash
+# Windows
+winget install gitleaks
+
+# macOS
+brew install gitleaks
+
+# Linux - see https://github.com/gitleaks/gitleaks#installation
+```
+
+Then run `npm install` to set up the hook. Test with `git hook run pre-commit`.
 
 ## License
 

@@ -189,14 +189,78 @@ public class BackupDto
     public DateTime Timestamp { get; set; }
     public string Status { get; set; } = string.Empty;
     public Dictionary<string, string> SharesPaths { get; set; } = new();
-    public int? FilesNew { get; set; }
-    public int? FilesChanged { get; set; }
-    public int? FilesUnmodified { get; set; }
-    public long? DataAdded { get; set; }
-    public long? DataProcessed { get; set; }
+    public FileStatsDto FileStats { get; set; } = new();
+    public DataStatsDto DataStats { get; set; } = new();
     public string? Duration { get; set; }
     public string? ErrorMessage { get; set; }
     public Guid? CreatedByJobId { get; set; }
+}
+
+public class ChangeStatsDto
+{
+    public int New { get; set; }
+    public int Changed { get; set; }
+    public int Unmodified { get; set; }
+}
+
+// Alias for backwards compatibility and API clarity
+public class FileStatsDto : ChangeStatsDto { }
+public class DirectoryStatsDto : ChangeStatsDto { }
+
+public class DataStatsDto
+{
+    public long Added { get; set; }
+    public long Processed { get; set; }
+}
+
+public class BackupDetailDto : BackupDto
+{
+    public DirectoryStatsDto DirectoryStats { get; set; } = new();
+    public SnapshotInfoDto SnapshotInfo { get; set; } = new();
+    public DeduplicationInfoDto DeduplicationInfo { get; set; } = new();
+    public List<BackupShareDto> Shares { get; set; } = new();
+}
+
+public class SnapshotInfoDto
+{
+    public string SnapshotId { get; set; } = string.Empty;
+    public string? ParentSnapshot { get; set; }
+    public int ExitCode { get; set; }
+}
+
+public class DeduplicationInfoDto
+{
+    public int DataBlobs { get; set; }
+    public int TreeBlobs { get; set; }
+    public string Ratio { get; set; } = string.Empty;
+    public string SpaceSaved { get; set; } = string.Empty;
+    public string ContentDedup { get; set; } = string.Empty;
+    public string UniqueStorage { get; set; } = string.Empty;
+}
+
+public class BackupShareDto
+{
+    public string Name { get; set; } = string.Empty;
+    public string Path { get; set; } = string.Empty;
+    public int FileCount { get; set; }
+    public long Size { get; set; }
+}
+
+public class BackupLogsDto
+{
+    public List<string> Warnings { get; set; } = new();
+    public List<string> Errors { get; set; } = new();
+    public List<ProgressLogEntryDto> ProgressLog { get; set; } = new();
+}
+
+public class ProgressLogEntryDto
+{
+    public DateTime Timestamp { get; set; }
+    public string Message { get; set; } = string.Empty;
+    public float? PercentDone { get; set; }
+    public List<string>? CurrentFiles { get; set; }
+    public int? FilesDone { get; set; }
+    public long? BytesDone { get; set; }
 }
 
 public class ConnectionTestResult

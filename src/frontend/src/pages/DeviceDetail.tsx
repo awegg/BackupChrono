@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Device, Share } from '../types';
 import { deviceService, shareService } from '../services/deviceService';
 import { ArrowLeft, RefreshCw, HardDrive } from 'lucide-react';
 import { ShareList } from '../components/ShareList';
+import { AddShareDialog } from '../components/AddShareDialog';
 import { useNavigate } from 'react-router-dom';
 
 export default function DeviceDetail() {
@@ -12,19 +13,23 @@ export default function DeviceDetail() {
   const [device, setDevice] = useState<Device | null>(null);
   const [shares, setShares] = useState<Share[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [showAddShareDialog, setShowAddShareDialog] = useState(false);
 
   const loadData = async () => {
     if (!deviceId) return;
     try {
       setLoading(true);
+      setError(null);
       const [deviceData, sharesData] = await Promise.all([
         deviceService.getDevice(deviceId),
         shareService.listShares(deviceId),
       ]);
       setDevice(deviceData);
       setShares(sharesData);
-    } catch (error) {
-      console.error('Failed to load device', error);
+    } catch (err) {
+      console.error('Failed to load device', err);
+      setError(err instanceof Error ? err.message : 'Failed to load device. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -37,7 +42,25 @@ export default function DeviceDetail() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <RefreshCw className="w-8 h-8 animate-spin text-blue-500" />
+        <RefreshCw className="w-6 h-6 animate-spin text-blue-500" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6 max-w-7xl mx-auto">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <h3 className="text-red-800 font-semibold mb-2">Error Loading Device</h3>
+          <p className="text-red-600 mb-4">{error}</p>
+          <button
+            onClick={loadData}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Retry
+          </button>
+        </div>
       </div>
     );
   }
@@ -91,7 +114,21 @@ export default function DeviceDetail() {
         </div>
       </div>
 
-      {deviceId && <ShareList deviceId={deviceId} shares={shares} onShareUpdated={loadData} />}
+      {deviceId && (
+        <ShareList
+          deviceId={deviceId}
+          shares={shares}
+          onShareUpdated={loadData}
+          onAddShare={() => setShowAddShareDialog(true)}
+        />
+      )}
+
+      <AddShareDialog
+        open={showAddShareDialog}
+        onClose={() => setShowAddShareDialog(false)}
+        device={device}
+        onCreated={loadData}
+      />
     </div>
   );
 }

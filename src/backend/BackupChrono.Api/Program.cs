@@ -127,7 +127,8 @@ builder.Services.AddSingleton<ResticClient>(sp =>
     return new ResticClient(
         resticOptions.BinaryPath,
         resticOptions.RepositoryBasePath,
-        resticPassword);
+        resticPassword,
+        sp.GetRequiredService<ILogger<ResticClient>>());
 });
 
 builder.Services.AddSingleton<IResticClient>(sp => sp.GetRequiredService<ResticClient>());
@@ -135,6 +136,18 @@ builder.Services.AddSingleton<IResticService, ResticService>();
 
 // Register application services (Phase 3 - User Story 1)
 builder.Services.AddSingleton<IMappingService, MappingService>();
+
+// Backup execution log repository
+builder.Services.AddSingleton<BackupExecutionLogRepository>(sp =>
+{
+    var gitConfig = sp.GetRequiredService<GitConfigService>();
+    var logsPath = Path.Combine(gitConfig.RepositoryPath, "logs");
+    var logger = sp.GetRequiredService<ILogger<BackupExecutionLogRepository>>();
+    return new BackupExecutionLogRepository(logsPath, logger);
+});
+
+// Backup log service with persistence
+builder.Services.AddSingleton<IBackupLogService, InMemoryBackupLogService>();
 
 // Protocol plugins
 builder.Services.AddSingleton<SmbPlugin>();

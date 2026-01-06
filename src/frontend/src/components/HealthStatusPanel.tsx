@@ -59,15 +59,15 @@ export function HealthStatusPanel() {
   const getStatusIcon = (status: string) => {
     switch (status.toLowerCase()) {
       case 'healthy':
-        return <CheckCircle className="w-5 h-5 text-green-500" />;
+        return <CheckCircle className="w-4 h-4 text-green-500" />;
       case 'warning':
       case 'degraded':
-        return <AlertTriangle className="w-5 h-5 text-yellow-500" />;
+        return <AlertTriangle className="w-4 h-4 text-yellow-500" />;
       case 'critical':
       case 'unhealthy':
-        return <XCircle className="w-5 h-5 text-red-500" />;
+        return <XCircle className="w-4 h-4 text-red-500" />;
       default:
-        return <Activity className="w-5 h-5 text-gray-500" />;
+        return <Activity className="w-4 h-4 text-gray-500" />;
     }
   };
 
@@ -156,8 +156,7 @@ export function HealthStatusPanel() {
               <div className="text-sm font-semibold">System Health: {health.status}</div>
               <div className="text-xs text-gray-500">
                 {criticalCount > 0 && <span className="text-red-600">{criticalCount} critical</span>}
-                {criticalCount > 0 && warningCount > 0 && <span className="mx-1">•</span>}
-                {warningCount > 0 && <span className="text-yellow-600">{warningCount} warning</span>}
+                {criticalCount > 0 && warningCount > 0 && <span className="mx-1">•</span>}                {warningCount > 0 && <span className="text-yellow-600">{warningCount} warning</span>}
                 {criticalCount === 0 && warningCount === 0 && <span>All checks passing</span>}
               </div>
             </div>
@@ -177,7 +176,7 @@ export function HealthStatusPanel() {
             onClick={() => setIsExpanded(false)}
             className="flex items-center space-x-2 hover:text-gray-600"
           >
-            <Activity className="w-5 h-5" />
+            <Activity className="w-4 h-4" />
             <h3 className="text-lg font-semibold">System Health</h3>
             <ChevronUp className="w-4 h-4 text-gray-400" />
           </button>

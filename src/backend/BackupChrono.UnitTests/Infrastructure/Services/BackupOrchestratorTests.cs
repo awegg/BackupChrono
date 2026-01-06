@@ -18,6 +18,7 @@ public class BackupOrchestratorTests
     private readonly Mock<IResticService> _mockResticService;
     private readonly Mock<IStorageMonitor> _mockStorageMonitor;
     private readonly Mock<IBackupJobRepository> _mockBackupJobRepository;
+    private readonly Mock<IBackupLogService> _mockBackupLogService;
     private readonly Mock<ILogger<BackupOrchestrator>> _mockLogger;
     private readonly BackupOrchestrator _orchestrator;
 
@@ -29,6 +30,7 @@ public class BackupOrchestratorTests
         _mockResticService = new Mock<IResticService>();
         _mockStorageMonitor = new Mock<IStorageMonitor>();
         _mockBackupJobRepository = new Mock<IBackupJobRepository>();
+        _mockBackupLogService = new Mock<IBackupLogService>();
         _mockLogger = new Mock<ILogger<BackupOrchestrator>>();
 
         var resticOptions = Options.Create(new ResticOptions
@@ -43,6 +45,7 @@ public class BackupOrchestratorTests
             _mockResticService.Object,
             _mockStorageMonitor.Object,
             _mockBackupJobRepository.Object,
+            _mockBackupLogService.Object,
             _mockLogger.Object,
             resticOptions
         );

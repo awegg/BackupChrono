@@ -78,7 +78,7 @@ public class ResticService : IResticService
         await _client.ExecuteCommand(new[] { "prune" }, repositoryPathOverride: repositoryPath);
     }
 
-    public async Task<Backup> CreateBackup(string repositoryPath, Device device, Share? share, string sourcePath, IncludeExcludeRules rules, Action<BackupProgress>? onProgress = null, CancellationToken cancellationToken = default)
+    public async Task<Backup> CreateBackup(string repositoryPath, Device device, Share? share, string sourcePath, IncludeExcludeRules rules, Action<BackupProgress>? onProgress = null, Action<string>? onWarning = null, Action<string>? onError = null, CancellationToken cancellationToken = default)
     {
         var args = new List<string> { "backup", sourcePath, "--json" };
 
@@ -153,7 +153,20 @@ public class ResticService : IResticService
             {
                 // Ignore JSON parse errors for non-JSON output lines (restic outputs mixed text/JSON)
             }
-        }, repositoryPathOverride: repositoryPath);
+        }, repositoryPathOverride: repositoryPath, onErrorLine: line =>
+        {
+            if (string.IsNullOrWhiteSpace(line)) return;
+
+            // Forward stderr lines to optional callbacks for warnings/errors
+            if (line.Contains("warning", StringComparison.OrdinalIgnoreCase))
+            {
+                onWarning?.Invoke(line);
+            }
+            else
+            {
+                onError?.Invoke(line);
+            }
+        });
         
         // Parse backup summary from last JSON line
         string? snapshotId = null;
@@ -302,7 +315,50 @@ public class ResticService : IResticService
 
     public async Task<Backup> GetBackup(string backupId, string? repositoryPath = null)
     {
-        // Get snapshot details
+        _logger.LogInformation("GetBackup called: backupId={BackupId}, repositoryPath={RepositoryPath}", backupId, repositoryPath ?? "default");
+        
+        // First get metadata which includes snapshot details
+        var metadata = await GetSnapshotMetadata(backupId, repositoryPath);
+        
+        // Get snapshot stats
+        var statsArgs = new[] { "stats", backupId, "--json" };
+        var statsOutput = await _client.ExecuteCommand(statsArgs, repositoryPathOverride: repositoryPath);
+        
+        long totalSize = 0;
+        int totalFileCount = 0;
+        
+        try
+        {
+            using var statsDoc = JsonDocument.Parse(statsOutput);
+            var stats = statsDoc.RootElement;
+            totalSize = stats.TryGetProperty("total_size", out var size) ? size.GetInt64() : 0;
+            totalFileCount = stats.TryGetProperty("total_file_count", out var count) ? count.GetInt32() : 0;
+        }
+        catch (JsonException)
+        {
+            _logger.LogWarning("Failed to parse backup stats for {BackupId}", backupId);
+        }
+        
+        return new Backup
+        {
+            Id = metadata.Id,
+            DeviceId = Guid.Empty,
+            ShareId = null,
+            DeviceName = metadata.Hostname,
+            ShareName = null,
+            Timestamp = metadata.Time,
+            Status = BackupStatus.Success,
+            FilesNew = metadata.Summary?.FilesNew ?? 0,
+            FilesChanged = metadata.Summary?.FilesChanged ?? 0,
+            FilesUnmodified = metadata.Summary?.FilesUnmodified ?? totalFileCount,
+            DataAdded = metadata.Summary?.DataAdded ?? 0,
+            DataProcessed = metadata.Summary?.DataProcessed ?? totalSize,
+            Duration = TimeSpan.Zero
+        };
+    }
+
+    public async Task<SnapshotMetadata> GetSnapshotMetadata(string backupId, string? repositoryPath = null)
+    {
         var args = new[] { "snapshots", backupId, "--json" };
         var output = await _client.ExecuteCommand(args, repositoryPathOverride: repositoryPath);
         
@@ -313,55 +369,246 @@ public class ResticService : IResticService
             
             if (snapshots.GetArrayLength() == 0)
             {
+                throw new KeyNotFoundException($"Snapshot {backupId} not found");
+            }
+            
+            var snapshot = snapshots[0];
+            return ParseSnapshotMetadata(snapshot, backupId);
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "Failed to parse snapshot metadata for {BackupId}", backupId);
+            throw;
+        }
+    }
+
+    public async Task<SnapshotStats> GetSnapshotStats(string backupId, string? repositoryPath = null)
+    {
+        var restoreStatsTask = _client.ExecuteCommand(new[] { "stats", backupId, "--json", "--mode=restore-size" }, repositoryPathOverride: repositoryPath);
+        var rawDataStatsTask = _client.ExecuteCommand(new[] { "stats", backupId, "--json", "--mode=raw-data" }, repositoryPathOverride: repositoryPath);
+        var blobStatsTask = _client.ExecuteCommand(new[] { "stats", backupId, "--json", "--mode=blobs-per-file" }, repositoryPathOverride: repositoryPath);
+
+        await Task.WhenAll(restoreStatsTask, rawDataStatsTask, blobStatsTask);
+
+        var restoreOutput = await restoreStatsTask;
+        var blobOutput = await blobStatsTask;
+        string rawDataOutput = string.Empty;
+        try
+        {
+            rawDataOutput = await rawDataStatsTask;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Raw-data stats unavailable for {BackupId}, falling back to restore-size only", backupId);
+        }
+
+        long logicalSize = 0;
+        long rawDataSize = 0;
+        long totalBlobCount = 0;
+        long totalTreeCount = 0;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(restoreOutput);
+            var stats = doc.RootElement;
+            logicalSize = stats.TryGetProperty("total_size", out var ts) ? ts.GetInt64() : 0;
+        }
+        catch (JsonException)
+        {
+            _logger.LogWarning("Failed to parse restore-size stats for {BackupId}", backupId);
+        }
+
+        try
+        {
+            using var rawDoc = JsonDocument.Parse(rawDataOutput);
+            var rawStats = rawDoc.RootElement;
+            rawDataSize = rawStats.TryGetProperty("total_size", out var rs) ? rs.GetInt64() : 0;
+        }
+        catch (JsonException)
+        {
+            _logger.LogWarning("Failed to parse raw-data stats for {BackupId}", backupId);
+        }
+
+        try
+        {
+            using var blobDoc = JsonDocument.Parse(blobOutput);
+            var blobStats = blobDoc.RootElement;
+            totalBlobCount = blobStats.TryGetProperty("total_blob_count", out var tbc) ? tbc.GetInt64() : 0;
+        }
+        catch (JsonException)
+        {
+            _logger.LogWarning("Failed to parse blob stats for {BackupId}", backupId);
+        }
+
+        var effectiveLogicalSize = logicalSize;
+        var effectiveRawSize = rawDataSize > 0 ? rawDataSize : effectiveLogicalSize;
+        var spaceSaved = Math.Max(0, effectiveLogicalSize - effectiveRawSize);
+        var deduplicationRatio = effectiveLogicalSize > 0
+            ? Math.Min(1.0, Math.Max(0.0, (double)spaceSaved / effectiveLogicalSize))
+            : 0.0;
+
+        return new SnapshotStats
+        {
+            SnapshotId = backupId,
+            TotalBlobCount = totalBlobCount,
+            TotalTreeCount = totalTreeCount,
+            TotalSize = effectiveRawSize,
+            TotalUncompressedSize = effectiveLogicalSize,
+            CompressionRatio = 0.0,
+            DeduplicationSpaceSaved = spaceSaved,
+            DeduplicationRatio = deduplicationRatio
+        };
+        
+        
+    }
+
+    /// <summary>
+    /// Get complete backup details including snapshots, metadata, and stats in a single efficient call.
+    /// This method combines GetBackup, GetSnapshotMetadata, and GetSnapshotStats into one to minimize restic calls.
+    /// </summary>
+    public async Task<(Backup Backup, SnapshotMetadata Metadata, SnapshotStats Stats)> GetBackupDetailComplete(string backupId, string? repositoryPath = null)
+    {
+        _logger.LogInformation("GetBackupDetailComplete called: backupId={BackupId}, repositoryPath={RepositoryPath}", backupId, repositoryPath ?? "default");
+        
+        // Get snapshot details - this is the base query
+        var snapshotsArgs = new[] { "snapshots", backupId, "--json" };
+        var snapshotsOutput = await _client.ExecuteCommand(snapshotsArgs, repositoryPathOverride: repositoryPath);
+        
+        // Parse snapshots once
+        SnapshotMetadata metadata;
+        try
+        {
+            using var doc = JsonDocument.Parse(snapshotsOutput);
+            var snapshots = doc.RootElement;
+            
+            if (snapshots.GetArrayLength() == 0)
+            {
+                _logger.LogError("No snapshots found for backupId={BackupId}, repositoryPath={RepositoryPath}", backupId, repositoryPath ?? "default");
                 throw new KeyNotFoundException($"Backup {backupId} not found");
             }
             
             var snapshot = snapshots[0];
-            var id = snapshot.GetProperty("short_id").GetString() ?? string.Empty;
-            var hostname = snapshot.GetProperty("hostname").GetString() ?? "unknown";
-            var timestamp = snapshot.GetProperty("time").GetDateTime();
-            
-            // Get snapshot stats
-            var statsArgs = new[] { "stats", backupId, "--json" };
-            var statsOutput = await _client.ExecuteCommand(statsArgs, repositoryPathOverride: repositoryPath);
-            
-            long totalSize = 0;
-            int totalFileCount = 0;
-            
-            try
-            {
-                using var statsDoc = JsonDocument.Parse(statsOutput);
-                var stats = statsDoc.RootElement;
-                totalSize = stats.TryGetProperty("total_size", out var size) ? size.GetInt64() : 0;
-                totalFileCount = stats.TryGetProperty("total_file_count", out var count) ? count.GetInt32() : 0;
-            }
-            catch (JsonException)
-            {
-                _logger.LogWarning("Failed to parse backup stats for {BackupId}", backupId);
-            }
-            
-            return new Backup
-            {
-                Id = id,
-                DeviceId = Guid.Empty,
-                ShareId = null,
-                DeviceName = hostname,
-                ShareName = null,
-                Timestamp = timestamp,
-                Status = BackupStatus.Success,
-                FilesNew = 0,
-                FilesChanged = 0,
-                FilesUnmodified = totalFileCount,
-                DataAdded = 0,
-                DataProcessed = totalSize,
-                Duration = TimeSpan.Zero
-            };
+            metadata = ParseSnapshotMetadata(snapshot, backupId);
         }
         catch (JsonException ex)
         {
-            _logger.LogError(ex, "Failed to parse backup {BackupId} from restic output", backupId);
+            _logger.LogError(ex, "Failed to parse snapshot metadata for {BackupId}", backupId);
             throw;
         }
+
+        // Now get stats in parallel
+        var statsTask = _client.ExecuteCommand(new[] { "stats", backupId, "--json" }, repositoryPathOverride: repositoryPath);
+        var restoreSizeTask = _client.ExecuteCommand(new[] { "stats", backupId, "--json", "--mode=restore-size" }, repositoryPathOverride: repositoryPath);
+        var blobsTask = _client.ExecuteCommand(new[] { "stats", backupId, "--json", "--mode=blobs-per-file" }, repositoryPathOverride: repositoryPath);
+        var rawDataTask = _client.ExecuteCommand(new[] { "stats", backupId, "--json", "--mode=raw-data" }, repositoryPathOverride: repositoryPath);
+        
+        await Task.WhenAll(statsTask, restoreSizeTask, blobsTask, rawDataTask);
+        
+        var statsOutput = await statsTask;
+        var restoreSizeOutput = await restoreSizeTask;
+        var blobsOutput = await blobsTask;
+        string rawDataOutput = string.Empty;
+        try
+        {
+            rawDataOutput = await rawDataTask;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Raw-data stats unavailable for {BackupId}, falling back to restore-size only", backupId);
+        }
+        
+        // Parse stats
+        long totalSize = 0;
+        int totalFileCount = 0;
+        
+        try
+        {
+            using var statsDoc = JsonDocument.Parse(statsOutput);
+            var stats = statsDoc.RootElement;
+            totalSize = stats.TryGetProperty("total_size", out var size) ? size.GetInt64() : 0;
+            totalFileCount = stats.TryGetProperty("total_file_count", out var count) ? count.GetInt32() : 0;
+        }
+        catch (JsonException)
+        {
+            _logger.LogWarning("Failed to parse backup stats for {BackupId}", backupId);
+        }
+
+        // Parse restore-size stats
+        long restoreSize = 0;
+        try
+        {
+            using var restoreDoc = JsonDocument.Parse(restoreSizeOutput);
+            var restoreStats = restoreDoc.RootElement;
+            restoreSize = restoreStats.TryGetProperty("total_size", out var rs) ? rs.GetInt64() : 0;
+        }
+        catch (JsonException)
+        {
+            _logger.LogWarning("Failed to parse restore-size stats for {BackupId}", backupId);
+        }
+
+        // Parse raw-data stats for actual stored size after deduplication
+        long rawDataSize = 0;
+        try
+        {
+            using var rawDoc = JsonDocument.Parse(rawDataOutput);
+            var rawStats = rawDoc.RootElement;
+            rawDataSize = rawStats.TryGetProperty("total_size", out var rds) ? rds.GetInt64() : 0;
+        }
+        catch (JsonException)
+        {
+            _logger.LogWarning("Failed to parse raw-data stats for {BackupId}", backupId);
+        }
+
+        // Parse blobs stats
+        long totalBlobCount = 0;
+        try
+        {
+            using var blobDoc = JsonDocument.Parse(blobsOutput);
+            var blobStats = blobDoc.RootElement;
+            totalBlobCount = blobStats.TryGetProperty("total_blob_count", out var tbc) ? tbc.GetInt64() : 0;
+        }
+        catch (JsonException)
+        {
+            _logger.LogWarning("Failed to parse blob stats for {BackupId}", backupId);
+        }
+
+        var logicalSize = restoreSize > 0 ? restoreSize : totalSize;
+        var dedupedSize = rawDataSize > 0 ? rawDataSize : logicalSize;
+        var spaceSaved = Math.Max(0, logicalSize - dedupedSize);
+        var deduplicationRatio = logicalSize > 0
+            ? Math.Min(1.0, Math.Max(0.0, (double)spaceSaved / logicalSize))
+            : 0.0;
+
+        var backup = new Backup
+        {
+            Id = metadata.Id,
+            DeviceId = Guid.Empty,
+            ShareId = null,
+            DeviceName = metadata.Hostname,
+            ShareName = null,
+            Timestamp = metadata.Time,
+            Status = BackupStatus.Success,
+            FilesNew = metadata.Summary?.FilesNew ?? 0,
+            FilesChanged = metadata.Summary?.FilesChanged ?? 0,
+            FilesUnmodified = metadata.Summary?.FilesUnmodified ?? totalFileCount,
+            DataAdded = metadata.Summary?.DataAdded ?? 0,
+            DataProcessed = metadata.Summary?.DataProcessed ?? logicalSize,
+            Duration = TimeSpan.Zero
+        };
+
+        var snapshotStats = new SnapshotStats
+        {
+            SnapshotId = backupId,
+            TotalBlobCount = totalBlobCount,
+            TotalTreeCount = 0,
+            TotalSize = dedupedSize,
+            TotalUncompressedSize = logicalSize,
+            CompressionRatio = 0.0,
+            DeduplicationSpaceSaved = spaceSaved,
+            DeduplicationRatio = deduplicationRatio
+        };
+
+        return (backup, metadata, snapshotStats);
     }
 
     public async Task<IEnumerable<FileEntry>> BrowseBackup(string backupId, string path = "/", string? repositoryPath = null)
@@ -627,5 +874,42 @@ public class ResticService : IResticService
             BytesRestored = 0,
             PercentComplete = 0
         });
+    }
+
+    private static SnapshotMetadata ParseSnapshotMetadata(JsonElement snapshot, string backupId)
+    {
+        var metadata = new SnapshotMetadata
+        {
+            Id = snapshot.GetProperty("short_id").GetString() ?? backupId,
+            Parent = snapshot.TryGetProperty("parent", out var parent) && parent.ValueKind != JsonValueKind.Null
+                ? parent.GetString()
+                : null,
+            Hostname = snapshot.GetProperty("hostname").GetString() ?? "unknown",
+            Paths = snapshot.GetProperty("paths").EnumerateArray().Select(p => p.GetString() ?? "").ToList(),
+            Time = snapshot.GetProperty("time").GetDateTime(),
+            Tags = snapshot.TryGetProperty("tags", out var tags)
+                ? tags.EnumerateArray().Select(t => t.GetString() ?? "").ToList()
+                : new List<string>()
+        };
+
+        // Try to get summary from snapshot
+        if (snapshot.TryGetProperty("summary", out var summaryElem))
+        {
+            metadata.Summary = new SnapshotSummary
+            {
+                FilesNew = summaryElem.TryGetProperty("files_new", out var fn) ? fn.GetInt32() : 0,
+                FilesChanged = summaryElem.TryGetProperty("files_changed", out var fc) ? fc.GetInt32() : 0,
+                FilesUnmodified = summaryElem.TryGetProperty("files_unmodified", out var fu) ? fu.GetInt32() : 0,
+                DirsNew = summaryElem.TryGetProperty("dirs_new", out var dn) ? dn.GetInt32() : 0,
+                DirsChanged = summaryElem.TryGetProperty("dirs_changed", out var dc) ? dc.GetInt32() : 0,
+                DirsUnmodified = summaryElem.TryGetProperty("dirs_unmodified", out var du) ? du.GetInt32() : 0,
+                DataAdded = summaryElem.TryGetProperty("data_added", out var da) ? da.GetInt64() : 0,
+                DataProcessed = summaryElem.TryGetProperty("total_bytes_processed", out var tbp) ? tbp.GetInt64() : 0,
+                TotalFilesProcessed = summaryElem.TryGetProperty("total_files_processed", out var tfp) ? tfp.GetInt32() : 0,
+                TotalBytesProcessed = summaryElem.TryGetProperty("total_bytes_processed", out var _) ? tbp.GetInt64() : 0
+            };
+        }
+
+        return metadata;
     }
 }

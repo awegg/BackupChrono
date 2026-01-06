@@ -120,7 +120,7 @@ public class BackupChronoE2EWebApplicationFactory : WebApplicationFactory<Progra
 
             // Register REAL services with test repository (NO MOCKS for Device/Share)
             services.AddSingleton(new GitConfigService(_testRepositoryPath));
-            services.AddSingleton(new ResticClient("restic", _testRepositoryPath, "test-password"));
+            services.AddSingleton(sp => new ResticClient("restic", _testRepositoryPath, "test-password", sp.GetRequiredService<ILogger<ResticClient>>()));
             
             // Register actual service implementations for device/share management
             services.AddSingleton<IDeviceService, DeviceService>();

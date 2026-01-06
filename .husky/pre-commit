@@ -1,0 +1,70 @@
+#!/usr/bin/env sh
+
+# Get staged files once
+STAGED_FILES=$(git diff --cached --name-only)
+
+# Check for forbidden paths in staged files
+echo "🔍 Checking for forbidden paths..."
+
+if [ -z "$STAGED_FILES" ]; then
+  echo "ℹ️ No staged files. Skipping checks."
+  exit 0
+fi
+
+FORBIDDEN_PATHS="src/backend/BackupChrono.Api/config src/backend/BackupChrono.Api/repositories config repositories"
+
+for FORBIDDEN in $FORBIDDEN_PATHS; do
+  # Normalize path separators for git (always uses forward slashes)
+  FORBIDDEN_NORMALIZED=$(echo "$FORBIDDEN" | tr '\\' '/')
+  
+  # Check if any staged file matches the forbidden path (allow empty result)
+  MATCHED=$(echo "$STAGED_FILES" | grep "^$FORBIDDEN_NORMALIZED/" || true)
+  
+  if [ -n "$MATCHED" ]; then
+    echo ""
+    echo "❌ ERROR: Cannot commit files from forbidden directory: $FORBIDDEN"
+    echo ""
+    echo "The following files are staged from this directory:"
+    echo "$MATCHED" | sed 's/^/  - /'
+    echo ""
+    echo "These directories contain runtime configuration and should not be committed."
+    echo "Please unstage these files: git reset HEAD <file>"
+    echo ""
+    exit 1
+  fi
+done
+
+echo "✅ No forbidden paths detected."
+echo ""
+
+echo "🔍 Running Gitleaks on staged files..."
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo "❌ Gitleaks not found. Install it: https://github.com/gitleaks/gitleaks"
+  exit 1
+fi
+
+TMPFILE=$(mktemp 2>/dev/null || mktemp -t gitleaks)
+
+# Build a proper Git diff with full headers
+for FILE in $STAGED_FILES; do
+  git diff --cached --patch --unified=0 --no-color -- "$FILE" >> "$TMPFILE"
+done
+
+# Run Gitleaks on the diff
+cat "$TMPFILE" | gitleaks detect \
+  --config=.gitleaks.toml \
+  --pipe \
+  --verbose
+
+STATUS=$?
+
+rm -f "$TMPFILE"
+
+if [ $STATUS -ne 0 ]; then
+  echo "❌ Gitleaks detected secrets in staged files. Commit aborted."
+  exit 1
+fi
+
+echo "✅ No secrets detected in staged files. Proceeding with commit."
+exit 0

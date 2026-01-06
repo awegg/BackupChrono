@@ -35,7 +35,8 @@ public class ResticBrowseParsingTests
                 It.IsAny<CancellationToken>(),
                 It.IsAny<TimeSpan?>(),
                 It.IsAny<Action<string>?>(),
-                It.IsAny<string?>()))
+                It.IsAny<string?>(),
+                It.IsAny<Action<string>?>()))
             .ReturnsAsync(resticOutput);
 
         // Act
@@ -64,7 +65,8 @@ public class ResticBrowseParsingTests
                 It.IsAny<CancellationToken>(),
                 It.IsAny<TimeSpan?>(),
                 It.IsAny<Action<string>?>(),
-                It.IsAny<string?>()))
+                It.IsAny<string?>(),
+                It.IsAny<Action<string>?>()))
             .ReturnsAsync(resticOutput);
 
         // Act
@@ -90,7 +92,8 @@ public class ResticBrowseParsingTests
                 It.IsAny<CancellationToken>(),
                 It.IsAny<TimeSpan?>(),
                 It.IsAny<Action<string>?>(),
-                It.IsAny<string?>()))
+                It.IsAny<string?>(),
+                It.IsAny<Action<string>?>()))
             .ReturnsAsync(resticOutput);
 
         // Act
@@ -127,7 +130,8 @@ public class ResticBrowseParsingTests
                 It.IsAny<CancellationToken>(),
                 It.IsAny<TimeSpan?>(),
                 It.IsAny<Action<string>?>(),
-                It.IsAny<string?>()))
+                It.IsAny<string?>(),
+                It.IsAny<Action<string>?>()))
             .ReturnsAsync(resticOutput);
 
         // Act - browse root
@@ -156,7 +160,8 @@ public class ResticBrowseParsingTests
                 It.IsAny<CancellationToken>(),
                 It.IsAny<TimeSpan?>(),
                 It.IsAny<Action<string>?>(),
-                It.IsAny<string?>()))
+                It.IsAny<string?>(),
+                It.IsAny<Action<string>?>()))
             .ReturnsAsync(resticOutput);
 
         // Act - browse /S
@@ -190,7 +195,8 @@ public class ResticBrowseParsingTests
                 It.IsAny<CancellationToken>(),
                 It.IsAny<TimeSpan?>(),
                 It.IsAny<Action<string>?>(),
-                It.IsAny<string?>()))
+                It.IsAny<string?>(),
+                It.IsAny<Action<string>?>()))
             .ReturnsAsync(resticOutput);
 
         // Act

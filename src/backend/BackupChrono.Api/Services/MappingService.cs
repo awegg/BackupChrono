@@ -216,11 +216,17 @@ public class MappingService : IMappingService
             Timestamp = backup.Timestamp,
             Status = backup.Status.ToString(),
             SharesPaths = backup.SharesPaths,
-            FilesNew = backup.FilesNew,
-            FilesChanged = backup.FilesChanged,
-            FilesUnmodified = backup.FilesUnmodified,
-            DataAdded = backup.DataAdded,
-            DataProcessed = backup.DataProcessed,
+            FileStats = new FileStatsDto
+            {
+                New = backup.FilesNew,
+                Changed = backup.FilesChanged,
+                Unmodified = backup.FilesUnmodified
+            },
+            DataStats = new DataStatsDto
+            {
+                Added = backup.DataAdded,
+                Processed = backup.DataProcessed
+            },
             Duration = backup.Duration.ToString(),
             ErrorMessage = backup.ErrorMessage,
             CreatedByJobId = backup.CreatedByJobId

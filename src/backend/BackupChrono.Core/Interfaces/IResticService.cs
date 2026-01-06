@@ -47,8 +47,10 @@ public interface IResticService
     /// <param name="sourcePath">Local path to backup (from mounted share).</param>
     /// <param name="rules">Include/exclude rules to apply.</param>
     /// <param name="onProgress">Optional callback for progress updates during backup.</param>
+    /// <param name="onWarning">Optional callback for warning lines during backup.</param>
+    /// <param name="onError">Optional callback for error lines during backup.</param>
     /// <returns>Created backup snapshot.</returns>
-    Task<Backup> CreateBackup(string repositoryPath, Device device, Share? share, string sourcePath, IncludeExcludeRules rules, Action<BackupProgress>? onProgress = null, CancellationToken cancellationToken = default);
+    Task<Backup> CreateBackup(string repositoryPath, Device device, Share? share, string sourcePath, IncludeExcludeRules rules, Action<BackupProgress>? onProgress = null, Action<string>? onWarning = null, Action<string>? onError = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets progress of a running backup job.
@@ -73,6 +75,31 @@ public interface IResticService
     /// Gets a specific backup by ID.
     /// </summary>
     Task<Backup> GetBackup(string backupId, string? repositoryPath = null);
+
+    /// <summary>
+    /// Gets detailed snapshot metadata including parent snapshot and summary stats.
+    /// </summary>
+    /// <param name="backupId">Backup snapshot ID.</param>
+    /// <param name="repositoryPath">Optional repository path override.</param>
+    /// <returns>Snapshot metadata with parent info and summary statistics.</returns>
+    Task<SnapshotMetadata> GetSnapshotMetadata(string backupId, string? repositoryPath = null);
+
+    /// <summary>
+    /// Gets repository statistics for a specific snapshot (deduplication info).
+    /// </summary>
+    /// <param name="backupId">Backup snapshot ID to get stats for.</param>
+    /// <param name="repositoryPath">Optional repository path override.</param>
+    /// <returns>Repository statistics including blob counts and deduplication ratio.</returns>
+    Task<SnapshotStats> GetSnapshotStats(string backupId, string? repositoryPath = null);
+
+    /// <summary>
+    /// Gets complete backup details including snapshots, metadata, and stats in a single efficient call.
+    /// This minimizes restic command invocations by combining GetBackup, GetSnapshotMetadata, and GetSnapshotStats.
+    /// </summary>
+    /// <param name="backupId">Backup snapshot ID.</param>
+    /// <param name="repositoryPath">Optional repository path override.</param>
+    /// <returns>A tuple containing (Backup, SnapshotMetadata, SnapshotStats).</returns>
+    Task<(Backup Backup, SnapshotMetadata Metadata, SnapshotStats Stats)> GetBackupDetailComplete(string backupId, string? repositoryPath = null);
 
     /// <summary>
     /// Browses files in a backup snapshot.

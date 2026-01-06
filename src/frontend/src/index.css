@@ -2,6 +2,68 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  html,
+  body {
+    @apply bg-background;
+  }
+  :root {
+    /* Light mode colors */
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --sidebar: 0 0% 100%;
+    --sidebar-foreground: 222.2 47.4% 11.2%;
+    --sidebar-primary: 217.2 91.2% 59.8%;
+    --sidebar-accent: 210 40% 96.1%;
+    --sidebar-accent-foreground: 222.2 47.4% 11.2%;
+    --sidebar-border: 214.3 31.8% 91.4%;
+    --border: 214.3 31.8% 91.4%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 210 40% 98%;
+    --status-success: 142 76% 36%;
+    --status-success-bg: 142 76% 36%;
+    --status-success-fg: 0 0% 100%;
+    --status-warning: 25 95% 53%;
+    --status-warning-bg: 25 95% 53%;
+    --status-warning-fg: 0 0% 100%;
+    --status-error: 0 84% 60%;
+    --status-error-bg: 0 84% 95%;
+    --status-error-fg: 0 84% 40%;
+  }
+
+  .dark {
+    /* Dark mode colors */
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 47.4% 11.2%;
+    --card-foreground: 210 40% 98%;
+    --sidebar: 222.2 47.4% 11.2%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 217.2 91.2% 59.8%;
+    --sidebar-accent: 217.2 32.6% 17.5%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 217.2 32.6% 17.5%;
+    --border: 217.2 32.6% 17.5%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --status-success: 142 76% 56%;
+    --status-success-bg: 142 76% 36%;
+    --status-success-fg: 0 0% 100%;
+    --status-warning: 25 95% 53%;
+    --status-warning-bg: 25 95% 53%;
+    --status-warning-fg: 0 0% 100%;
+    --status-error: 0 84% 60%;
+    --status-error-bg: 0 84% 20%;
+    --status-error-fg: 0 84% 80%;
+  }
+}
+
 @layer utilities {
   .animate-fade-in {
     animation: fadeIn 0.3s ease-in-out;
@@ -50,4 +112,3 @@
     text-align: left;
   }
 }
-
