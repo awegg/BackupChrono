@@ -177,6 +177,8 @@ builder.Services.AddSingleton<IBackupJobRepository, BackupJobRepository>(sp =>
     return new BackupJobRepository(gitConfig.RepositoryPath, logger, deviceService, shareService);
 });
 
+builder.Services.AddScoped<IBackupRepository, BackupRepository>();
+
 // Quartz Scheduler
 builder.Services.AddSingleton<IQuartzSchedulerService, QuartzSchedulerService>();
 
