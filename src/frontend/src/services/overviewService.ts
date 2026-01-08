@@ -1,5 +1,8 @@
 import { apiClient } from './api';
-import { BackupStatus } from '../data/mockBackupData';
+import type { BackupStatus, ShareSummary, DeviceSummary, DashboardSummary } from '../types/overview';
+
+// Re-export types for consumers of this service
+export type { BackupStatus, ShareSummary, DeviceSummary, DashboardSummary };
 
 // API response types matching backend DTOs
 interface ShareOverviewDto {
@@ -27,33 +30,6 @@ interface BackupOverviewDto {
   totalProtectedDataTB: number;
   recentFailures: number;
   devices: DeviceOverviewDto[];
-}
-
-// Frontend types matching existing mockBackupData structure
-export interface ShareSummary {
-  id: string;
-  name: string;
-  path: string;
-  lastBackup: Date | null;
-  status: BackupStatus;
-  sizeGB: number;
-  fileCount: number;
-}
-
-export interface DeviceSummary {
-  id: string;
-  name: string;
-  status: BackupStatus;
-  sizeGB: number;
-  fileCount: number;
-  shares: ShareSummary[];
-}
-
-export interface DashboardSummary {
-  devicesNeedingAttention: number;
-  totalProtectedDataTB: number;
-  recentFailures: number;
-  devices: DeviceSummary[];
 }
 
 /**

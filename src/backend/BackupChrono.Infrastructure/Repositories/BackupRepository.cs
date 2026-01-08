@@ -194,25 +194,24 @@ public class BackupRepository : IBackupRepository
 
     private async Task EnsureCacheIsValidAsync()
     {
+        bool needsRebuild = false;
+        
         await _cacheLock.WaitAsync();
         try
         {
             var isCacheValid = _cachedLatestBackups != null && 
                               DateTime.UtcNow - _cacheTimestamp < _cacheDuration;
             
-            if (!isCacheValid)
-            {
-                _cacheLock.Release(); // Release before calling RebuildCacheAsync
-                await RebuildCacheAsync();
-                return;
-            }
+            needsRebuild = !isCacheValid;
         }
         finally
         {
-            if (_cacheLock.CurrentCount == 0)
-            {
-                _cacheLock.Release();
-            }
+            _cacheLock.Release();
+        }
+        
+        if (needsRebuild)
+        {
+            await RebuildCacheAsync();
         }
     }
 

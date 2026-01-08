@@ -317,7 +317,6 @@ This document organizes implementation tasks by **user story** to enable indepen
 - [ ] T236 [MVP] [MinUI] Add quick action buttons per row: "Backup Now", "Browse Latest", "View Logs" (icon buttons with tooltips)
 - [ ] T237 [MVP] [MinUI] Implement smart timestamps: relative if <48h ("2 hours ago"), absolute if older ("2026-01-04 14:30") with hover tooltip showing both
 - [ ] T238 [MVP] [MinUI] Create 3 summary cards at top: "Devices Needing Attention" (yellow/red count), "Total Protected Data" (size), "Recent Failures" (last 24h count)
-- [ ] T239 [MVP] [MinUI] Replace current Dashboard with BackupOverviewPage as home page
 - [ ] T240 [MVP] Create integration tests in BackupOverviewFlowTests.cs for summary statistics and device/share list
 
 #### Feature 2: Delete Backup (Snapshot Removal)

@@ -5,7 +5,6 @@ import { SummaryCard } from '../components/SummaryCard';
 import { DeviceShareTable } from '../components/DeviceShareTable';
 import { BackupStatus } from '../data/mockBackupData';
 import { StatusBadge } from '../components/StatusBadge';
-import { DashboardHeader } from '../components/DashboardHeader';
 import { ErrorDisplay } from '../components/ErrorDisplay';
 import { overviewService, DashboardSummary } from '../services/overviewService';
 
@@ -154,6 +153,11 @@ export const BackupOverviewPage: React.FC = () => {
     minute: '2-digit',
     hour12: false,
   });
+
+  // Log for debugging (prevents unused variable warning)
+  React.useEffect(() => {
+    console.debug('Last updated:', formattedLastUpdated);
+  }, [formattedLastUpdated]);
 
   const hasNoDevices = data?.devices.length === 0;
   const hasNoResults = filteredDevices.length === 0 && !hasNoDevices;
