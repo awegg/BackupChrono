@@ -8,6 +8,7 @@ import { BackupsListPage } from './pages/BackupsList';
 import { DevicesPage } from './pages/DevicesPage';
 import { FileBrowserPage } from './pages/FileBrowserPage';
 import { BackupLogViewerPage } from './pages/BackupLogViewerPage';
+import { BackupOverviewPage } from './pages/BackupOverviewPage';
 import { ErrorNotification } from './components/ErrorNotification';
 import { Sidebar } from './components/Sidebar';
 import './App.css';
@@ -48,6 +49,7 @@ function App() {
             
             <main className="p-8 min-h-screen">
               <Routes>
+                <Route path="/overview" element={<BackupOverviewPage />} />
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/devices" element={<DevicesPage />} />
                 <Route path="/devices/:deviceId" element={<DeviceDetail />} />

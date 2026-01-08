@@ -1,5 +1,9 @@
 # BackupChrono
 
+**Version-controlled backup orchestration system using Restic and Git.**
+
+![BackupChrono Dashboard](docs/screenshots/dashboard-hero.png)
+
 > **⚠️ DISCLAIMER: ALPHA SOFTWARE - NOT PRODUCTION READY**
 > 
 > BackupChrono is currently in **active development** and should **NOT** be used for production backup purposes. The software is **incomplete, untested in real-world scenarios, and may contain critical bugs** that could result in data loss or backup failure.
@@ -12,9 +16,7 @@
 > - ⚠️ **Limited Protocol Support**: SMB only, SSH/Rsync incomplete
 > - ⚠️ **No Security Audit**: Authentication and encryption not production-hardened
 > 
-> **Use this software at your own risk.** 
-
-**Version-controlled backup orchestration system using Restic and Git.**
+> **Use this software at your own risk.**
 
 ## Overview
 
@@ -68,6 +70,28 @@ docker-compose logs -f backupchrono-api
 ```
 
 Access the API documentation at: http://localhost:5000/swagger
+
+## Screenshots
+
+### Dashboard - Real-time Monitoring
+Live backup job status with performance metrics and deduplication statistics.
+
+![Dashboard](docs/screenshots/dashboard-hero.png)
+
+### Backup Details with Deduplication
+Comprehensive backup summaries showing file statistics, data processed, and content deduplication ratios.
+
+![Backup Details](docs/screenshots/backup-details-deduplication.png)
+
+### File Browser with Direct Download
+Browse backup snapshots and download files directly through the web interface.
+
+![File Browser](docs/screenshots/file-browser.png)
+
+### Device Management
+Manage backup sources with protocol support for SMB, SSH, and Rsync.
+
+![Device Management](docs/screenshots/device-management.png)
 
 ## Architecture
 
