@@ -118,11 +118,10 @@ const TableRow: React.FC<TableRowProps> = ({
               aria-label={isExpanded ? 'Collapse device' : 'Expand device'}
             >
               {isExpanded ? (
-                <ChevronDown className="w-4 h-4 text-slate-600 dark:text-slate-400" />
-              ) : (
                 <ChevronUp className="w-4 h-4 text-slate-600 dark:text-slate-400" />
-              )}
-            </button>
+              ) : (
+                <ChevronDown className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+              )}            </button>
           )}
           {isDevice ? (
             <Server className="w-4 h-4 text-slate-600 dark:text-slate-400" />
@@ -246,10 +245,11 @@ export const DeviceShareTable: React.FC<DeviceShareTableProps> = ({
   };
 
   const handleLastBackupClick = async (deviceId: string, shareId: string) => {
+  const handleLastBackupClick = async (deviceId: string, shareId: string) => {
     // Clicking on last backup timestamp browses the latest backup
     try {
       // Fetch backups for this device to get the latest one
-      const response = await fetch(`http://localhost:5192/api/devices/${deviceId}/backups`);
+      const response = await fetch(`/api/devices/${deviceId}/backups`);
       const backups = await response.json();
       
       // Filter by shareId if available and get the most recent
@@ -270,9 +270,7 @@ export const DeviceShareTable: React.FC<DeviceShareTableProps> = ({
       // Fall back to backups list
       navigate(`/devices/${deviceId}/backups?shareId=${shareId}`);
     }
-  };
-
-  const SortableHeader: React.FC<{ field: SortField; children: React.ReactNode }> = ({ field, children }) => {
+  };  const SortableHeader: React.FC<{ field: SortField; children: React.ReactNode }> = ({ field, children }) => {
     const isActive = sortField === field;
     const showArrow = isActive;
 

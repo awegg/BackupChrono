@@ -322,27 +322,27 @@ This document organizes implementation tasks by **user story** to enable indepen
 
 #### Feature 2: Delete Backup (Snapshot Removal)
 
-- [ ] T239 [MVP] [P] Create DELETE /api/backups/{id} endpoint in BackupsController.cs
-- [ ] T240 [MVP] [P] Implement ResticService.DeleteSnapshot method using restic forget {snapshotId}
-- [ ] T241 [MVP] [P] Add validation to DELETE endpoint: prevent deletion of last backup, check backup exists
-- [ ] T242 [MVP] [P] Add confirmation dialog requirement (backend returns 202 Accepted, requires confirmationToken)
-- [ ] T243 [MVP] [MinUI] Add "Delete" action button to AllBackupsTable with trash icon
-- [ ] T244 [MVP] [MinUI] Create ConfirmDeleteDialog component with warning message and confirmation input
-- [ ] T245 [MVP] [MinUI] Wire delete button to confirmation dialog → DELETE API call → refresh table
-- [ ] T246 [MVP] Create integration tests in DeleteBackupFlowTests.cs for snapshot deletion
+- [ ] T241 [MVP] [P] Create DELETE /api/backups/{id} endpoint in BackupsController.cs
+- [ ] T242 [MVP] [P] Implement ResticService.DeleteSnapshot method using restic forget {snapshotId}
+- [ ] T243 [MVP] [P] Add validation to DELETE endpoint: prevent deletion of last backup, check backup exists
+- [ ] T244 [MVP] [P] Add confirmation dialog requirement (backend returns 202 Accepted, requires confirmationToken)
+- [ ] T245 [MVP] [MinUI] Add "Delete" action button to AllBackupsTable with trash icon
+- [ ] T246 [MVP] [MinUI] Create ConfirmDeleteDialog component with warning message and confirmation input
+- [ ] T247 [MVP] [MinUI] Wire delete button to confirmation dialog → DELETE API call → refresh table
+- [ ] T248 [MVP] Create integration tests in DeleteBackupFlowTests.cs for snapshot deletion
 
 #### Feature 3: Retention Policy Execution
 
-- [ ] T247 [MVP] [P] Create IRetentionPolicyService interface in BackupChrono.Core/Interfaces/
-- [ ] T248 [MVP] [P] Implement RetentionPolicyService in BackupChrono.Infrastructure/Services/ calling ResticService.ApplyRetentionPolicy
-- [ ] T249 [MVP] [P] Create RetentionPolicyJob in BackupChrono.Infrastructure/Scheduling/ as Quartz job
-- [ ] T250 [MVP] [P] Schedule RetentionPolicyJob to run daily at 3 AM (configurable via appsettings.json)
-- [ ] T251 [MVP] [P] Create POST /api/retention-policy/execute endpoint in new RetentionPolicyController.cs for manual trigger
-- [ ] T252 [MVP] [P] Add retention policy execution logging to logs/retention-policy.jsonl
-- [ ] T253 [MVP] [P] Add retention policy statistics to dashboard: last run, snapshots pruned, space reclaimed
-- [ ] T254 [MVP] [MinUI] Add "Run Retention Policy Now" button to global settings page or dashboard
-- [ ] T255 [MVP] [MinUI] Show retention policy last run timestamp and results in dashboard
-- [ ] T256 [MVP] Create integration tests in RetentionPolicyFlowTests.cs for policy execution
+- [ ] T249 [MVP] [P] Create IRetentionPolicyService interface in BackupChrono.Core/Interfaces/
+- [ ] T250 [MVP] [P] Implement RetentionPolicyService in BackupChrono.Infrastructure/Services/ calling ResticService.ApplyRetentionPolicy
+- [ ] T251 [MVP] [P] Create RetentionPolicyJob in BackupChrono.Infrastructure/Scheduling/ as Quartz job
+- [ ] T252 [MVP] [P] Schedule RetentionPolicyJob to run daily at 3 AM (configurable via appsettings.json)
+- [ ] T253 [MVP] [P] Create POST /api/retention-policy/execute endpoint in new RetentionPolicyController.cs for manual trigger
+- [ ] T254 [MVP] [P] Add retention policy execution logging to logs/retention-policy.jsonl
+- [ ] T255 [MVP] [P] Add retention policy statistics to dashboard: last run, snapshots pruned, space reclaimed
+- [ ] T256 [MVP] [MinUI] Add "Run Retention Policy Now" button to global settings page or dashboard
+- [ ] T257 [MVP] [MinUI] Show retention policy last run timestamp and results in dashboard
+- [ ] T258 [MVP] Create integration tests in RetentionPolicyFlowTests.cs for policy execution
 
 **Checkpoint**: Can view all backups across devices with filtering, delete individual snapshots with confirmation, retention policy runs automatically and can be triggered manually, all features tested via integration tests.
 

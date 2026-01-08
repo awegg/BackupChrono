@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { RefreshCw, Search, Clock, Server } from 'lucide-react';
 import { SummaryCard } from '../components/SummaryCard';
 import { DeviceShareTable } from '../components/DeviceShareTable';
@@ -20,6 +21,7 @@ const isBackupStale = (lastBackup: Date | null): boolean => {
 };
 
 export const BackupOverviewPage: React.FC = () => {
+  const navigate = useNavigate();
   const [data, setData] = React.useState<DashboardSummary | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<Error | null>(null);
@@ -122,11 +124,12 @@ export const BackupOverviewPage: React.FC = () => {
           case 'name':
             comparison = a.path.localeCompare(b.path);
             break;
-          case 'lastBackup':
+          case 'lastBackup': {
             const aTime = a.lastBackup?.getTime() ?? 0;
             const bTime = b.lastBackup?.getTime() ?? 0;
             comparison = aTime - bTime;
             break;
+          }
           case 'status':
             comparison = a.status.localeCompare(b.status);
             break;
@@ -138,8 +141,7 @@ export const BackupOverviewPage: React.FC = () => {
             break;
         }
         return sortDirection === 'asc' ? comparison : -comparison;
-      });
-      return { ...device, shares: sortedShares };
+      });      return { ...device, shares: sortedShares };
     });
 
     return filtered;
@@ -324,7 +326,7 @@ export const BackupOverviewPage: React.FC = () => {
                     Get started by adding your first backup device to begin monitoring your backups.
                   </p>
                   <button 
-                    onClick={() => window.location.href = '/devices'}
+                    onClick={() => navigate('/devices')}
                     className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
                   >
                     Add Device
