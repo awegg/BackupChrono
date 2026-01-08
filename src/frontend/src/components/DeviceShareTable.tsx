@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Server, Folder, Play, FolderOpen, FileText, ChevronUp, ChevronDown, Clock } from 'lucide-react';
 import { DeviceSummary, BackupStatus } from '../data/mockBackupData';
 import { StatusBadge } from './StatusBadge';
@@ -71,6 +72,8 @@ interface TableRowProps {
   onBackupNow: () => void;
   onBrowse: () => void;
   onViewLogs: () => void;
+  onRowClick?: () => void;
+  onLastBackupClick?: () => void;
   isExpanded?: boolean;
   onToggle?: () => void;
 }
@@ -86,6 +89,8 @@ const TableRow: React.FC<TableRowProps> = ({
   onBackupNow,
   onBrowse,
   onViewLogs,
+  onRowClick,
+  onLastBackupClick,
   isExpanded,
   onToggle,
 }) => {
@@ -96,7 +101,13 @@ const TableRow: React.FC<TableRowProps> = ({
 
   return (
     <tr
-      className={`border-l-4 ${borderColor} ${rowBg} hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors group`}
+      className={`border-l-4 ${borderColor} ${rowBg} hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors group ${!isDevice && onRowClick ? 'cursor-pointer' : ''}`}
+      onClick={(e) => {
+        // Don't trigger row click if clicking on action buttons or toggle
+        if (!isDevice && onRowClick && !(e.target as HTMLElement).closest('button')) {
+          onRowClick();
+        }
+      }}
     >
       <td className="px-6 py-3">
         <div className={`flex items-center gap-2 ${!isDevice ? 'pl-8' : ''}`}>
@@ -132,8 +143,14 @@ const TableRow: React.FC<TableRowProps> = ({
       <td className="px-6 py-3">
         <div className="flex items-center gap-2">
           <span
-            className="text-sm text-slate-600 dark:text-slate-400 font-mono"
+            className={`text-sm text-slate-600 dark:text-slate-400 font-mono ${!isDevice && onLastBackupClick && lastBackup ? 'hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer underline decoration-dotted' : ''}`}
             title={getAbsoluteTimestamp(lastBackup)}
+            onClick={(e) => {
+              if (!isDevice && onLastBackupClick && lastBackup) {
+                e.stopPropagation();
+                onLastBackupClick();
+              }
+            }}
           >
             {isDevice ? '—' : formatTimestamp(lastBackup)}
           </span>
@@ -204,19 +221,55 @@ export const DeviceShareTable: React.FC<DeviceShareTableProps> = ({
   expandedDevices = new Set(),
   onToggleDevice,
 }) => {
+  const navigate = useNavigate();
+
   const handleBackupNow = (shareId: string) => {
     console.log('Backup now clicked for share:', shareId);
     // TODO: Implement backup trigger
   };
 
-  const handleBrowse = (shareId: string) => {
-    console.log('Browse clicked for share:', shareId);
-    // TODO: Navigate to backup browser
+  const handleBrowse = (deviceId: string, shareId: string) => {
+    console.log('Browse clicked for device:', deviceId, 'share:', shareId);
+    // Navigate to browse page - need to get the latest backup first
+    navigate(`/devices/${deviceId}`);
   };
 
-  const handleViewLogs = (shareId: string) => {
-    console.log('View logs clicked for share:', shareId);
-    // TODO: Open logs dialog
+  const handleViewLogs = (deviceId: string, shareId: string) => {
+    console.log('View logs clicked for device:', deviceId, 'share:', shareId);
+    // Navigate to backups list for this device/share
+    navigate(`/devices/${deviceId}/backups?shareId=${shareId}`);
+  };
+
+  const handleShareRowClick = (deviceId: string, shareId: string) => {
+    // Clicking on the share row goes to backups list
+    navigate(`/devices/${deviceId}/backups?shareId=${shareId}`);
+  };
+
+  const handleLastBackupClick = async (deviceId: string, shareId: string) => {
+    // Clicking on last backup timestamp browses the latest backup
+    try {
+      // Fetch backups for this device to get the latest one
+      const response = await fetch(`http://localhost:5192/api/devices/${deviceId}/backups`);
+      const backups = await response.json();
+      
+      // Filter by shareId if available and get the most recent
+      const shareBackups = backups.filter((b: any) => !b.shareId || b.shareId === shareId);
+      if (shareBackups.length > 0) {
+        // Sort by timestamp descending and get the latest
+        shareBackups.sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        const latestBackup = shareBackups[0];
+        
+        // Navigate to browse the latest backup
+        navigate(`/devices/${deviceId}/backups/${latestBackup.id}/browse?deviceId=${deviceId}&shareId=${shareId}`);
+      } else {
+        // No backups found, navigate to backups list instead
+        navigate(`/devices/${deviceId}/backups?shareId=${shareId}`);
+      }
+    } catch (error) {
+      console.error('Error fetching latest backup:', error);
+      // Fall back to backups list
+      navigate(`/devices/${deviceId}/backups?shareId=${shareId}`);
+    }
   };
 
   const SortableHeader: React.FC<{ field: SortField; children: React.ReactNode }> = ({ field, children }) => {
@@ -286,8 +339,10 @@ export const DeviceShareTable: React.FC<DeviceShareTableProps> = ({
                     sizeGB={share.sizeGB}
                     fileCount={share.fileCount}
                     onBackupNow={() => handleBackupNow(share.id)}
-                    onBrowse={() => handleBrowse(share.id)}
-                    onViewLogs={() => handleViewLogs(share.id)}
+                    onBrowse={() => handleBrowse(device.id, share.id)}
+                    onViewLogs={() => handleViewLogs(device.id, share.id)}
+                    onRowClick={() => handleShareRowClick(device.id, share.id)}
+                    onLastBackupClick={() => handleLastBackupClick(device.id, share.id)}
                   />
                 ))}
               </React.Fragment>

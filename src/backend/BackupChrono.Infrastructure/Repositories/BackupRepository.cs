@@ -1,6 +1,8 @@
 using BackupChrono.Core.Entities;
 using BackupChrono.Core.Interfaces;
+using BackupChrono.Infrastructure.Services;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace BackupChrono.Infrastructure.Repositories;
 
@@ -14,6 +16,7 @@ public class BackupRepository : IBackupRepository
     private readonly IDeviceService _deviceService;
     private readonly IShareService _shareService;
     private readonly ILogger<BackupRepository> _logger;
+    private readonly string _repositoryBasePath;
 
     // Cache for latest backups (invalidated every 30 seconds)
     private Dictionary<(Guid DeviceId, Guid ShareId), Backup>? _cachedLatestBackups;
@@ -25,11 +28,13 @@ public class BackupRepository : IBackupRepository
         IResticService resticService,
         IDeviceService deviceService,
         IShareService shareService,
+        IOptions<ResticOptions> resticOptions,
         ILogger<BackupRepository> logger)
     {
         _resticService = resticService;
         _deviceService = deviceService;
         _shareService = shareService;
+        _repositoryBasePath = resticOptions.Value.RepositoryBasePath;
         _logger = logger;
     }
 
@@ -218,24 +223,60 @@ public class BackupRepository : IBackupRepository
         {
             _logger.LogInformation("Rebuilding backup cache...");
             
-            // Fetch all backups from Restic
-            var allBackups = await _resticService.ListBackups();
+            var latestBackups = new Dictionary<(Guid DeviceId, Guid ShareId), Backup>();
             
-            // Group by (deviceId, shareId) and take the latest
-            var latestBackups = allBackups
-                .Where(b => b.ShareId.HasValue) // Only share-level backups
-                .GroupBy(b => (DeviceId: b.DeviceId, ShareId: b.ShareId!.Value))
-                .Select(g => new
+            // Fetch backups for each device
+            var devices = await _deviceService.ListDevices();
+            
+            foreach (var device in devices)
+            {
+                try
                 {
-                    Key = g.Key,
-                    Backup = g.OrderByDescending(b => b.Timestamp).First()
-                })
-                .ToDictionary(x => x.Key, x => x.Backup);
+                    var shares = await _shareService.ListShares(device.Id);
+                    var sharesList = shares.ToList();
+                    
+                    // Process each share's repository
+                    foreach (var share in sharesList)
+                    {
+                        try
+                        {
+                            // Repository path is {RepositoryBasePath}/{deviceId}/{shareId}
+                            var repositoryPath = Path.Combine(_repositoryBasePath, device.Id.ToString(), share.Id.ToString());
+                            
+                            // List all backups for this specific share repository
+                            // Don't filter by hostname - the repository path is already device+share specific
+                            var backups = await _resticService.ListBackups(null, repositoryPath);
+                            
+                            if (backups.Any())
+                            {
+                                // Get the latest backup for this share
+                                var latestBackup = backups.OrderByDescending(b => b.Timestamp).First();
+                                latestBackups[(device.Id, share.Id)] = latestBackup;
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Error listing backups for device {DeviceId} share {ShareId}", 
+                                device.Id, share.Id);
+                            // Continue with other shares
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error processing backups for device {DeviceId}", device.Id);
+                    // Continue with other devices
+                }
+            }
             
             _cachedLatestBackups = latestBackups;
             _cacheTimestamp = DateTime.UtcNow;
             
-            _logger.LogInformation("Cache rebuilt with {Count} latest backups", latestBackups.Count);
+            var shareLevelCount = latestBackups.Values.Count(b => b.ShareId.HasValue);
+            _logger.LogInformation("Cache rebuilt with {Count} latest backups ({ShareLevel} share-level, {DeviceLevel} from device-level)", 
+                latestBackups.Count, 
+                shareLevelCount,
+                latestBackups.Count - shareLevelCount);
         }
         catch (Exception ex)
         {

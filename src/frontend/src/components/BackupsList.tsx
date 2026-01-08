@@ -43,85 +43,88 @@ export const BackupsList: React.FC<BackupsListProps> = ({ backups, onBackupClick
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center p-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+      <div className="flex justify-center items-center p-12">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 dark:border-blue-400"></div>
       </div>
     );
   }
 
   if (backups.length === 0) {
     return (
-      <div className="text-center p-8 text-gray-500">
-        <HardDrive className="mx-auto mb-4 text-gray-400" size={48} />
-        <p>No backups found</p>
+      <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-12 text-center">
+        <div className="w-16 h-16 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-4">
+          <HardDrive className="text-slate-400" size={32} />
+        </div>
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">No backups found</h3>
+        <p className="text-sm text-slate-600 dark:text-slate-400">No backup snapshots are available for this device yet.</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       {backups.map((backup) => (
         <div
           key={backup.id}
-          className={`bg-white rounded-lg shadow p-4 border border-gray-200 ${
-            onBackupClick ? 'cursor-pointer hover:shadow-md transition-shadow' : ''
+          className={`bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-5 ${
+            onBackupClick ? 'cursor-pointer hover:shadow-md hover:border-slate-300 dark:hover:border-slate-600 transition-all' : ''
           }`}
           onClick={() => onBackupClick?.(backup)}
         >
           <div className="flex items-start justify-between">
-            <div className="flex items-start space-x-3 flex-1">
-              <div className="mt-1">
+            <div className="flex items-start space-x-4 flex-1">
+              <div className="mt-0.5">
                 {getStatusIcon(backup.status)}
               </div>
-              <div className="flex-1">
-                <div className="flex items-center space-x-2">
-                  <h3 className="font-semibold text-gray-900">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-2">
+                  <h3 className="font-semibold text-slate-900 dark:text-white">
                     {backup.deviceName}
-                    {backup.shareName && <span className="text-gray-500"> / {backup.shareName}</span>}
+                    {backup.shareName && <span className="text-slate-500 dark:text-slate-400"> / {backup.shareName}</span>}
                   </h3>
-                  <span className={`px-2 py-1 text-xs rounded ${
+                  <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
                     backup.status === 'Success' 
-                      ? 'bg-green-100 text-green-800'
+                      ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
                       : backup.status === 'Failed'
-                      ? 'bg-red-100 text-red-800'
-                      : 'bg-yellow-100 text-yellow-800'
+                      ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                      : 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'
                   }`}>
                     {backup.status}
                   </span>
                 </div>
                 
-                <div className="flex items-center text-sm text-gray-500 mt-1">
-                  <Calendar size={14} className="mr-1" />
+                <div className="flex items-center text-sm text-slate-600 dark:text-slate-400 mb-3">
+                  <Calendar size={14} className="mr-1.5" />
                   {formatDate(backup.timestamp)}
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 mt-2 text-sm">
+                <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <span className="text-gray-500">Files:</span>{' '}
-                    <span className="font-medium">
+                    <span className="text-slate-500 dark:text-slate-400">Files:</span>{' '}
+                    <span className="font-medium text-slate-900 dark:text-white">
                       {backup.filesNew || 0} new, {backup.filesChanged || 0} changed
                     </span>
                   </div>
                   <div>
-                    <span className="text-gray-500">Data:</span>{' '}
-                    <span className="font-medium">{formatSize(backup.dataAdded)}</span>
+                    <span className="text-slate-500 dark:text-slate-400">Data:</span>{' '}
+                    <span className="font-medium text-slate-900 dark:text-white">{formatSize(backup.dataAdded)}</span>
                   </div>
                 </div>
 
                 {backup.errorMessage && (
-                  <div className="mt-2 text-sm text-red-600 bg-red-50 p-2 rounded">
+                  <div className="mt-3 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-2.5 rounded border border-red-200 dark:border-red-800">
                     {backup.errorMessage}
                   </div>
                 )}
               </div>
             </div>
             
-            <div className="text-right text-sm">
-              <div className="text-gray-500 font-mono text-xs">
+            <div className="text-right text-sm ml-4">
+              <div className="text-slate-500 dark:text-slate-400 font-mono text-xs bg-slate-100 dark:bg-slate-700/50 px-2 py-1 rounded">
                 {backup.id}
               </div>
               {backup.duration && (
-                <div className="text-gray-400 mt-1">
+                <div className="text-slate-400 dark:text-slate-500 mt-2 text-xs">
                   {backup.duration}
                 </div>
               )}
