@@ -64,9 +64,12 @@ public class BackupChronoWebApplicationFactory : WebApplicationFactory<Program>
             services.AddSingleton(gitConfig);
             
             // Provide a real ResticClient
-            var resticClient = new ResticClient("restic", _repositoryPath, "test-password", null!);
-            services.AddSingleton<IResticClient>(resticClient);
-            services.AddSingleton(resticClient);
+            services.AddSingleton<ResticClient>(sp => 
+            {
+                var logger = sp.GetRequiredService<ILogger<ResticClient>>();
+                return new ResticClient("restic", _repositoryPath, "test-password", logger);
+            });
+            services.AddSingleton<IResticClient>(sp => sp.GetRequiredService<ResticClient>());
             
             // Provide a real BackupJobRepository with the mocked services
             services.AddSingleton<IBackupJobRepository>(sp =>

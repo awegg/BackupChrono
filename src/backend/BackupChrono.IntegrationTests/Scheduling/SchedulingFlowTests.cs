@@ -72,8 +72,8 @@ public class SchedulingFlowTests : IClassFixture<BackupChronoE2EWebApplicationFa
         trigger.Should().NotBeNull();
         
         var cronTrigger = trigger as ICronTrigger;
-        cronTrigger.CronExpressionString.Should().Be("0 30 4 * * ?");
-    }
+        cronTrigger.Should().NotBeNull("Trigger should be a cron trigger");
+        cronTrigger.CronExpressionString.Should().Be("0 30 4 * * ?");    }
 
     [Fact]
     public async Task UpdateDevice_Schedule_ShouldUpdateBackupJob()
@@ -121,9 +121,8 @@ public class SchedulingFlowTests : IClassFixture<BackupChronoE2EWebApplicationFa
         var triggerKey = new TriggerKey($"device-{createdDevice!.Id}-trigger", "backups");
         var trigger = await schedulerInstance.GetTrigger(triggerKey) as ICronTrigger;
         
-        trigger.Should().NotBeNull();
-        trigger.CronExpressionString.Should().Be("0 0 18 * * ?");
-    }
+        trigger.Should().NotBeNull("Trigger should be a cron trigger");
+        trigger.CronExpressionString.Should().Be("0 0 18 * * ?");    }
 
     [Fact]
     public async Task DeleteDevice_ShouldUnscheduleBackupJob()

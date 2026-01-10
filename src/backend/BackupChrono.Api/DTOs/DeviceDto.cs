@@ -297,5 +297,6 @@ public class RestoreRequestDto
 public class ErrorResponse
 {
     public string Error { get; set; } = string.Empty;
-    public string? Detail { get; set; }    public string? Type { get; set; }    public Dictionary<string, string[]>? ValidationErrors { get; set; }
-}
+    public string? Detail { get; set; }
+    public string? Type { get; set; }
+    public Dictionary<string, string[]>? ValidationErrors { get; set; }}

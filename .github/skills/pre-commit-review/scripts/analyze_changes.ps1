@@ -56,11 +56,14 @@ foreach ($line in $numstat) {
     # Flag whitespace-only changes
     if ($addedNum -eq $removedNum -and $totalChanges -gt 0) {
         $diff = git diff --cached $file
-        if ($diff -match '^\s*$') {
+        # Extract only content lines (skip diff headers/markers)
+        $contentLines = $diff | Where-Object { $_ -match '^[+-][^+-]' }
+        # Check if all changes are whitespace
+        $nonWhitespaceChanges = $contentLines | Where-Object { $_ -match '^[+-]\S' }
+        if ($contentLines -and -not $nonWhitespaceChanges) {
             $warnings += "WARNING: Possible whitespace-only change: $file"
         }
-    }
-}
+    }}
 
 # Check for problematic patterns in diff
 $fullDiff = git diff --cached

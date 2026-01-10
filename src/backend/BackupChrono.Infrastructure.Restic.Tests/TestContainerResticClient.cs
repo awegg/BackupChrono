@@ -19,20 +19,27 @@ public class TestContainerResticClient : IResticClient
         _password = password;
     }
 
+    private static string EscapeShellArg(string arg)
+    {
+        // Escape single quotes by replacing ' with '\''
+        // Then wrap the entire argument in single quotes for shell safety
+        return "'" + arg.Replace("'", "'\\''") + "'";
+    }
+
     public async Task<string> ExecuteCommand(string[] args, CancellationToken cancellationToken = default, TimeSpan? timeout = null, Action<string>? onOutputLine = null, string? repositoryPathOverride = null, Action<string>? onErrorLine = null)
     {
         var repoPath = repositoryPathOverride ?? RepositoryPath;
         var commandParts = new List<string> { "/bin/sh", "-c" };
         
         var resticCmd = new StringBuilder();
-        resticCmd.Append($"export RESTIC_PASSWORD={_password} && restic");
+        resticCmd.Append($"export RESTIC_PASSWORD={EscapeShellArg(_password)} && restic");
         
         foreach (var arg in args)
         {
-            resticCmd.Append($" \"{arg}\"");
+            resticCmd.Append($" {EscapeShellArg(arg)}");
         }
         
-        resticCmd.Append($" --repo {repoPath}");
+        resticCmd.Append($" --repo {EscapeShellArg(repoPath)}");
 
         commandParts.Add(resticCmd.ToString());
 

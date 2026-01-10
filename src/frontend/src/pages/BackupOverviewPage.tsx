@@ -94,6 +94,18 @@ export function BackupOverviewPage() {
     const diffMs = now.getTime() - date.getTime();
     const diffHours = diffMs / (1000 * 60 * 60);
 
+    // Handle future dates (negative diffMs)
+    if (diffMs < 0) {
+      const absDiffMs = Math.abs(diffMs);
+      const absDiffHours = Math.abs(diffHours);
+      
+      if (absDiffHours < 24) {
+        if (absDiffHours < 1) return 'in ' + Math.round(absDiffMs / (1000 * 60)) + ' mins';
+        return 'in ' + Math.round(absDiffHours) + ' hours';
+      }
+      return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
     // If less than 24h ago, show relative time
     if (diffHours < 24) {
       if (diffHours < 1) return Math.round(diffMs / (1000 * 60)) + ' mins ago';
