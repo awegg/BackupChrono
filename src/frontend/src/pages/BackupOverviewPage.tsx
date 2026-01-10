@@ -12,7 +12,8 @@ import {
   FolderOpen,
   StopCircle,
   RefreshCw,
-  Database
+  Database,
+  History
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { dashboardService } from '../services/dashboardService';
@@ -292,16 +293,24 @@ export function BackupOverviewPage() {
                             <Link
                               to={`/backups/${share.lastBackupId}/browse?deviceId=${device.id}&shareId=${share.id}`}
                               className="p-1.5 text-gray-500 hover:bg-gray-100 rounded"
-                              title="Browse Files"
+                              title="Browse Latest Backup"
                             >
                               <FolderOpen className="w-4 h-4" />
                             </Link>
                           )}
 
                           <Link
-                            to={`/devices/${device.id}`} // Logs view not linkable directly yet
+                            to={`/devices/${device.id}/backups?shareId=${share.id}`}
                             className="p-1.5 text-gray-500 hover:bg-gray-100 rounded"
-                            title="View Details"
+                            title="View All Backups"
+                          >
+                            <History className="w-4 h-4" />
+                          </Link>
+
+                          <Link
+                            to={`/devices/${device.id}`}
+                            className="p-1.5 text-gray-500 hover:bg-gray-100 rounded"
+                            title="View Device Details"
                           >
                             <FileText className="w-4 h-4" />
                           </Link>

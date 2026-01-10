@@ -35,6 +35,15 @@ export const BackupsListPage: React.FC = () => {
   }, [deviceId]);
 
   const handleBackupSelect = async (backup: Backup) => {
+    // Navigate to backup logs/details page
+    const params = new URLSearchParams({
+      deviceId: deviceId || '',
+      shareId: backup.shareId || ''
+    });
+    navigate(`/backups/${backup.id}/logs?${params}`);
+  };
+
+  const handleBrowseBackup = async (backup: Backup) => {
     // Navigate to the file browser for this specific backup
     const params = new URLSearchParams({
       deviceId: deviceId || '',
@@ -90,6 +99,7 @@ export const BackupsListPage: React.FC = () => {
           <BackupsListComponent
             backups={backups}
             onBackupClick={handleBackupSelect}
+            onBrowseClick={handleBrowseBackup}
             loading={loading}
           />
         </div>

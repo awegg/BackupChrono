@@ -13,7 +13,7 @@ export default function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const [backendOffline, setBackendOffline] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(() => new Date().toLocaleTimeString());
-  const lastUpdateTimeRef = useRef(0);
+  const lastUpdateTimeRef = useRef(Date.now());
   const [isConnected, setIsConnected] = useState(true);
   
   // Dashboard data

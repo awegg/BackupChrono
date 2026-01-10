@@ -1,14 +1,15 @@
 import React from 'react';
 import { Backup } from '../types';
-import { Calendar, HardDrive, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { Calendar, HardDrive, CheckCircle, XCircle, AlertCircle, FolderOpen } from 'lucide-react';
 
 interface BackupsListProps {
   backups: Backup[];
   onBackupClick?: (backup: Backup) => void;
+  onBrowseClick?: (backup: Backup) => void;
   loading?: boolean;
 }
 
-export const BackupsList: React.FC<BackupsListProps> = ({ backups, onBackupClick, loading }) => {
+export const BackupsList: React.FC<BackupsListProps> = ({ backups, onBackupClick, onBrowseClick, loading }) => {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleString();
@@ -119,12 +120,25 @@ export const BackupsList: React.FC<BackupsListProps> = ({ backups, onBackupClick
               </div>
             </div>
             
-            <div className="text-right text-sm ml-4">
+            <div className="text-right text-sm ml-4 flex flex-col items-end gap-2">
               <div className="text-slate-500 dark:text-slate-400 font-mono text-xs bg-slate-100 dark:bg-slate-700/50 px-2 py-1 rounded">
                 {backup.id}
               </div>
+              {onBrowseClick && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onBrowseClick(backup);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded-md transition-colors"
+                  title="Browse Files"
+                >
+                  <FolderOpen size={14} />
+                  Browse Files
+                </button>
+              )}
               {backup.duration && (
-                <div className="text-slate-400 dark:text-slate-500 mt-2 text-xs">
+                <div className="text-slate-400 dark:text-slate-500 text-xs">
                   {backup.duration}
                 </div>
               )}
