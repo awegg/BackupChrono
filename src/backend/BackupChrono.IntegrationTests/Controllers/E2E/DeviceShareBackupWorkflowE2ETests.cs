@@ -67,7 +67,7 @@ public class DeviceShareBackupWorkflowE2ETests : IClassFixture<BackupChronoE2EWe
             Enabled = true,
             Schedule = new ScheduleDto
             {
-                CronExpression = "0 2 * * *"
+                CronExpression = "0 0 2 * * ?" // Quartz format: at 2 AM daily
             }
         };
 
@@ -178,7 +178,7 @@ public class DeviceShareBackupWorkflowE2ETests : IClassFixture<BackupChronoE2EWe
             Name = "documents",
             Path = "/home/user/documents",
             Enabled = true,
-            Schedule = new ScheduleDto { CronExpression = "0 3 * * *" }
+            Schedule = new ScheduleDto { CronExpression = "0 0 3 * * ?" } // Quartz format: at 3 AM daily
         };
 
         var share2Dto = new ShareCreateDto
@@ -186,7 +186,7 @@ public class DeviceShareBackupWorkflowE2ETests : IClassFixture<BackupChronoE2EWe
             Name = "photos",
             Path = "/home/user/photos",
             Enabled = true,
-            Schedule = new ScheduleDto { CronExpression = "0 4 * * *" }
+            Schedule = new ScheduleDto { CronExpression = "0 0 4 * * ?" } // Quartz format: at 4 AM daily
         };
 
         var share3Dto = new ShareCreateDto
@@ -284,7 +284,7 @@ public class DeviceShareBackupWorkflowE2ETests : IClassFixture<BackupChronoE2EWe
             Name = "updated-share",
             Path = "/data/updated",
             Enabled = true,
-            Schedule = new ScheduleDto { CronExpression = "0 5 * * *" }
+            Schedule = new ScheduleDto { CronExpression = "0 0 5 * * ?" } // Quartz format: at 5 AM daily
         };
 
         var updateResponse = await _client.PutAsJsonAsync($"/api/devices/{device.Id}/shares/{share!.Id}", updateDto);
