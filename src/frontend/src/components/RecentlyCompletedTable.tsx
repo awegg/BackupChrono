@@ -17,7 +17,14 @@ interface RecentlyCompletedTableProps {
   backups: CompletedBackup[];
   onViewLogs?: (backupId: string) => void;
 }
-
+  const parseCompletedAt = (dateString: string): Date | null => {
+    try {
+      const date = new Date(dateString);
+      return isNaN(date.getTime()) ? null : date;
+    } catch {
+      return null;
+    }
+  };
 const getRelativeTime = (dateString: string): string => {
   try {
     // Try to parse as ISO date first
@@ -25,9 +32,10 @@ const getRelativeTime = (dateString: string): string => {
     
     // If parsing failed or resulted in Invalid Date, try alternative formats
     if (isNaN(date.getTime())) {
-      // Try parsing time-only format by appending today's date
-      const today = new Date().toISOString().split('T')[0];
-      date = new Date(`${today}T${dateString}`);
+      // Try parsing time-only format by appending today's date (local timezone)
+      const today = new Date();
+      const localDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+      date = new Date(`${localDate}T${dateString}`);
     }
     
     // If still invalid, just return the string
@@ -37,6 +45,9 @@ const getRelativeTime = (dateString: string): string => {
 
     const now = new Date();
     const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+    // Handle future times
+    if (seconds < 0) return date.toLocaleDateString();
 
     if (seconds < 60) return 'just now';
     const minutes = Math.floor(seconds / 60);
@@ -149,14 +160,23 @@ export function RecentlyCompletedTable({ backups, onViewLogs }: RecentlyComplete
               </td>
               
               <td className="px-4 py-3">
-                <div className="group relative inline-block">
-                  <span className="text-sm text-muted-foreground cursor-help">
-                    {getRelativeTime(backup.completedAt)}
-                  </span>
-                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
-                    {new Date(backup.completedAt).toLocaleString()}
-                  </div>
-                </div>
+                {(() => {
+                  const d = parseCompletedAt(backup.completedAt);
+                  const full = d ? d.toLocaleString() : backup.completedAt;
+                  return (
+                    <div className="group relative inline-block">
+                      <span
+                        className="text-sm text-muted-foreground cursor-help"
+                        title={full}
+                      >
+                        {getRelativeTime(backup.completedAt)}
+                      </span>
+                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                        {full}
+                      </div>
+                    </div>
+                  );
+                })()}
               </td>
               
               <td className="px-4 py-3">

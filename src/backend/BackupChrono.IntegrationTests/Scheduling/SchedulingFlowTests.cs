@@ -118,11 +118,15 @@ public class SchedulingFlowTests : IClassFixture<BackupChronoE2EWebApplicationFa
         var concreteService = schedulerService as QuartzSchedulerService;
         var schedulerInstance = concreteService!.Scheduler;
         
-        var triggerKey = new TriggerKey($"device-{createdDevice!.Id}-trigger", "backups");
-        var trigger = await schedulerInstance.GetTrigger(triggerKey) as ICronTrigger;
+        schedulerInstance.Should().NotBeNull("Scheduler should be initialized");
         
-        trigger.Should().NotBeNull("Trigger should be a cron trigger");
-        trigger.CronExpressionString.Should().Be("0 0 18 * * ?");    }
+        var triggerKey = new TriggerKey($"device-{createdDevice!.Id}-trigger", "backups");
+        var trigger = await schedulerInstance!.GetTrigger(triggerKey);
+        
+        trigger.Should().NotBeNull("Trigger should exist after scheduling");
+        var cronTrigger = trigger as ICronTrigger;
+        cronTrigger.Should().NotBeNull("Trigger should be a cron trigger");
+        cronTrigger!.CronExpressionString.Should().Be("0 0 18 * * ?");    }
 
     [Fact]
     public async Task DeleteDevice_ShouldUnscheduleBackupJob()
@@ -153,8 +157,10 @@ public class SchedulingFlowTests : IClassFixture<BackupChronoE2EWebApplicationFa
         var concreteService = schedulerService as QuartzSchedulerService;
         var schedulerInstance = concreteService!.Scheduler;
         
+        schedulerInstance.Should().NotBeNull("Scheduler should be initialized");
+        
         var jobKey = new JobKey($"device-{createdDevice!.Id}", "backups");
-        var exists = await schedulerInstance.CheckExists(jobKey);
+        var exists = await schedulerInstance!.CheckExists(jobKey);
         
         exists.Should().BeFalse("Backup job should be unscheduled after device deletion");
     }

@@ -156,12 +156,12 @@ export const BackupBrowser: React.FC = () => {
       setRestoreCurrentFolderOnly(false);
     } catch (err) {
       console.error('Error restoring backup:', err);
-      if (err && typeof err === 'object') {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else if (err && typeof err === 'object') {
         const maybeResponse = (err as { response?: { data?: { detail?: string; error?: string } } }).response;
         const errorMsg = maybeResponse?.data?.detail || maybeResponse?.data?.error || (err as { message?: string }).message || 'Failed to restore backup';
         setError(errorMsg);
-      } else if (err instanceof Error) {
-        setError(err.message);
       } else {
         setError('Failed to restore backup');
       }

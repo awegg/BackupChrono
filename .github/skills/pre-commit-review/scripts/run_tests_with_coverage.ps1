@@ -18,12 +18,22 @@ Write-Host "Running tests with coverage analysis..." -ForegroundColor Cyan
 Write-Host "Minimum coverage threshold: $MinimumCoverage%" -ForegroundColor Cyan
 Write-Host ""
 
-# Navigate to backend directory
-$scriptDir = Split-Path -Parent $PSScriptRoot
-$skillsDir = Split-Path -Parent $scriptDir
-$githubDir = Split-Path -Parent $skillsDir
-$repoRoot = Split-Path -Parent $githubDir
-$backendDir = Join-Path (Join-Path $repoRoot "src") "backend"
+# Navigate to backend directory using more robust git-root detection
+try {
+    $gitRoot = & git rev-parse --show-toplevel 2>$null
+    if ($LASTEXITCODE -ne 0) {
+        throw "Not in a git repository"
+    }
+} catch {
+    Write-Host "WARNING: Could not determine git root, using relative paths" -ForegroundColor Yellow
+    # Fallback: assume script location and navigate up
+    $scriptDir = Split-Path -Parent $PSScriptRoot
+    $skillsDir = Split-Path -Parent $scriptDir
+    $githubDir = Split-Path -Parent $skillsDir
+    $gitRoot = Split-Path -Parent $githubDir
+}
+
+$backendDir = Join-Path $gitRoot "src" "backend"
 Push-Location $backendDir
 
 try {
@@ -47,8 +57,9 @@ try {
     $coverageFiles = Get-ChildItem -Path ./TestResults -Recurse -Filter "coverage.cobertura.xml" | Sort-Object LastWriteTime -Descending
     
     if ($coverageFiles.Count -eq 0) {
-        Write-Host "WARNING: No coverage report found" -ForegroundColor Yellow
-        exit 0
+        Write-Host "ERROR: No coverage report found" -ForegroundColor Red
+        Write-Host "Tests may have run but coverage collection failed" -ForegroundColor Yellow
+        exit 1
     }
     
     $latestCoverage = $coverageFiles[0].FullName

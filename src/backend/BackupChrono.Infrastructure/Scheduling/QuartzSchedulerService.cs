@@ -142,14 +142,15 @@ public class QuartzSchedulerService : IQuartzSchedulerService
                     try
                     {
                         // Normalize cron expression: convert * * to * ? to avoid Quartz errors
+                        // Create local normalized schedule instead of mutating the entity
                         var normalizedCron = NormalizeCronExpression(share.Schedule!.CronExpression);
-                        share.Schedule = new Schedule 
+                        var normalizedSchedule = new Schedule 
                         { 
                             CronExpression = normalizedCron,
                             TimeWindowStart = share.Schedule.TimeWindowStart,
                             TimeWindowEnd = share.Schedule.TimeWindowEnd
                         };
-                        await ScheduleShareBackup(device, share, share.Schedule);
+                        await ScheduleShareBackup(device, share, normalizedSchedule);
                     }
                     catch (Exception ex)
                     {
@@ -164,13 +165,14 @@ public class QuartzSchedulerService : IQuartzSchedulerService
                     try
                     {
                         var normalizedCron = NormalizeCronExpression(device.Schedule.CronExpression);
-                        device.Schedule = new Schedule
+                        // Create local normalized schedule instead of mutating the entity
+                        var normalizedSchedule = new Schedule
                         {
                             CronExpression = normalizedCron,
                             TimeWindowStart = device.Schedule.TimeWindowStart,
                             TimeWindowEnd = device.Schedule.TimeWindowEnd
                         };
-                        await ScheduleDeviceBackup(device, device.Schedule);
+                        await ScheduleDeviceBackup(device, normalizedSchedule);
                     }
                     catch (Exception ex)
                     {

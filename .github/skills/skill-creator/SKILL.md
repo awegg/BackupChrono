@@ -48,7 +48,7 @@ Think of Claude as exploring a path: a narrow bridge with cliffs needs specific 
 
 Every skill consists of a required SKILL.md file and optional bundled resources:
 
-```
+```text
 skill-name/
 ├── SKILL.md (required)
 │   ├── YAML frontmatter metadata (required)

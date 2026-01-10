@@ -79,12 +79,12 @@ public class MappingServiceTests
     }
 
     [Theory]
-    [InlineData("SMB")]
-    [InlineData("SSH")]
-    [InlineData("Rsync")]
-    [InlineData("smb")] // lowercase
-    [InlineData("ssh")] // lowercase
-    public void ToDevice_HandlesValidProtocols(string protocol)
+    [InlineData("SMB", ProtocolType.SMB)]
+    [InlineData("SSH", ProtocolType.SSH)]
+    [InlineData("Rsync", ProtocolType.Rsync)]
+    [InlineData("smb", ProtocolType.SMB)] // lowercase
+    [InlineData("ssh", ProtocolType.SSH)] // lowercase
+    public void ToDevice_HandlesValidProtocols(string protocol, ProtocolType expected)
     {
         // Arrange
         var dto = new DeviceCreateDto
@@ -100,7 +100,7 @@ public class MappingServiceTests
         var device = _service.ToDevice(dto);
 
         // Assert
-        device.Protocol.ToString().Should().BeEquivalentTo(protocol);
+        device.Protocol.Should().Be(expected);
     }
 
     [Fact]

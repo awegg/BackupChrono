@@ -63,20 +63,48 @@ foreach ($line in $numstat) {
         if ($contentLines -and -not $nonWhitespaceChanges) {
             $warnings += "WARNING: Possible whitespace-only change: $file"
         }
-    }}
+    }
+}
 
 # Check for problematic patterns in diff
 $fullDiff = git diff --cached
 
-# Check for debug/console statements
-if ($fullDiff -match '^\+.*console\.log|^\+.*Console\.WriteLine.*TODO|^\+.*debugger|^\+.*System\.Diagnostics\.Debug') {
+# Check for debug/console statements (avoid false positives for legitimate comments)
+$debugPatterns = @(
+    '^\+.*console\.log\(',    # JS console.log calls
+    '^\+.*debugger;',         # JS debugger statement
+    '^\+.*System\.Diagnostics\.Debug\.WriteLine'  # C# Debug.WriteLine calls
+)
+
+$hasDebugStatements = $false
+foreach ($pattern in $debugPatterns) {
+    if ($fullDiff -match $pattern) {
+        $hasDebugStatements = $true
+        break
+    }
+}
+
+if ($hasDebugStatements) {
     $issues += "DEBUG: Debug/console statements detected in changes"
 }
 
-# Check for commented-out code blocks
-$commentedBlocks = ($fullDiff | Select-String -Pattern '^\+\s*//' -AllMatches).Matches.Count
-if ($commentedBlocks -gt 5) {
-    $warnings += "WARNING: Multiple commented lines detected ($commentedBlocks lines)"
+# Check for consecutive commented-out code blocks (3+ consecutive comment lines suggest actual code)
+$lines = $fullDiff -split "`n"
+$consecutiveComments = 0
+$maxConsecutiveComments = 0
+foreach ($line in $lines) {
+    if ($line -match '^\+\s*//') {
+        $consecutiveComments++
+        if ($consecutiveComments -gt $maxConsecutiveComments) {
+            $maxConsecutiveComments = $consecutiveComments
+        }
+    } else {
+        $consecutiveComments = 0
+    }
+}
+
+if ($maxConsecutiveComments -ge 3) {
+    $warnings += "WARNING: Potential commented-out code detected ($maxConsecutiveComments consecutive comment lines)"
 }
 
 # Check for sensitive files

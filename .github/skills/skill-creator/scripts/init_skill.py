@@ -191,6 +191,28 @@ def title_case_skill_name(skill_name):
     return ' '.join(word.capitalize() for word in skill_name.split('-'))
 
 
+def validate_skill_name(skill_name):
+    """
+    Validate skill name against documented constraints.
+    Returns (is_valid, error_message) tuple.
+    """
+    import re
+    
+    # Check for path traversal attempts
+    if '..' in skill_name or '/' in skill_name or '\\' in skill_name:
+        return False, "Skill name cannot contain path separators or '..' (path traversal risk)"
+    
+    # Check length
+    if len(skill_name) > 40:
+        return False, f"Skill name too long ({len(skill_name)} chars). Maximum: 40 characters"
+    
+    # Check format: hyphen-case (lowercase letters, digits, hyphens only)
+    if not re.match(r'^[a-z0-9]+(-[a-z0-9]+)*$', skill_name):
+        return False, "Skill name must be hyphen-case: lowercase letters, digits, and hyphens only"
+    
+    return True, ""
+
+
 def init_skill(skill_name, path):
     """
     Initialize a new skill directory with template SKILL.md.
@@ -202,6 +224,12 @@ def init_skill(skill_name, path):
     Returns:
         Path to created skill directory, or None if error
     """
+    # Validate skill name first
+    is_valid, error_msg = validate_skill_name(skill_name)
+    if not is_valid:
+        print(f"❌ Invalid skill name: {error_msg}")
+        return None
+    
     # Determine skill directory path
     skill_dir = Path(path).resolve() / skill_name
 

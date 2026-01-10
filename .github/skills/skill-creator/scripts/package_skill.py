@@ -6,8 +6,10 @@ Usage:
     python utils/package_skill.py <path/to/skill-folder> [output-directory]
 
 Example:
+    ```bash
     python utils/package_skill.py skills/public/my-skill
     python utils/package_skill.py skills/public/my-skill ./dist
+    ```
 """
 
 import sys
@@ -60,6 +62,22 @@ def package_skill(skill_path, output_dir=None):
         output_path.mkdir(parents=True, exist_ok=True)
     else:
         output_path = Path.cwd()
+
+    # Prevent output directory from being inside skill directory (self-inclusion risk)
+    skill_path_resolved = skill_path.resolve()
+    output_path_resolved = output_path.resolve()
+    
+    try:
+        # Check if output_path is relative to skill_path
+        output_path_resolved.relative_to(skill_path_resolved)
+        print(f"❌ Error: Output directory cannot be inside the skill directory")
+        print(f"   Skill path: {skill_path_resolved}")
+        print(f"   Output path: {output_path_resolved}")
+        print("   This would cause the .skill file to include itself (corruption risk)")
+        return None
+    except ValueError:
+        # output_path is NOT relative to skill_path - this is good
+        pass
 
     skill_filename = output_path / f"{skill_name}.skill"
 

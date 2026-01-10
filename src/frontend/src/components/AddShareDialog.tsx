@@ -157,21 +157,32 @@ export function AddShareDialog({ open, onClose, device, onCreated, editingShare 
       if (parts.length < 6) return '';
       
       // Skip seconds (first field), take min hr dom mon dow
-      const standardCron = parts.slice(1, 6).join(' ');
+      // Normalize Quartz '?' to '*' for cronstrue compatibility
+      const standardCron = parts.slice(1, 6).map(p => p === '?' ? '*' : p).join(' ');
       return cronstrue.toString(standardCron);
     } catch {
       return '';
     }
   };
 
+  // Compute validation errors for display (touched-gated)
   const validationErrors = {
     shareName: touched.shareName ? validateShareName(shareName) : '',
     sharePath: touched.sharePath ? validateSharePath(sharePath) : '',
     schedule: touched.schedule ? validateCronExpression(schedule) : '',
   };
 
-  const isFormValid = shareName.trim() && sharePath.trim() &&
-    !validationErrors.shareName && !validationErrors.sharePath && !validationErrors.schedule;
+  // Compute raw validation for form validity (not touched-gated)
+  const rawErrors = {
+    shareName: validateShareName(shareName),
+    sharePath: validateSharePath(sharePath),
+    schedule: validateCronExpression(schedule),
+  };
+
+  const isFormValid = Boolean(
+    shareName.trim() && sharePath.trim() &&
+    !rawErrors.shareName && !rawErrors.sharePath && !rawErrors.schedule
+  );
 
   const cronDescription = schedule && !validationErrors.schedule ? describeCron(schedule) : '';
 

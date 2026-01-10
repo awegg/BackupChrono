@@ -44,10 +44,12 @@ public interface IQuartzSchedulerService
     Task ScheduleShareBackup(Device device, Share share, Schedule schedule);
 
     /// <summary>
-    /// Unschedules recurring backups for a device.
+    /// Unschedules the recurring device-level backup job.
+    /// Note: This only removes the device-level job. Share-level backup jobs under this device
+    /// must be unscheduled separately via UnscheduleShareBackup.
     /// </summary>
     /// <param name="deviceId">Device identifier to unschedule.</param>
-    /// <returns>Task that completes after the device jobs are unscheduled.</returns>
+    /// <returns>Task that completes after the device-level backup job is unscheduled.</returns>
     Task UnscheduleDeviceBackup(Guid deviceId);
 
     /// <summary>

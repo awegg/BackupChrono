@@ -103,7 +103,16 @@ public class DevicesController : ControllerBase
             // Schedule backups if device has a schedule
             if (created.Schedule != null)
             {
-                await _schedulerService.ScheduleDeviceBackup(created, created.Schedule);
+                try
+                {
+                    await _schedulerService.ScheduleDeviceBackup(created, created.Schedule);
+                }
+                catch (Exception scheduleEx)
+                {
+                    _logger.LogError(scheduleEx, "Failed to schedule device {DeviceId}, but device was created successfully", created.Id);
+                    // Device was created successfully, so return success but log the scheduling failure
+                    // The device can be manually triggered or rescheduled later
+                }
             }
             
             return CreatedAtAction(nameof(GetDevice), new { deviceId = created.Id }, responseDto);
@@ -147,10 +156,13 @@ public class DevicesController : ControllerBase
             var updated = await _deviceService.UpdateDevice(device);
             var responseDto = _mappingService.ToDeviceDto(updated);
             
-            // Update scheduler if schedule changed
+            // Update scheduler if schedule changed (including time window)
             var scheduleChanged = (oldSchedule == null && updated.Schedule != null) ||
                                   (oldSchedule != null && updated.Schedule == null) ||
-                                  (oldSchedule != null && updated.Schedule != null && oldSchedule.CronExpression != updated.Schedule.CronExpression);
+                                  (oldSchedule != null && updated.Schedule != null && 
+                                   (oldSchedule.CronExpression != updated.Schedule.CronExpression ||
+                                    oldSchedule.TimeWindowStart != updated.Schedule.TimeWindowStart ||
+                                    oldSchedule.TimeWindowEnd != updated.Schedule.TimeWindowEnd));
             
             if (scheduleChanged)
             {

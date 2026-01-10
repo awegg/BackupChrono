@@ -1,5 +1,5 @@
 ﻿import { apiClient } from './api';
-import { BackupJob, Backup, BackupStatus, DashboardSummaryDto } from '../types';
+import { BackupJob, Backup, BackupStatus, BackupJobStatus, DashboardSummaryDto } from '../types';
 
 export interface DashboardStats {
   activeJobs: number;
@@ -23,14 +23,14 @@ export const dashboardService = {
       const jobs = await this.getActiveJobs();
       const recentBackups = await this.getRecentBackups();
 
-      const activeJobs = jobs.filter(j => j.status === 'Running').length;
-      const queuedJobs = jobs.filter(j => j.status === 'Pending').length;
+      const activeJobs = jobs.filter(j => j.status === BackupJobStatus.Running).length;
+      const queuedJobs = jobs.filter(j => j.status === BackupJobStatus.Pending).length;
       const completedToday = recentBackups.filter(b =>
-        b.status === 'Success' &&
+        b.status === BackupStatus.Success &&
         new Date(b.timestamp).toDateString() === new Date().toDateString()
       ).length;
       const failedToday = recentBackups.filter(b =>
-        b.status === 'Failed' &&
+        b.status === BackupStatus.Failed &&
         new Date(b.timestamp).toDateString() === new Date().toDateString()
       ).length;
 

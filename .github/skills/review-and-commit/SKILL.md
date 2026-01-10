@@ -15,7 +15,7 @@ Automated workflow that executes pre-commit review and handles the commit proces
 
 Execute the comprehensive pre-commit-review skill to analyze all changes:
 
-```
+```bash
 Invoke the pre-commit-review skill
 ```
 
@@ -61,18 +61,24 @@ Wait for user response before proceeding.
 
 #### ✅ If Review Passes (No Issues/Warnings/Suggestions)
 
-**Automatically stage and commit:**
+**Show pending changes and get confirmation before staging:**
 
-1. Stage all changes: `git add -A`
-2. Generate proper commit message based on changes
-3. Commit with generated message
-4. Report commit hash and summary
+1. Run `git status --porcelain` to show all changes
+2. Run `git diff --stat` to show change summary  
+3. Present the list of files to be committed
+4. Ask user: "Ready to stage and commit these changes? (yes/no)"
+5. Wait for explicit confirmation
+6. If confirmed:
+   - Stage all changes: `git add -A`
+   - Generate proper commit message based on changes
+   - Commit with generated message
+   - Report commit hash and summary
 
 ### 3. Generate Commit Message
 
 Create conventional commit message following this format:
 
-```
+```text
 <type>(<scope>): <subject>
 
 <body>
@@ -102,12 +108,12 @@ Analyze changed files and determine:
 **Examples:**
 
 Simple change:
-```
+```bash
 fix(restic): expand exception filter for repository initialization
 ```
 
 Feature addition:
-```
+```bash
 feat(dashboard): add dashboard summary endpoint
 
 - Implement DashboardController with /api/dashboard/summary
@@ -117,7 +123,7 @@ feat(dashboard): add dashboard summary endpoint
 ```
 
 Multiple components:
-```
+```bash
 refactor(tests): improve test infrastructure
 
 - Register IResticClient interface in test factories
@@ -162,7 +168,7 @@ After 3 failed fix attempts:
 ## Usage Examples
 
 **Simple workflow:**
-```
+```bash
 User: "review and commit"
 → Runs review
 → Passes with no issues
@@ -170,7 +176,7 @@ User: "review and commit"
 ```
 
 **With auto-fix:**
-```
+```bash
 User: "review and commit"
 → Runs review
 → Finds debug logging in middleware
@@ -181,7 +187,7 @@ User: "review and commit"
 ```
 
 **With suggestions:**
-```
+```bash
 User: "review and commit"
 → Runs review
 → Finds suggestions for refactoring
