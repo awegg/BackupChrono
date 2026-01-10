@@ -4,6 +4,7 @@ using BackupChrono.Infrastructure.Plugins;
 using BackupChrono.Infrastructure.Protocols;
 using BackupChrono.Infrastructure.Repositories;
 using BackupChrono.Infrastructure.Restic;
+using BackupChrono.Infrastructure.Scheduling;
 using BackupChrono.Infrastructure.Services;
 using LibGit2Sharp;
 using Microsoft.AspNetCore.Hosting;
@@ -103,14 +104,15 @@ public class BackupChronoE2EWebApplicationFactory : WebApplicationFactory<Progra
         {
             // Remove in-memory services from testing
             var descriptors = services.Where(d =>
-                d.ServiceType == typeof(GitConfigService) ||
-                d.ServiceType == typeof(ResticClient) ||
                 d.ServiceType == typeof(IDeviceService) ||
                 d.ServiceType == typeof(IShareService) ||
                 d.ServiceType == typeof(IBackupJobRepository) ||
                 d.ServiceType == typeof(IProtocolPluginLoader) ||
                 d.ServiceType == typeof(IBackupOrchestrator) ||
-                d.ServiceType == typeof(IQuartzSchedulerService)
+                d.ServiceType == typeof(IQuartzSchedulerService) ||
+                d.ServiceType == typeof(GitConfigService) ||
+                d.ServiceType == typeof(ResticClient) ||
+                d.ServiceType == typeof(IResticClient)
             ).ToList();
 
             foreach (var descriptor in descriptors)
@@ -120,7 +122,9 @@ public class BackupChronoE2EWebApplicationFactory : WebApplicationFactory<Progra
 
             // Register REAL services with test repository (NO MOCKS for Device/Share)
             services.AddSingleton(new GitConfigService(_testRepositoryPath));
-            services.AddSingleton(sp => new ResticClient("restic", _testRepositoryPath, "test-password", sp.GetRequiredService<ILogger<ResticClient>>()));
+            var resticClient = new ResticClient("restic", _testRepositoryPath, "test-password", null!);
+            services.AddSingleton<IResticClient>(resticClient);
+            services.AddSingleton(resticClient);
             
             // Register actual service implementations for device/share management
             services.AddSingleton<IDeviceService, DeviceService>();
@@ -136,17 +140,27 @@ public class BackupChronoE2EWebApplicationFactory : WebApplicationFactory<Progra
             services.AddSingleton<SshPlugin>();
             services.AddSingleton<RsyncPlugin>();
             
+            // Register real IResticService (needed by DeviceService/ShareService)
+            services.AddSingleton<IResticService>(sp => new ResticService(
+                sp.GetRequiredService<IResticClient>(),
+                sp.GetRequiredService<ILogger<ResticService>>()));
+            
             // Register mock dependencies needed by BackupOrchestrator
-            var mockResticService = new Mock<IResticService>();
             var mockStorageMonitor = new Mock<IStorageMonitor>();
-            services.AddSingleton(mockResticService.Object);
             services.AddSingleton(mockStorageMonitor.Object);
             
             // BackupOrchestrator with real implementation - will call ExecuteDeviceBackup and throw exception
             services.AddSingleton<IBackupOrchestrator, BackupOrchestrator>();            
-            // Still need QuartzSchedulerService mock since it's required by Program
-            var mockScheduler = new Mock<IQuartzSchedulerService>();
-            services.AddSingleton(mockScheduler.Object);
+            
+            // Use REAL QuartzSchedulerService to verify scheduling logic
+            // Register the concrete type separately so it can be resolved directly if needed,
+            // and then register the interface to resolve the same instance.
+            // Provide a unique scheduler name to avoid conflicts during parallel test execution.
+            services.AddSingleton(sp => new QuartzSchedulerService(
+                sp.GetRequiredService<IServiceScopeFactory>(),
+                sp.GetRequiredService<ILogger<QuartzSchedulerService>>(),
+                $"TestScheduler-{Guid.NewGuid()}"));
+            services.AddSingleton<IQuartzSchedulerService>(sp => sp.GetRequiredService<QuartzSchedulerService>());
         });
     }
 }

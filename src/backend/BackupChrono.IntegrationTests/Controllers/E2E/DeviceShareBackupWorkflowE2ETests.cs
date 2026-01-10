@@ -99,7 +99,11 @@ public class DeviceShareBackupWorkflowE2ETests : IClassFixture<BackupChronoE2EWe
         };
 
         var triggerBackupResponse = await _client.PostAsJsonAsync("/api/backup-jobs", triggerBackupDto);
-        triggerBackupResponse.StatusCode.Should().Be(HttpStatusCode.Accepted);
+        if (triggerBackupResponse.StatusCode != HttpStatusCode.Accepted)
+        {
+            var error = await triggerBackupResponse.Content.ReadFromJsonAsync<ErrorResponse>();
+            throw new Exception($"Failed to trigger backup. Status: {triggerBackupResponse.StatusCode}. Error: {error?.Error}. Detail: {error?.Detail}. Type: {error?.Type}");
+        }
         
         var triggerResult = await triggerBackupResponse.Content.ReadFromJsonAsync<TriggerBackupResponse>();
         triggerResult.Should().NotBeNull();
@@ -113,7 +117,11 @@ public class DeviceShareBackupWorkflowE2ETests : IClassFixture<BackupChronoE2EWe
         };
 
         var triggerDeviceBackupResponse = await _client.PostAsJsonAsync("/api/backup-jobs", triggerDeviceBackupDto);
-        triggerDeviceBackupResponse.StatusCode.Should().Be(HttpStatusCode.Accepted);
+        if (triggerDeviceBackupResponse.StatusCode != HttpStatusCode.Accepted)
+        {
+            var error = await triggerDeviceBackupResponse.Content.ReadFromJsonAsync<ErrorResponse>();
+            throw new Exception($"Failed to trigger device backup. Status: {triggerDeviceBackupResponse.StatusCode}. Error: {error?.Error}. Detail: {error?.Detail}. Type: {error?.Type}");
+        }
 
         // Step 7: Delete the Share
         var deleteShareResponse = await _client.DeleteAsync($"/api/devices/{deviceId}/shares/{shareId}");

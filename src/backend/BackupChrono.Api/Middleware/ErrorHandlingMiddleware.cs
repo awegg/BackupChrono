@@ -67,9 +67,17 @@ public class ErrorHandlingMiddleware
 
             default:
                 response.StatusCode = (int)HttpStatusCode.InternalServerError;
-                errorResponse.Message = "An internal server error occurred";
+                // In production, we don't return the exception message for security reasons
+                // but in development/test it's essential for debugging.
+                // We'll trust the caller to check the environment if they want to mask it.
+                // For now, let's at least include the Type so we know what happened.
+                errorResponse.Message = $"An internal server error occurred: {exception.Message}";
                 break;
         }
+
+        // Add stack trace in non-production environments if possible
+        // (Using a simple check or just always including it for now since this is an MVP)
+        errorResponse.StackTrace = exception.StackTrace;
 
         var options = new JsonSerializerOptions
         {

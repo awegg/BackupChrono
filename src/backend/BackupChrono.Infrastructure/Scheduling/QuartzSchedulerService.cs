@@ -14,6 +14,7 @@ namespace BackupChrono.Infrastructure.Scheduling;
 /// </summary>
 public class QuartzSchedulerService : IQuartzSchedulerService
 {
+    internal IScheduler? Scheduler => _scheduler;
     private IScheduler? _scheduler;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<QuartzSchedulerService> _logger;
