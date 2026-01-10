@@ -26,6 +26,8 @@ This performs:
 - Architecture review
 - Security and maintainability assessment
 
+**Manual code/spec review is REQUIRED:** After automated analysis, read every changed source file (skip only auto-generated assets like lockfiles unless flagged) and verify against relevant specs (e.g., specs/001-backup-system/spec.md). Do not proceed to staging/commit without this manual pass; record findings before continuing.
+
 **CRITICAL:** Block commit if review is not performed. Report findings before proceeding.
 
 ### 2. Process Review Results

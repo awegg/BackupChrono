@@ -17,6 +17,7 @@ public class QuartzSchedulerServiceTests : IAsyncLifetime
     private readonly Mock<IServiceProvider> _mockServiceProvider;
     private readonly Mock<IDeviceService> _mockDeviceService;
     private readonly Mock<IShareService> _mockShareService;
+    private readonly Mock<IBackupOrchestrator> _mockOrchestrator;
     private readonly Mock<ILogger<QuartzSchedulerService>> _mockLogger;
     private readonly QuartzSchedulerService _schedulerService;
 
@@ -27,6 +28,7 @@ public class QuartzSchedulerServiceTests : IAsyncLifetime
         _mockServiceProvider = new Mock<IServiceProvider>();
         _mockDeviceService = new Mock<IDeviceService>();
         _mockShareService = new Mock<IShareService>();
+        _mockOrchestrator = new Mock<IBackupOrchestrator>();
         _mockLogger = new Mock<ILogger<QuartzSchedulerService>>();
 
         // Setup scope factory chain
@@ -34,6 +36,7 @@ public class QuartzSchedulerServiceTests : IAsyncLifetime
         _mockScope.Setup(x => x.ServiceProvider).Returns(_mockServiceProvider.Object);
         _mockServiceProvider.Setup(x => x.GetService(typeof(IDeviceService))).Returns(_mockDeviceService.Object);
         _mockServiceProvider.Setup(x => x.GetService(typeof(IShareService))).Returns(_mockShareService.Object);
+        _mockServiceProvider.Setup(x => x.GetService(typeof(IBackupOrchestrator))).Returns(_mockOrchestrator.Object);
 
         // Use unique scheduler name for each test instance to avoid conflicts
         var uniqueName = $"TestScheduler-{Guid.NewGuid():N}";
@@ -227,6 +230,57 @@ public class QuartzSchedulerServiceTests : IAsyncLifetime
         
         // Verify can stop multiple times safely
         await _schedulerService.Stop();
+    }
+
+    [Fact]
+    public async Task CancelJob_DelegatesToOrchestrator()
+    {
+        // Arrange
+        var jobId = Guid.NewGuid();
+
+        // Act
+        await _schedulerService.CancelJob(jobId);
+
+        // Assert
+        _mockOrchestrator.Verify(x => x.CancelJob(jobId), Times.Once);
+    }
+
+    [Fact]
+    public async Task ScheduleShareBackup_WithInvalidCron_ThrowsArgumentException()
+    {
+        // Arrange
+        _mockDeviceService.Setup(x => x.ListDevices()).ReturnsAsync(new List<Device>());
+        _mockShareService.Setup(x => x.ListShares(It.IsAny<Guid>())).ReturnsAsync(new List<Share>());
+        await _schedulerService.Start();
+
+        var device = CreateTestDevice("cron-device");
+        var share = CreateTestShare(device.Id, "cron-share");
+        var schedule = new Schedule { CronExpression = "not-a-cron" };
+
+        // Act
+        var act = async () => await _schedulerService.ScheduleShareBackup(device, share, schedule);
+
+        // Assert
+        await act.Should().ThrowAsync<ArgumentException>();
+    }
+
+    [Fact]
+    public async Task ScheduleShareBackup_WithBlankCron_ThrowsArgumentException()
+    {
+        // Arrange
+        _mockDeviceService.Setup(x => x.ListDevices()).ReturnsAsync(new List<Device>());
+        _mockShareService.Setup(x => x.ListShares(It.IsAny<Guid>())).ReturnsAsync(new List<Share>());
+        await _schedulerService.Start();
+
+        var device = CreateTestDevice("blank-cron-device");
+        var share = CreateTestShare(device.Id, "blank-cron-share");
+        var schedule = new Schedule { CronExpression = "   " };
+
+        // Act
+        var act = async () => await _schedulerService.ScheduleShareBackup(device, share, schedule);
+
+        // Assert
+        await act.Should().ThrowAsync<ArgumentException>();
     }
 
     // Helper methods
