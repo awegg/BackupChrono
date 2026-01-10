@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+﻿import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Device, Share } from '../types';
 import { deviceService, shareService } from '../services/deviceService';
@@ -16,7 +16,7 @@ export default function DeviceDetail() {
   const [error, setError] = useState<string | null>(null);
   const [showAddShareDialog, setShowAddShareDialog] = useState(false);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!deviceId) return;
     try {
       setLoading(true);
@@ -33,11 +33,11 @@ export default function DeviceDetail() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [deviceId]);
 
   useEffect(() => {
     loadData();
-  }, [deviceId]);
+  }, [loadData]);
 
   if (loading) {
     return (

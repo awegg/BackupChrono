@@ -18,8 +18,8 @@ export function DeviceList({ devices, onDeviceUpdated }: DeviceListProps) {
   const [showForm, setShowForm] = useState(false);
   const [editingDevice, setEditingDevice] = useState<Device | null>(null);
   const [triggeringBackup, setTriggeringBackup] = useState<string | null>(null);
-  const [backupError, setBackupError] = useState<any>(null);
-  const [deleteError, setDeleteError] = useState<any>(null);
+  const [backupError, setBackupError] = useState<unknown>(null);
+  const [deleteError, setDeleteError] = useState<unknown>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const handleDelete = async (id: string) => {
@@ -29,7 +29,7 @@ export function DeviceList({ devices, onDeviceUpdated }: DeviceListProps) {
       await deviceService.deleteDevice(id);
       setSuccessMessage('Device deleted successfully');
       onDeviceUpdated();
-    } catch (err: any) {
+    } catch (err) {
       setDeleteError(err);
     }
   };
@@ -45,7 +45,7 @@ export function DeviceList({ devices, onDeviceUpdated }: DeviceListProps) {
       setSuccessMessage('Backup triggered successfully');
       // Don't call onDeviceUpdated() here - it causes the component to remount
       // The backup jobs list will auto-refresh anyway
-    } catch (err: any) {
+    } catch (err) {
       setBackupError(err);
     } finally {
       setTriggeringBackup(null);
@@ -100,15 +100,15 @@ export function DeviceList({ devices, onDeviceUpdated }: DeviceListProps) {
         />
       )}
 
-      {backupError && (
+      {backupError !== null && (
         <div className="mb-4">
-          <ErrorDisplay error={backupError} />
+          <ErrorDisplay error={backupError as Error | string} />
         </div>
       )}
 
-      {deleteError && (
+      {deleteError !== null && (
         <div className="mb-4">
-          <ErrorDisplay error={deleteError} />
+          <ErrorDisplay error={deleteError as Error | string} />
         </div>
       )}
 

@@ -12,8 +12,8 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [backendOffline, setBackendOffline] = useState(false);
-  const [lastUpdated, setLastUpdated] = useState(new Date().toLocaleTimeString());
-  const lastUpdateTimeRef = useRef(Date.now());
+  const [lastUpdated, setLastUpdated] = useState(() => new Date().toLocaleTimeString());
+  const lastUpdateTimeRef = useRef(0);
   const [isConnected, setIsConnected] = useState(true);
   
   // Dashboard data
@@ -57,7 +57,7 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    setLoading(true);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadDashboardData();
     
     // Refresh data every 5 seconds

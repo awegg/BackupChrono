@@ -19,7 +19,7 @@ export function ShareForm({ deviceId, share, onClose }: ShareFormProps) {
   });
 
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<any>(null);
+  const [error, setError] = useState<unknown>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,7 +32,7 @@ export function ShareForm({ deviceId, share, onClose }: ShareFormProps) {
         await shareService.createShare(deviceId, formData);
       }
       onClose();
-    } catch (err: any) {
+    } catch (err) {
       setError(err);
     } finally {
       setSaving(false);
@@ -44,7 +44,7 @@ export function ShareForm({ deviceId, share, onClose }: ShareFormProps) {
       <h2 className="text-2xl font-bold mb-4">
         {share ? 'Edit Share' : 'Add Share'}
       </h2>
-      {error && <ErrorDisplay error={error} />}
+      {error !== null && <ErrorDisplay error={error as Error | string} />}
       <form onSubmit={handleSubmit} className="mt-4">
         <div className="space-y-4">
           <div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import cronstrue from 'cronstrue';
 import { ShareCreateDto, Schedule, RetentionPolicy } from '../types';
 import { shareService } from '../services/deviceService';
@@ -47,25 +47,25 @@ const getDeviceConfig = (device: DeviceLike) => ({
 });
 
 export function AddShareDialog({ open, onClose, device, onCreated, editingShare }: AddShareDialogProps) {
-  // Basic fields
-  const [shareName, setShareName] = useState('');
-  const [sharePath, setSharePath] = useState('');
+  // Basic fields (initialize from editingShare if present)
+  const [shareName, setShareName] = useState(() => editingShare?.name ?? '');
+  const [sharePath, setSharePath] = useState(() => editingShare?.path ?? '');
   const [description, setDescription] = useState('');
 
   // Configuration overrides
-  const [schedule, setSchedule] = useState('');
-  const [retentionLatest, setRetentionLatest] = useState('');
-  const [retentionDaily, setRetentionDaily] = useState('');
-  const [retentionWeekly, setRetentionWeekly] = useState('');
-  const [retentionMonthly, setRetentionMonthly] = useState('');
-  const [retentionYearly, setRetentionYearly] = useState('');
-  const [includePatterns, setIncludePatterns] = useState('');
-  const [excludePatterns, setExcludePatterns] = useState('');
+  const [schedule, setSchedule] = useState(() => editingShare?.schedule?.cronExpression ?? '');
+  const [retentionLatest, setRetentionLatest] = useState(() => editingShare?.retentionPolicy?.keepLatest?.toString() ?? '');
+  const [retentionDaily, setRetentionDaily] = useState(() => editingShare?.retentionPolicy?.keepDaily?.toString() ?? '');
+  const [retentionWeekly, setRetentionWeekly] = useState(() => editingShare?.retentionPolicy?.keepWeekly?.toString() ?? '');
+  const [retentionMonthly, setRetentionMonthly] = useState(() => editingShare?.retentionPolicy?.keepMonthly?.toString() ?? '');
+  const [retentionYearly, setRetentionYearly] = useState(() => editingShare?.retentionPolicy?.keepYearly?.toString() ?? '');
+  const [includePatterns, setIncludePatterns] = useState(() => '');
+  const [excludePatterns, setExcludePatterns] = useState(() => editingShare?.includeExcludeRules?.excludePatterns?.join('\n') ?? '');
 
   // Collapsible sections
-  const [showSchedule, setShowSchedule] = useState(false);
-  const [showRetention, setShowRetention] = useState(false);
-  const [showPatterns, setShowPatterns] = useState(false);
+  const [showSchedule, setShowSchedule] = useState(() => !!editingShare?.schedule);
+  const [showRetention, setShowRetention] = useState(() => !!editingShare?.retentionPolicy);
+  const [showPatterns, setShowPatterns] = useState(() => !!editingShare?.includeExcludeRules);
 
   // Validation
   const [touched, setTouched] = useState<Record<string, boolean>>({});
@@ -92,26 +92,7 @@ export function AddShareDialog({ open, onClose, device, onCreated, editingShare 
     setError(null);
   };
 
-  useEffect(() => {
-    if (editingShare) {
-      setShareName(editingShare.name);
-      setSharePath(editingShare.path);
-      setSchedule(editingShare.schedule?.cronExpression || '');
-      setRetentionLatest(editingShare.retentionPolicy?.keepLatest?.toString() || '');
-      setRetentionDaily(editingShare.retentionPolicy?.keepDaily?.toString() || '');
-      setRetentionWeekly(editingShare.retentionPolicy?.keepWeekly?.toString() || '');
-      setRetentionMonthly(editingShare.retentionPolicy?.keepMonthly?.toString() || '');
-      setRetentionYearly(editingShare.retentionPolicy?.keepYearly?.toString() || '');
-      // Note: Backend uses excludePatterns, not includePatterns
-      setIncludePatterns(''); // Not used in backend - keeping for future enhancement
-      setExcludePatterns(editingShare.includeExcludeRules?.excludePatterns?.join('\n') || '');
-      setShowSchedule(!!editingShare.schedule);
-      setShowRetention(!!editingShare.retentionPolicy);
-      setShowPatterns(!!editingShare.includeExcludeRules);
-    } else {
-      resetForm();
-    }
-  }, [editingShare]);
+  // Note: When editingShare changes, we re-mount the dialog to reinitialize state
 
   if (!device) return null;
 
@@ -242,15 +223,14 @@ export function AddShareDialog({ open, onClose, device, onCreated, editingShare 
       resetForm();
       onCreated?.();
       onClose();
-    } catch (err: any) {
-      // Extract error message from axios response or error object
-      let errorMsg = (isEditing ? 'Failed to update share' : 'Failed to create share');
-      if (err?.response?.data?.detail) {
-        errorMsg = err.response.data.detail;
-      } else if (err?.response?.data?.error) {
-        errorMsg = err.response.data.error;
-      } else if (err?.message) {
-        errorMsg = err.message;
+    } catch (err) {
+      let errorMsg = isEditing ? 'Failed to update share' : 'Failed to create share';
+      if (err && typeof err === 'object') {
+        const maybeResponse = (err as { response?: { data?: { detail?: string; error?: string } } }).response;
+        errorMsg = maybeResponse?.data?.detail
+          || maybeResponse?.data?.error
+          || (err as { message?: string }).message
+          || errorMsg;
       }
       setError(errorMsg);
     }
@@ -273,7 +253,7 @@ export function AddShareDialog({ open, onClose, device, onCreated, editingShare 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-2xl bg-white rounded-lg shadow-xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div key={editingShare?.id ?? 'new'} className="w-full max-w-2xl bg-white rounded-lg shadow-xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="border-b border-gray-200 px-6 py-4 flex items-start justify-between">
           <div>

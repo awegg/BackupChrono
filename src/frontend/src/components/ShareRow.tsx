@@ -1,4 +1,4 @@
-﻿﻿import { Folder, Play, Settings, Trash2 } from 'lucide-react';
+﻿﻿import { Folder, FolderOpen, Play, Settings, Trash2 } from 'lucide-react';
 import { Share } from '../types/devices';
 import { formatTimestamp } from '../utils/timeFormat';
 
@@ -11,7 +11,7 @@ interface ShareRowProps {
   onDelete: (shareId: string) => void;
 }
 
-export function ShareRow({ share, onToggle, onStartBackup, onViewBackups: _onViewBackups, onEdit, onDelete }: ShareRowProps) {
+export function ShareRow({ share, onToggle, onStartBackup, onViewBackups, onEdit, onDelete }: ShareRowProps) {
   return (
     <div className="flex items-center gap-4 py-3 px-4 hover:bg-muted/30 rounded-md transition-colors group">
       <Folder className="w-4 h-4 text-muted-foreground flex-shrink-0" />
@@ -39,6 +39,13 @@ export function ShareRow({ share, onToggle, onStartBackup, onViewBackups: _onVie
           title="Edit share"
         >
           <Settings className="w-4 h-4 text-muted-foreground" />
+        </button>
+        <button
+          onClick={() => onViewBackups(share.id)}
+          className="p-1.5 hover:bg-muted rounded-md transition-colors"
+          title="View backups"
+        >
+          <FolderOpen className="w-4 h-4 text-muted-foreground" />
         </button>
         <button
           onClick={() => onDelete(share.id)}

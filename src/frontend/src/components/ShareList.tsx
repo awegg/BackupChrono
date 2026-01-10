@@ -20,7 +20,7 @@ export function ShareList({ deviceId, shares, onShareUpdated, onAddShare }: Shar
     try {
       await shareService.deleteShare(deviceId, shareId);
       onShareUpdated();
-    } catch (error) {
+    } catch {
       alert('Failed to delete share');
     }
   };
@@ -32,7 +32,7 @@ export function ShareList({ deviceId, shares, onShareUpdated, onAddShare }: Shar
         enabled: !share.enabled
       });
       onShareUpdated();
-    } catch (error) {
+    } catch {
       alert('Failed to toggle share');
     }
   };
