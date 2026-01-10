@@ -1,5 +1,5 @@
 ﻿import { apiClient } from './api';
-import { BackupJob, Backup, BackupStatus } from '../types';
+import { BackupJob, Backup, BackupStatus, DashboardSummaryDto } from '../types';
 
 export interface DashboardStats {
   activeJobs: number;
@@ -11,29 +11,34 @@ export interface DashboardStats {
 }
 
 export const dashboardService = {
+  async getSummary(): Promise<DashboardSummaryDto> {
+    const response = await apiClient.get<DashboardSummaryDto>('/api/dashboard/summary');
+    return response.data;
+  },
+
   async getStats(): Promise<DashboardStats> {
     // TODO: Replace with actual API endpoint when available
     // For now, calculate from available endpoints
     try {
       const jobs = await this.getActiveJobs();
       const recentBackups = await this.getRecentBackups();
-      
+
       const activeJobs = jobs.filter(j => j.status === 'Running').length;
       const queuedJobs = jobs.filter(j => j.status === 'Pending').length;
-      const completedToday = recentBackups.filter(b => 
-        b.status === 'Success' && 
+      const completedToday = recentBackups.filter(b =>
+        b.status === 'Success' &&
         new Date(b.timestamp).toDateString() === new Date().toDateString()
       ).length;
-      const failedToday = recentBackups.filter(b => 
-        b.status === 'Failed' && 
+      const failedToday = recentBackups.filter(b =>
+        b.status === 'Failed' &&
         new Date(b.timestamp).toDateString() === new Date().toDateString()
       ).length;
-      
+
       // Calculate total data transferred today
       const totalBytesToday = recentBackups
         .filter(b => new Date(b.timestamp).toDateString() === new Date().toDateString())
         .reduce((sum, b) => sum + (b.dataAdded || 0), 0);
-      
+
       // Calculate average speed from active jobs
       const runningJobs = jobs.filter(j => j.status === 'Running' && j.bytesTransferred && j.startedAt);
       const avgSpeedMBs = runningJobs
@@ -42,7 +47,7 @@ export const dashboardService = {
           return elapsed > 0 ? (j.bytesTransferred! / elapsed / 1024 / 1024) : 0;
         })
         .reduce((sum, speed) => sum + speed, 0) / Math.max(runningJobs.length, 1);
-      
+
       return {
         activeJobs,
         queuedJobs,
@@ -66,7 +71,7 @@ export const dashboardService = {
 
   async getActiveJobs(): Promise<BackupJob[]> {
     const response = await apiClient.get<BackupJob[]>('/api/backup-jobs');
-    return response.data.filter(job => 
+    return response.data.filter(job =>
       job.status === 'Running' || job.status === 'Pending'
     );
   },
@@ -77,11 +82,11 @@ export const dashboardService = {
     const response = await apiClient.get<BackupJob[]>('/api/backup-jobs', {
       params: { limit: 100 } // Fetch more jobs to ensure we get completed ones
     });
-    
+
     // Filter for completed jobs (Success, Failed, Cancelled - not Running/Pending)
     const completedJobs = response.data
-      .filter(job => 
-        job.status !== 'Running' && 
+      .filter(job =>
+        job.status !== 'Running' &&
         job.status !== 'Pending'
       )
       .sort((a, b) => {
@@ -90,7 +95,7 @@ export const dashboardService = {
         return bTime - aTime;
       })
       .slice(0, limit);
-    
+
     // Map BackupJob to Backup format for the UI
     return completedJobs.map(job => {
       // Map BackupJobStatus to BackupStatus
@@ -102,7 +107,7 @@ export const dashboardService = {
       } else {
         backupStatus = BackupStatus.Failed; // Failed or Cancelled
       }
-      
+
       return {
         id: job.backupId || job.id,
         deviceId: job.deviceId,
@@ -117,7 +122,7 @@ export const dashboardService = {
         filesUnmodified: job.filesProcessed || 0,
         dataAdded: job.bytesTransferred || 0,
         dataProcessed: job.bytesTransferred || 0,
-        duration: job.completedAt && job.startedAt 
+        duration: job.completedAt && job.startedAt
           ? `${Math.floor((new Date(job.completedAt).getTime() - new Date(job.startedAt).getTime()) / 1000)}s`
           : '0s',
         errorMessage: job.errorMessage
@@ -137,11 +142,11 @@ export const dashboardService = {
     const start = new Date(startedAt).getTime();
     const end = completedAt ? new Date(completedAt).getTime() : new Date().getTime();
     const durationMs = end - start;
-    
+
     const seconds = Math.floor(durationMs / 1000);
     const minutes = Math.floor(seconds / 60);
     const hours = Math.floor(minutes / 60);
-    
+
     if (hours > 0) {
       return `${hours}h ${minutes % 60}m ${seconds % 60}s`;
     } else if (minutes > 0) {
@@ -153,13 +158,13 @@ export const dashboardService = {
 
   calculateETA(bytesTransferred: number, totalBytes: number, speed: number): string {
     if (speed === 0 || totalBytes === 0) return 'Unknown';
-    
+
     const remainingBytes = totalBytes - bytesTransferred;
     const secondsRemaining = remainingBytes / (speed * 1024 * 1024); // speed is in MB/s
-    
+
     const minutes = Math.floor(secondsRemaining / 60);
     const seconds = Math.floor(secondsRemaining % 60);
-    
+
     if (minutes > 0) {
       return `${minutes}m ${seconds}s`;
     } else {

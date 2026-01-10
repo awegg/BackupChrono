@@ -41,16 +41,16 @@ function App() {
           {/* Main Content */}
           <div className="flex-1 ml-64 min-h-screen bg-background">
             {signalRError && (
-              <ErrorNotification 
-                message={signalRError} 
+              <ErrorNotification
+                message={signalRError}
                 onClose={() => setSignalRError(null)}
               />
             )}
-            
+
             <main className="p-8 min-h-screen">
               <Routes>
-                <Route path="/overview" element={<BackupOverviewPage />} />
-                <Route path="/" element={<Dashboard />} />
+                <Route path="/" element={<BackupOverviewPage />} />
+                <Route path="/monitor" element={<Dashboard />} />
                 <Route path="/devices" element={<DevicesPage />} />
                 <Route path="/devices/:deviceId" element={<DeviceDetail />} />
                 <Route path="/devices/:deviceId/backups" element={<BackupsListPage />} />
