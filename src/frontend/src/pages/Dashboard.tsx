@@ -113,7 +113,7 @@ export default function Dashboard() {
     status: backup.status === BackupStatus.Success ? 'Success' as const : 'Warning' as const,
     duration: backup.duration || 'Unknown',
     dataTransferred: dashboardService.formatBytes(backup.dataAdded || 0),
-    completedAt: new Date(backup.timestamp).toLocaleTimeString(),
+    completedAt: new Date(backup.timestamp).toISOString(),
   }));
 
   const handleStopJob = async (jobId: string) => {

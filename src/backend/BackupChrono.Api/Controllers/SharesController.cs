@@ -130,10 +130,10 @@ public class SharesController : ControllerBase
     /// Update share
     /// </summary>
     [HttpPut("{shareId:guid}")]
-    [ProducesResponseType(typeof(ShareDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ShareDetailDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<ShareDto>> UpdateShare(Guid deviceId, Guid shareId, [FromBody] ShareUpdateDto dto)
+    public async Task<ActionResult<ShareDetailDto>> UpdateShare(Guid deviceId, Guid shareId, [FromBody] ShareUpdateDto dto)
     {
         try
         {
@@ -146,7 +146,7 @@ public class SharesController : ControllerBase
             var oldSchedule = share.Schedule;
             _mappingService.ApplyUpdate(share, dto);
             var updated = await _shareService.UpdateShare(share);
-            var responseDto = _mappingService.ToShareDto(updated);
+            var responseDto = _mappingService.ToShareDetailDto(updated);
             
             // Update scheduler if schedule changed
             var scheduleChanged = (oldSchedule == null && updated.Schedule != null) ||

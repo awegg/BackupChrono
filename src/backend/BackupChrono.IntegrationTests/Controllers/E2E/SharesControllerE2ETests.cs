@@ -6,6 +6,7 @@ using BackupChrono.Infrastructure.Git;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using System.Net;
+using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 
@@ -153,6 +154,68 @@ public class SharesControllerE2ETests : IAsyncLifetime
         share!.Name.Should().Be("Updated");
         share.Path.Should().Be("/updated-path");
         share.Enabled.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task UpdateShare_WithSchedule_ReturnsScheduleInResponse()
+    {
+        // ARRANGE - Create device and share
+        var device = await CreateDeviceViaService($"schedule-device-{Guid.NewGuid()}", "SMB", "192.168.1.65");
+        var shareId = await CreateShareViaApi(device.Id, "ScheduledShare", "/data", true);
+
+        var updateDto = new ShareUpdateDto
+        {
+            Name = "ScheduledShare",
+            Path = "/data",
+            Enabled = true,
+            Schedule = new ScheduleDto
+            {
+                CronExpression = "*/10 * * * * ?"
+            }
+        };
+
+        var json = JsonSerializer.Serialize(updateDto);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        // ACT - Update share with schedule
+        var response = await _httpClient.PutAsync($"api/devices/{device.Id}/shares/{shareId}", content);
+
+        // ASSERT - Update successful and schedule is included in response
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        
+        var updatedShare = await response.Content.ReadFromJsonAsync<ShareDetailDto>();
+        updatedShare.Should().NotBeNull();
+        updatedShare!.Schedule.Should().NotBeNull("Schedule should be included in the response");
+        updatedShare.Schedule!.CronExpression.Should().Be("*/10 * * * * ?");
+    }
+
+    [Fact]
+    public async Task GetDevice_WithSharesContainingSchedule_ReturnsSharesWithSchedule()
+    {
+        // ARRANGE - Create device and share with schedule
+        var device = await CreateDeviceViaService($"device-with-schedule-{Guid.NewGuid()}", "SMB", "192.168.1.66");
+        var shareId = await CreateShareViaApi(device.Id, "ShareWithSchedule", "/data", true);
+
+        // Update share with schedule via service (to bypass API DTO mapping)
+        var share = await _shareService.GetShare(shareId);
+        share!.Schedule = new Schedule { CronExpression = "0 0 2 * * ?" };
+        await _shareService.UpdateShare(share);
+
+        // ACT - Get device (which includes its shares)
+        var response = await _httpClient.GetAsync($"api/devices/{device.Id}");
+
+        // ASSERT - Device and shares returned with schedule
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        
+        var deviceDto = await response.Content.ReadFromJsonAsync<DeviceDetailDto>();
+        deviceDto.Should().NotBeNull();
+        deviceDto!.Shares.Should().HaveCount(1);
+        
+        var shareDto = deviceDto.Shares.First();
+        shareDto.Should().BeAssignableTo<ShareDetailDto>("Shares in device detail should include schedule");
+        var detailDto = shareDto as ShareDetailDto;
+        detailDto!.Schedule.Should().NotBeNull("Share schedule should be included when fetching device");
+        detailDto.Schedule!.CronExpression.Should().Be("0 0 2 * * ?");
     }
 
     [Fact]

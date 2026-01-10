@@ -49,7 +49,8 @@ function App() {
 
             <main className="p-8 min-h-screen">
               <Routes>
-                <Route path="/" element={<BackupOverviewPage />} />
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/backups" element={<BackupOverviewPage />} />
                 <Route path="/monitor" element={<Dashboard />} />
                 <Route path="/devices" element={<DevicesPage />} />
                 <Route path="/devices/:deviceId" element={<DeviceDetail />} />

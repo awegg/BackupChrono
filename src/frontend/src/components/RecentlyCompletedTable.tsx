@@ -18,6 +18,39 @@ interface RecentlyCompletedTableProps {
   onViewLogs?: (backupId: string) => void;
 }
 
+const getRelativeTime = (dateString: string): string => {
+  try {
+    // Try to parse as ISO date first
+    let date = new Date(dateString);
+    
+    // If parsing failed or resulted in Invalid Date, try alternative formats
+    if (isNaN(date.getTime())) {
+      // Try parsing time-only format by appending today's date
+      const today = new Date().toISOString().split('T')[0];
+      date = new Date(`${today}T${dateString}`);
+    }
+    
+    // If still invalid, just return the string
+    if (isNaN(date.getTime())) {
+      return dateString;
+    }
+
+    const now = new Date();
+    const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+    if (seconds < 60) return 'just now';
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 7) return `${days}d ago`;
+    return date.toLocaleDateString();
+  } catch {
+    return dateString;
+  }
+};
+
 export function RecentlyCompletedTable({ backups, onViewLogs }: RecentlyCompletedTableProps) {
   const navigate = useNavigate();
 
@@ -116,7 +149,14 @@ export function RecentlyCompletedTable({ backups, onViewLogs }: RecentlyComplete
               </td>
               
               <td className="px-4 py-3">
-                <span className="text-sm text-muted-foreground">{backup.completedAt}</span>
+                <div className="group relative inline-block">
+                  <span className="text-sm text-muted-foreground cursor-help">
+                    {getRelativeTime(backup.completedAt)}
+                  </span>
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                    {new Date(backup.completedAt).toLocaleString()}
+                  </div>
+                </div>
               </td>
               
               <td className="px-4 py-3">

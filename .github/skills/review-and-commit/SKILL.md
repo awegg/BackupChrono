@@ -9,7 +9,9 @@ Automated workflow that executes pre-commit review and handles the commit proces
 
 ## Workflow
 
-### 1. Run Pre-Commit Review
+### 1. Run Pre-Commit Review (MANDATORY - DO NOT SKIP)
+
+**This step MUST be executed first before any other actions. Do not proceed to staging/committing without completing this step.**
 
 Execute the comprehensive pre-commit-review skill to analyze all changes:
 
@@ -23,6 +25,8 @@ This performs:
 - Specification alignment check
 - Architecture review
 - Security and maintainability assessment
+
+**CRITICAL:** Block commit if review is not performed. Report findings before proceeding.
 
 ### 2. Process Review Results
 
@@ -141,7 +145,13 @@ refactor(tests): improve test infrastructure
 
 ## Error Handling
 
-**Maximum retry attempts:** 3
+**STRICT WORKFLOW ENFORCEMENT:**
+- Review MUST be executed before staging/committing
+- If review is not performed, the workflow is invalid and must restart
+- Do not skip review steps regardless of perceived urgency
+- Block commits until review is complete
+
+**Maximum retry attempts for auto-fixes:** 3
 
 After 3 failed fix attempts:
 1. Report all issues that couldn't be auto-fixed
