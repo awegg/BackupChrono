@@ -159,3 +159,6 @@ export interface RestoreRequest {
   includePaths?: string[];
   restoreToSource?: boolean;
 }
+
+export * from './dashboard';
+

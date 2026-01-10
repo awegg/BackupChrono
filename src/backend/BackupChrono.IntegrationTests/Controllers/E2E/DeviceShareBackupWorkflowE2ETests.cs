@@ -67,7 +67,7 @@ public class DeviceShareBackupWorkflowE2ETests : IClassFixture<BackupChronoE2EWe
             Enabled = true,
             Schedule = new ScheduleDto
             {
-                CronExpression = "0 2 * * *"
+                CronExpression = "0 0 2 * * ?" // Quartz format: at 2 AM daily
             }
         };
 
@@ -99,7 +99,11 @@ public class DeviceShareBackupWorkflowE2ETests : IClassFixture<BackupChronoE2EWe
         };
 
         var triggerBackupResponse = await _client.PostAsJsonAsync("/api/backup-jobs", triggerBackupDto);
-        triggerBackupResponse.StatusCode.Should().Be(HttpStatusCode.Accepted);
+        if (triggerBackupResponse.StatusCode != HttpStatusCode.Accepted)
+        {
+            var error = await triggerBackupResponse.Content.ReadFromJsonAsync<ErrorResponse>();
+            throw new Exception($"Failed to trigger backup. Status: {triggerBackupResponse.StatusCode}. Error: {error?.Error}. Detail: {error?.Detail}. Type: {error?.Type}");
+        }
         
         var triggerResult = await triggerBackupResponse.Content.ReadFromJsonAsync<TriggerBackupResponse>();
         triggerResult.Should().NotBeNull();
@@ -113,7 +117,11 @@ public class DeviceShareBackupWorkflowE2ETests : IClassFixture<BackupChronoE2EWe
         };
 
         var triggerDeviceBackupResponse = await _client.PostAsJsonAsync("/api/backup-jobs", triggerDeviceBackupDto);
-        triggerDeviceBackupResponse.StatusCode.Should().Be(HttpStatusCode.Accepted);
+        if (triggerDeviceBackupResponse.StatusCode != HttpStatusCode.Accepted)
+        {
+            var error = await triggerDeviceBackupResponse.Content.ReadFromJsonAsync<ErrorResponse>();
+            throw new Exception($"Failed to trigger device backup. Status: {triggerDeviceBackupResponse.StatusCode}. Error: {error?.Error}. Detail: {error?.Detail}. Type: {error?.Type}");
+        }
 
         // Step 7: Delete the Share
         var deleteShareResponse = await _client.DeleteAsync($"/api/devices/{deviceId}/shares/{shareId}");
@@ -170,7 +178,7 @@ public class DeviceShareBackupWorkflowE2ETests : IClassFixture<BackupChronoE2EWe
             Name = "documents",
             Path = "/home/user/documents",
             Enabled = true,
-            Schedule = new ScheduleDto { CronExpression = "0 3 * * *" }
+            Schedule = new ScheduleDto { CronExpression = "0 0 3 * * ?" } // Quartz format: at 3 AM daily
         };
 
         var share2Dto = new ShareCreateDto
@@ -178,7 +186,7 @@ public class DeviceShareBackupWorkflowE2ETests : IClassFixture<BackupChronoE2EWe
             Name = "photos",
             Path = "/home/user/photos",
             Enabled = true,
-            Schedule = new ScheduleDto { CronExpression = "0 4 * * *" }
+            Schedule = new ScheduleDto { CronExpression = "0 0 4 * * ?" } // Quartz format: at 4 AM daily
         };
 
         var share3Dto = new ShareCreateDto
@@ -276,7 +284,7 @@ public class DeviceShareBackupWorkflowE2ETests : IClassFixture<BackupChronoE2EWe
             Name = "updated-share",
             Path = "/data/updated",
             Enabled = true,
-            Schedule = new ScheduleDto { CronExpression = "0 5 * * *" }
+            Schedule = new ScheduleDto { CronExpression = "0 0 5 * * ?" } // Quartz format: at 5 AM daily
         };
 
         var updateResponse = await _client.PutAsJsonAsync($"/api/devices/{device.Id}/shares/{share!.Id}", updateDto);

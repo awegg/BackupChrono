@@ -24,7 +24,7 @@ public class BackupJobsControllerE2ETests : IClassFixture<BackupChronoE2EWebAppl
         // Arrange - Create a device first
         var deviceRequest = new DeviceCreateDto
         {
-            Name = "TestDevice-BackupTrigger",
+            Name = "TestDevice-BackupTrigger-" + Guid.NewGuid().ToString("N"),
             Host = "192.168.1.100",
             Port = 445,
             Protocol = "SMB",
@@ -63,7 +63,7 @@ public class BackupJobsControllerE2ETests : IClassFixture<BackupChronoE2EWebAppl
         // Arrange - Create a device and share first
         var deviceRequest = new DeviceCreateDto
         {
-            Name = "TestDevice-ShareBackupTrigger",
+            Name = "TestDevice-ShareBackupTrigger-" + Guid.NewGuid().ToString("N"),
             Host = "192.168.1.101",
             Port = 445,
             Protocol = "SMB",
@@ -134,7 +134,7 @@ public class BackupJobsControllerE2ETests : IClassFixture<BackupChronoE2EWebAppl
         // Arrange - Create a device
         var deviceRequest = new DeviceCreateDto
         {
-            Name = "TestDevice-Concurrent",
+            Name = "TestDevice-Concurrent-" + Guid.NewGuid().ToString("N"),
             Host = "192.168.1.102",
             Port = 445,
             Protocol = "SMB",
@@ -173,7 +173,7 @@ public class BackupJobsControllerE2ETests : IClassFixture<BackupChronoE2EWebAppl
         // Arrange - Create a device with no enabled shares
         var deviceRequest = new DeviceCreateDto
         {
-            Name = "TestDevice-NoShares",
+            Name = "TestDevice-NoShares-" + Guid.NewGuid().ToString("N"),
             Host = "192.168.1.103",
             Port = 445,
             Protocol = "SMB",

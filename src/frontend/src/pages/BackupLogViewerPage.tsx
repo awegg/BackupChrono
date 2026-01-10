@@ -1,7 +1,7 @@
 import { Download, Copy, ChevronDown, ChevronRight, AlertTriangle, CheckCircle2, XCircle, Clock, FileText, HardDrive, ArrowLeft, TrendingUp, FolderOpen } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
-import { AxiosError } from 'axios';
+import { isAxiosError } from 'axios';
 import { getBackupDetail, getBackupLogs } from '../services/backupsApi';
 import { BackupLogData } from '../types/backupLogs';
 
@@ -163,12 +163,17 @@ export function BackupLogViewerPage() {
         if (!isCancelled) {
           setLogData(mergeBackupData(detail as BackupDetail, logs as BackupLogs));
         }
-      } catch (err: any) {
+      } catch (err) {
         if (!isCancelled) {
-          const axiosErr = err as AxiosError<{ error?: string; detail?: string }>;
-          const detail = axiosErr.response?.data?.detail;
-          const friendly = detail || axiosErr.response?.data?.error || axiosErr.message;
-          setError(friendly ?? 'Failed to load backup logs');
+          if (isAxiosError<{ error?: string; detail?: string }>(err)) {
+            const detail = err.response?.data?.detail;
+            const friendly = detail || err.response?.data?.error || err.message;
+            setError(friendly ?? 'Failed to load backup logs');
+          } else if (err instanceof Error) {
+            setError(err.message);
+          } else {
+            setError('Failed to load backup logs');
+          }
         }
       } finally {
         if (!isCancelled) {

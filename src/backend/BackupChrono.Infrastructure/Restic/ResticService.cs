@@ -29,7 +29,8 @@ public class ResticService : IResticService
             await _client.ExecuteCommand(new[] { "init" }, repositoryPathOverride: repositoryPath);
             return true;
         }
-        catch (Exception ex) when (ex.Message.Contains("already initialized"))
+        catch (Exception ex) when (ex.Message.Contains("already initialized") || 
+                                     ex.Message.Contains("config file already exists"))
         {
             // Repository already exists, which is acceptable
             return false;

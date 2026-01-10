@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import cronstrue from 'cronstrue';
 import { ShareCreateDto, Schedule, RetentionPolicy } from '../types';
 import { shareService } from '../services/deviceService';
 
@@ -46,25 +47,25 @@ const getDeviceConfig = (device: DeviceLike) => ({
 });
 
 export function AddShareDialog({ open, onClose, device, onCreated, editingShare }: AddShareDialogProps) {
-  // Basic fields
-  const [shareName, setShareName] = useState('');
-  const [sharePath, setSharePath] = useState('');
+  // Basic fields (initialize from editingShare if present)
+  const [shareName, setShareName] = useState(() => editingShare?.name ?? '');
+  const [sharePath, setSharePath] = useState(() => editingShare?.path ?? '');
   const [description, setDescription] = useState('');
 
   // Configuration overrides
-  const [schedule, setSchedule] = useState('');
-  const [retentionLatest, setRetentionLatest] = useState('');
-  const [retentionDaily, setRetentionDaily] = useState('');
-  const [retentionWeekly, setRetentionWeekly] = useState('');
-  const [retentionMonthly, setRetentionMonthly] = useState('');
-  const [retentionYearly, setRetentionYearly] = useState('');
-  const [includePatterns, setIncludePatterns] = useState('');
-  const [excludePatterns, setExcludePatterns] = useState('');
+  const [schedule, setSchedule] = useState(() => editingShare?.schedule?.cronExpression ?? '');
+  const [retentionLatest, setRetentionLatest] = useState(() => editingShare?.retentionPolicy?.keepLatest?.toString() ?? '');
+  const [retentionDaily, setRetentionDaily] = useState(() => editingShare?.retentionPolicy?.keepDaily?.toString() ?? '');
+  const [retentionWeekly, setRetentionWeekly] = useState(() => editingShare?.retentionPolicy?.keepWeekly?.toString() ?? '');
+  const [retentionMonthly, setRetentionMonthly] = useState(() => editingShare?.retentionPolicy?.keepMonthly?.toString() ?? '');
+  const [retentionYearly, setRetentionYearly] = useState(() => editingShare?.retentionPolicy?.keepYearly?.toString() ?? '');
+  const [includePatterns, setIncludePatterns] = useState(() => '');
+  const [excludePatterns, setExcludePatterns] = useState(() => editingShare?.includeExcludeRules?.excludePatterns?.join('\n') ?? '');
 
   // Collapsible sections
-  const [showSchedule, setShowSchedule] = useState(false);
-  const [showRetention, setShowRetention] = useState(false);
-  const [showPatterns, setShowPatterns] = useState(false);
+  const [showSchedule, setShowSchedule] = useState(() => !!editingShare?.schedule);
+  const [showRetention, setShowRetention] = useState(() => !!editingShare?.retentionPolicy);
+  const [showPatterns, setShowPatterns] = useState(() => !!editingShare?.includeExcludeRules);
 
   // Validation
   const [touched, setTouched] = useState<Record<string, boolean>>({});
@@ -91,26 +92,7 @@ export function AddShareDialog({ open, onClose, device, onCreated, editingShare 
     setError(null);
   };
 
-  useEffect(() => {
-    if (editingShare) {
-      setShareName(editingShare.name);
-      setSharePath(editingShare.path);
-      setSchedule(editingShare.schedule?.cronExpression || '');
-      setRetentionLatest(editingShare.retentionPolicy?.keepLatest?.toString() || '');
-      setRetentionDaily(editingShare.retentionPolicy?.keepDaily?.toString() || '');
-      setRetentionWeekly(editingShare.retentionPolicy?.keepWeekly?.toString() || '');
-      setRetentionMonthly(editingShare.retentionPolicy?.keepMonthly?.toString() || '');
-      setRetentionYearly(editingShare.retentionPolicy?.keepYearly?.toString() || '');
-      // Note: Backend uses excludePatterns, not includePatterns
-      setIncludePatterns(''); // Not used in backend - keeping for future enhancement
-      setExcludePatterns(editingShare.includeExcludeRules?.excludePatterns?.join('\n') || '');
-      setShowSchedule(!!editingShare.schedule);
-      setShowRetention(!!editingShare.retentionPolicy);
-      setShowPatterns(!!editingShare.includeExcludeRules);
-    } else {
-      resetForm();
-    }
-  }, [editingShare]);
+  // Note: When editingShare changes, we re-mount the dialog to reinitialize state
 
   if (!device) return null;
 
@@ -130,19 +112,85 @@ export function AddShareDialog({ open, onClose, device, onCreated, editingShare 
     return '';
   };
 
+  const validateCronExpression = (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return '';
+
+    const parts = trimmed.split(/\s+/);
+    if (parts.length < 6 || parts.length > 7) return 'Use 6 or 7-part Quartz cron (sec min hour day month day-of-week [year])';
+
+    const secondsMinutes = /^([0-5]?\d|\*|\*\/[1-9]\d*|[0-5]?\d\/[1-9]\d*|[0-5]?\d-[0-5]?\d|([0-5]?\d,)+[0-5]?\d)$/;
+    const hours = /^([01]?\d|2[0-3]|\*|\*\/[1-9]\d*|([01]?\d|2[0-3])\/[1-9]\d*|([01]?\d|2[0-3])-([01]?\d|2[0-3])|(([01]?\d|2[0-3]),)+([01]?\d|2[0-3]))$/;
+    const dayOfMonth = /^([1-9]|[12]\d|3[01]|\*|\?|L|LW|L-[1-9]|[1-9]W|[12]\dW|3[01]W|([1-9]|[12]\d|3[01])-([1-9]|[12]\d|3[01])|([1-9]|[12]\d|3[01])\/[1-9]\d*|(([1-9]|[12]\d|3[01]),)+([1-9]|[12]\d|3[01]))$/;
+    const month = /^(1[0-2]|0?[1-9]|JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC|\*|\*\/[1-9]\d*|(1[0-2]|0?[1-9])-(1[0-2]|0?[1-9])|(1[0-2]|0?[1-9])\/[1-9]\d*|((1[0-2]|0?[1-9]),)+(1[0-2]|0?[1-9]))$/i;
+    const dayOfWeek = /^(SUN|MON|TUE|WED|THU|FRI|SAT|[0-6]|\?|\*|\*\/[1-9]\d*|[0-6]\/[1-9]\d*|[0-6]-[0-6]|(SUN|MON|TUE|WED|THU|FRI|SAT)-[0-6]|(SUN|MON|TUE|WED|THU|FRI|SAT)(,(SUN|MON|TUE|WED|THU|FRI|SAT|[0-6]))+|[0-6](,[0-6])+|[0-6]#[1-5]|L|LW)$/i;
+    const year = /^([12]\d{3}|\*|\*\/[1-9]\d*|[12]\d{3}\/[1-9]\d*|[12]\d{3}-[12]\d{3}|([12]\d{3},)+[12]\d{3})$/;
+
+    const [sec, min, hr, dom, mon, dow, yr] = parts;
+
+    if (!secondsMinutes.test(sec)) return 'Second field is invalid';
+    if (!secondsMinutes.test(min)) return 'Minute field is invalid';
+    if (!hours.test(hr)) return 'Hour field is invalid';
+    if (!dayOfMonth.test(dom)) return 'Day-of-month field is invalid';
+    if (!month.test(mon)) return 'Month field is invalid';
+    if (!dayOfWeek.test(dow)) return 'Day-of-week field is invalid';
+
+    if (yr && !year.test(yr)) return 'Year field is invalid';
+
+    // Quartz requires either day-of-month or day-of-week to be '?' (not both can be * or both specific)
+    const domSpecific = dom !== '*' && dom !== '?';
+    const dowSpecific = dow !== '*' && dow !== '?';
+    if (domSpecific && dowSpecific) return "Use '?' in day-of-month or day-of-week (only one can be specific)";
+    if (dom === '*' && dow === '*') return "Use '?' for day-of-week (cannot have both day-of-month and day-of-week as '*')";
+
+    return '';
+  };
+
+  const describeCron = (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return '';
+    
+    try {
+      // cronstrue expects 5-part standard cron; Quartz uses 6 parts (includes seconds)
+      // Convert Quartz (sec min hr dom mon dow [year]) to standard (min hr dom mon dow)
+      const parts = trimmed.split(/\s+/);
+      if (parts.length < 6) return '';
+      
+      // Skip seconds (first field), take min hr dom mon dow
+      // Normalize Quartz '?' to '*' for cronstrue compatibility
+      const standardCron = parts.slice(1, 6).map(p => p === '?' ? '*' : p).join(' ');
+      return cronstrue.toString(standardCron);
+    } catch {
+      return '';
+    }
+  };
+
+  // Compute validation errors for display (touched-gated)
   const validationErrors = {
     shareName: touched.shareName ? validateShareName(shareName) : '',
     sharePath: touched.sharePath ? validateSharePath(sharePath) : '',
+    schedule: touched.schedule ? validateCronExpression(schedule) : '',
   };
 
-  const isFormValid = shareName.trim() && sharePath.trim() && 
-                      !validationErrors.shareName && !validationErrors.sharePath;
+  // Compute raw validation for form validity (not touched-gated)
+  const rawErrors = {
+    shareName: validateShareName(shareName),
+    sharePath: validateSharePath(sharePath),
+    schedule: validateCronExpression(schedule),
+  };
+
+  const isFormValid = Boolean(
+    shareName.trim() && sharePath.trim() &&
+    !rawErrors.shareName && !rawErrors.sharePath && !rawErrors.schedule
+  );
+
+  const cronDescription = schedule && !validationErrors.schedule ? describeCron(schedule) : '';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!isFormValid) {
-      setTouched({ shareName: true, sharePath: true });
+      setTouched(prev => ({ ...prev, shareName: true, sharePath: true, schedule: !!schedule }));
       return;
     }
 
@@ -186,8 +234,16 @@ export function AddShareDialog({ open, onClose, device, onCreated, editingShare 
       resetForm();
       onCreated?.();
       onClose();
-    } catch (err: any) {
-      setError(err?.message || (isEditing ? 'Failed to update share' : 'Failed to create share'));
+    } catch (err) {
+      let errorMsg = isEditing ? 'Failed to update share' : 'Failed to create share';
+      if (err && typeof err === 'object') {
+        const maybeResponse = (err as { response?: { data?: { detail?: string; error?: string } } }).response;
+        errorMsg = maybeResponse?.data?.detail
+          || maybeResponse?.data?.error
+          || (err as { message?: string }).message
+          || errorMsg;
+      }
+      setError(errorMsg);
     }
   };
 
@@ -208,7 +264,7 @@ export function AddShareDialog({ open, onClose, device, onCreated, editingShare 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-2xl bg-white rounded-lg shadow-xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div key={editingShare?.id ?? 'new'} className="w-full max-w-2xl bg-white rounded-lg shadow-xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="border-b border-gray-200 px-6 py-4 flex items-start justify-between">
           <div>
@@ -319,10 +375,17 @@ export function AddShareDialog({ open, onClose, device, onCreated, editingShare 
                         type="text"
                         value={schedule}
                         onChange={(e) => setSchedule(e.target.value)}
+                        onBlur={() => setTouched(prev => ({ ...prev, schedule: true }))}
                         placeholder="Daily at 2:00 AM"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 font-mono focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className={`w-full px-3 py-2 border rounded-md text-sm text-gray-900 font-mono focus:ring-2 focus:border-transparent ${validationErrors.schedule ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'}`}
                       />
                       <p className="text-xs text-gray-500">Leave empty to use device schedule. Use cron expression format.</p>
+                      {cronDescription && !validationErrors.schedule && (
+                        <p className="text-xs text-gray-600">Meaning: {cronDescription}</p>
+                      )}
+                      {validationErrors.schedule && (
+                        <p className="text-xs text-red-600 mt-1">{validationErrors.schedule}</p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -486,6 +549,7 @@ export function AddShareDialog({ open, onClose, device, onCreated, editingShare 
                     </span>
                   </div>
                   <div className="text-gray-900 font-mono text-xs">{effectiveSchedule}</div>
+                  {cronDescription && <div className="text-xs text-gray-600 mt-0.5">{cronDescription}</div>}
                 </div>
 
                 {/* Retention */}
@@ -539,26 +603,25 @@ export function AddShareDialog({ open, onClose, device, onCreated, editingShare 
                 </div>
               </div>
             </div>
-          </form>
-        </div>
 
-        {/* Footer */}
-        <div className="border-t border-gray-200 px-6 py-4 flex items-center justify-between bg-gray-50">
-          <button
-            type="button"
-            onClick={() => { resetForm(); onClose(); }}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            onClick={handleSubmit}
-            disabled={!isFormValid}
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {editingShare ? 'Update Share' : 'Add Share'}
-          </button>
+            {/* Footer - moved inside form */}
+            <div className="border-t border-gray-200 px-0 py-4 flex items-center justify-between bg-gray-50 -mx-6 px-6 mt-6">
+              <button
+                type="button"
+                onClick={() => { resetForm(); onClose(); }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={!isFormValid}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {editingShare ? 'Update Share' : 'Add Share'}
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     </div>

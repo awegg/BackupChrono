@@ -41,7 +41,10 @@ public class BackupChronoWebApplicationFactory : WebApplicationFactory<Program>
                 d.ServiceType == typeof(IShareService) ||
                 d.ServiceType == typeof(IBackupOrchestrator) ||
                 d.ServiceType == typeof(IQuartzSchedulerService) ||
-                d.ServiceType == typeof(IBackupJobRepository)
+                d.ServiceType == typeof(IBackupJobRepository) ||
+                d.ServiceType == typeof(GitConfigService) ||
+                d.ServiceType == typeof(ResticClient) ||
+                d.ServiceType == typeof(IResticClient)
             ).ToList();
 
             foreach (var descriptor in descriptors)
@@ -59,6 +62,14 @@ public class BackupChronoWebApplicationFactory : WebApplicationFactory<Program>
             // Provide a real GitConfigService with test repository
             var gitConfig = new GitConfigService(_repositoryPath);
             services.AddSingleton(gitConfig);
+            
+            // Provide a real ResticClient
+            services.AddSingleton<ResticClient>(sp => 
+            {
+                var logger = sp.GetRequiredService<ILogger<ResticClient>>();
+                return new ResticClient("restic", _repositoryPath, "test-password", logger);
+            });
+            services.AddSingleton<IResticClient>(sp => sp.GetRequiredService<ResticClient>());
             
             // Provide a real BackupJobRepository with the mocked services
             services.AddSingleton<IBackupJobRepository>(sp =>

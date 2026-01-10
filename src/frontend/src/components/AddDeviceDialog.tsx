@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { deviceService } from '../services/deviceService';
 import {
   Device,
@@ -51,7 +51,7 @@ export function AddDeviceDialog({ open, onClose, onCreated, editingDeviceId }: A
   const [excludePatterns, setExcludePatterns] = useState('');
 
   const [submitting, setSubmitting] = useState(false);
-  const [testing, _setTesting] = useState(false);
+  const [testing] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showRetention, setShowRetention] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -81,6 +81,21 @@ export function AddDeviceDialog({ open, onClose, onCreated, editingDeviceId }: A
     setTouched({});
   };
 
+  const loadEditingDevice = useCallback(async () => {
+    if (!editingDeviceId) return;
+    setLoadingDevice(true);
+    setError(null);
+    try {
+      const device = await deviceService.getDevice(editingDeviceId);
+      populateFormFromDevice(device);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to load device';
+      setError(message);
+    } finally {
+      setLoadingDevice(false);
+    }
+  }, [editingDeviceId]);
+
   useEffect(() => {
     if (open) {
       if (isEditing && editingDeviceId) {
@@ -89,26 +104,12 @@ export function AddDeviceDialog({ open, onClose, onCreated, editingDeviceId }: A
         resetForm();
       }
     }
-  }, [open, editingDeviceId, isEditing]);
+  }, [open, editingDeviceId, isEditing, loadEditingDevice]);
   useEffect(() => {
     if (!port) {
       setPort(protocolDefaults[protocol].toString());
     }
   }, [protocol, port]);
-
-  const loadEditingDevice = async () => {
-    if (!editingDeviceId) return;
-    setLoadingDevice(true);
-    setError(null);
-    try {
-      const device = await deviceService.getDevice(editingDeviceId);
-      populateFormFromDevice(device);
-    } catch (err: any) {
-      setError(err?.message || 'Failed to load device');
-    } finally {
-      setLoadingDevice(false);
-    }
-  };
 
   const populateFormFromDevice = (device: Device) => {
     setDeviceName(device.name);
@@ -156,13 +157,13 @@ export function AddDeviceDialog({ open, onClose, onCreated, editingDeviceId }: A
     return '';
   };
 
-  const validateMac = (value: string) => {
+  const validateMac = useCallback((value: string) => {
     if (wolEnabled && !value.trim()) return 'MAC address is required when Wake-on-LAN is enabled';
     if (value.trim() && !/^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$/.test(value.trim())) {
       return 'Invalid MAC address format (use XX:XX:XX:XX:XX:XX)';
     }
     return '';
-  };
+  }, [wolEnabled]);
 
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
@@ -187,7 +188,7 @@ export function AddDeviceDialog({ open, onClose, onCreated, editingDeviceId }: A
       if (macError) errors.macAddress = macError;
     }
     return errors;
-  }, [deviceName, host, port, username, password, macAddress, wolEnabled, isEditing, touched]);
+  }, [deviceName, host, port, username, password, macAddress, isEditing, touched, validateMac]);
 
   const isFormValid = deviceName.trim() && host.trim() && username.trim() && (password.trim() || isEditing) && (!wolEnabled || macAddress.trim()) && Object.keys(validationErrors).length === 0;
 
@@ -263,7 +264,14 @@ export function AddDeviceDialog({ open, onClose, onCreated, editingDeviceId }: A
     }
     const finalPort = port.trim() ? Number.parseInt(port.trim(), 10) : protocolDefaults[protocol];
 
-    const payload: any = {
+    type DevicePayload = Omit<DeviceCreateDto, 'password'> & {
+      password?: string;
+      includeExcludeRules?: {
+        excludePatterns?: string[];
+      };
+    };
+
+    const payload: DevicePayload = {
       name: deviceName.trim(),
       protocol,
       host: host.trim(),
@@ -306,8 +314,9 @@ export function AddDeviceDialog({ open, onClose, onCreated, editingDeviceId }: A
       }
       onCreated?.();
       onClose();
-    } catch (err: any) {
-      setError(err?.message || 'Failed to save device');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to save device';
+      setError(message);
     } finally {
       setSubmitting(false);
     }

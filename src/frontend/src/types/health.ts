@@ -10,5 +10,5 @@ export interface HealthCheck {
   name: string;
   status: string; // "Healthy", "Warning", "Critical"
   message: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
 }

@@ -2,6 +2,7 @@ using System.Collections.Specialized;
 using System.Threading;
 using BackupChrono.Core.Entities;
 using BackupChrono.Core.Interfaces;
+using BackupChrono.Core.ValueObjects;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Quartz;
@@ -14,6 +15,7 @@ namespace BackupChrono.Infrastructure.Scheduling;
 /// </summary>
 public class QuartzSchedulerService : IQuartzSchedulerService
 {
+    internal IScheduler? Scheduler => _scheduler;
     private IScheduler? _scheduler;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<QuartzSchedulerService> _logger;
@@ -125,24 +127,62 @@ public class QuartzSchedulerService : IQuartzSchedulerService
 
         foreach (var device in devices)
         {
-            // Get all shares for this device
-            var shares = await shareService.ListShares(device.Id);
-
-            // Check if any share has its own schedule
-            var sharesWithSchedule = shares.Where(s => s.Enabled && s.Schedule != null).ToList();
-            var sharesWithoutSchedule = shares.Where(s => s.Enabled && s.Schedule == null).ToList();
-
-            // Schedule share-level backups for shares with their own schedules
-            foreach (var share in sharesWithSchedule)
+            try
             {
-                await ScheduleShareBackup(device, share, share.Schedule!);
+                // Get all shares for this device
+                var shares = await shareService.ListShares(device.Id);
+
+                // Check if any share has its own schedule
+                var sharesWithSchedule = shares.Where(s => s.Enabled && s.Schedule != null).ToList();
+                var sharesWithoutSchedule = shares.Where(s => s.Enabled && s.Schedule == null).ToList();
+
+                // Schedule share-level backups for shares with their own schedules
+                foreach (var share in sharesWithSchedule)
+                {
+                    try
+                    {
+                        // Normalize cron expression: convert * * to * ? to avoid Quartz errors
+                        // Create local normalized schedule instead of mutating the entity
+                        var normalizedCron = NormalizeCronExpression(share.Schedule!.CronExpression);
+                        var normalizedSchedule = new Schedule 
+                        { 
+                            CronExpression = normalizedCron,
+                            TimeWindowStart = share.Schedule.TimeWindowStart,
+                            TimeWindowEnd = share.Schedule.TimeWindowEnd
+                        };
+                        await ScheduleShareBackup(device, share, normalizedSchedule);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to schedule share {ShareId} for device {DeviceId}", share.Id, device.Id);
+                    }
+                }
+
+                // If device has a schedule and there are shares without individual schedules,
+                // schedule a device-level backup
+                if (device.Schedule != null && sharesWithoutSchedule.Any())
+                {
+                    try
+                    {
+                        var normalizedCron = NormalizeCronExpression(device.Schedule.CronExpression);
+                        // Create local normalized schedule instead of mutating the entity
+                        var normalizedSchedule = new Schedule
+                        {
+                            CronExpression = normalizedCron,
+                            TimeWindowStart = device.Schedule.TimeWindowStart,
+                            TimeWindowEnd = device.Schedule.TimeWindowEnd
+                        };
+                        await ScheduleDeviceBackup(device, normalizedSchedule);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to schedule device {DeviceId}", device.Id);
+                    }
+                }
             }
-
-            // If device has a schedule and there are shares without individual schedules,
-            // schedule a device-level backup
-            if (device.Schedule != null && sharesWithoutSchedule.Any())
+            catch (Exception ex)
             {
-                await ScheduleDeviceBackup(device, device.Schedule);
+                _logger.LogError(ex, "Unexpected error scheduling backups for device {DeviceId}", device.Id);
             }
         }
 
@@ -212,6 +252,24 @@ public class QuartzSchedulerService : IQuartzSchedulerService
             .Build();
 
         // Create trigger with cron schedule
+        if (string.IsNullOrWhiteSpace(schedule.CronExpression))
+        {
+            throw new ArgumentException("Cron expression cannot be null or empty", nameof(schedule));
+        }
+        
+        _logger.LogInformation("Scheduling share with cron expression: '{CronExpression}'", schedule.CronExpression);
+        
+        // Validate cron expression before scheduling
+        try
+        {
+            var cronExpr = new Quartz.CronExpression(schedule.CronExpression);
+        }
+        catch (FormatException ex)
+        {
+            _logger.LogWarning("Invalid cron expression '{CronExpression}': {Message}", schedule.CronExpression, ex.Message);
+            throw new ArgumentException($"Invalid cron expression: {ex.Message}", nameof(schedule), ex);
+        }
+        
         var trigger = TriggerBuilder.Create()
             .WithIdentity(triggerKey)
             .WithCronSchedule(schedule.CronExpression)
@@ -305,5 +363,28 @@ public class QuartzSchedulerService : IQuartzSchedulerService
         using var scope = _scopeFactory.CreateScope();
         var orchestrator = scope.ServiceProvider.GetRequiredService<IBackupOrchestrator>();
         await orchestrator.CancelJob(jobId);
+    }
+
+    /// <summary>
+    /// Normalize cron expression to fix Quartz compatibility issues.
+    /// Converts '* *' (both day-of-month and day-of-week as wildcards) to '* ?' 
+    /// since Quartz requires one to be '?'.
+    /// </summary>
+    private string NormalizeCronExpression(string cron)
+    {
+        if (string.IsNullOrWhiteSpace(cron)) return cron;
+        
+        var parts = cron.Split(' ');
+        if (parts.Length < 6) return cron;
+
+        // Check if day-of-month (index 3) and day-of-week (index 5) are both '*'
+        if (parts[3] == "*" && parts[5] == "*")
+        {
+            parts[5] = "?"; // Convert day-of-week to '?'
+            _logger.LogWarning("Normalized cron expression from '{Original}' to '{Normalized}'", cron, string.Join(" ", parts));
+            return string.Join(" ", parts);
+        }
+
+        return cron;
     }
 }

@@ -21,7 +21,7 @@ public class DeviceDetailDto : DeviceDto
     public ScheduleDto? Schedule { get; set; }
     public RetentionPolicyDto? RetentionPolicy { get; set; }
     public IncludeExcludeRulesDto? IncludeExcludeRules { get; set; }
-    public List<ShareDto> Shares { get; set; } = new();
+    public List<ShareDetailDto> Shares { get; set; } = new();
     public BackupDto? LastBackup { get; set; }
 }
 
@@ -84,6 +84,7 @@ public class DeviceUpdateDto
 
 public class ScheduleDto
 {
+    [Required]
     public string CronExpression { get; set; } = string.Empty;
     public TimeOnly? TimeWindowStart { get; set; }
     public TimeOnly? TimeWindowEnd { get; set; }
@@ -298,5 +299,6 @@ public class ErrorResponse
 {
     public string Error { get; set; } = string.Empty;
     public string? Detail { get; set; }
+    public string? Type { get; set; }
     public Dictionary<string, string[]>? ValidationErrors { get; set; }
 }

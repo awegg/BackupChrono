@@ -14,7 +14,31 @@ interface DeviceDto {
   updatedAt: string;
 }
 
+interface ScheduleDto {
+  cronExpression: string;
+  timeWindowStart?: string;
+  timeWindowEnd?: string;
+}
+
+interface RetentionPolicyDto {
+  keepLatest?: number;
+  keepDaily?: number;
+  keepWeekly?: number;
+  keepMonthly?: number;
+  keepYearly?: number;
+}
+
+interface IncludeExcludeRulesDto {
+  excludePatterns?: string[];
+  excludeRegex?: string[];
+  includeOnlyRegex?: string[];
+  excludeIfPresent?: string[];
+}
+
 interface DeviceDetailDto extends DeviceDto {
+  schedule?: ScheduleDto;
+  retentionPolicy?: RetentionPolicyDto;
+  includeExcludeRules?: IncludeExcludeRulesDto;
   shares: ShareDto[];
   lastBackup?: {
     timestamp: string;
@@ -28,6 +52,9 @@ interface ShareDto {
   name: string;
   path: string;
   enabled: boolean;
+  schedule?: ScheduleDto;
+  retentionPolicy?: RetentionPolicyDto;
+  includeExcludeRules?: IncludeExcludeRulesDto;
   createdAt: string;
   updatedAt: string;
 }
@@ -58,12 +85,18 @@ interface ShareCreateDto {
   name: string;
   path: string;
   enabled?: boolean;
+  schedule?: ScheduleDto;
+  retentionPolicy?: RetentionPolicyDto;
+  includeExcludeRules?: IncludeExcludeRulesDto;
 }
 
 interface ShareUpdateDto {
   name?: string;
   path?: string;
   enabled?: boolean;
+  schedule?: ScheduleDto | null;
+  retentionPolicy?: RetentionPolicyDto | null;
+  includeExcludeRules?: IncludeExcludeRulesDto | null;
 }
 
 const mapProtocol = (protocol: string): DeviceProtocol => {
@@ -84,6 +117,15 @@ const mapShare = (dto: ShareDto): Share => ({
   name: dto.name,
   path: dto.path,
   enabled: dto.enabled,
+  schedule: dto.schedule
+    ? {
+        cronExpression: dto.schedule.cronExpression,
+        timeWindowStart: dto.schedule.timeWindowStart,
+        timeWindowEnd: dto.schedule.timeWindowEnd,
+      }
+    : undefined,
+  retentionPolicy: dto.retentionPolicy,
+  includeExcludeRules: dto.includeExcludeRules,
   lastBackup: undefined, // TODO: Get actual backup timestamp from API
 });
 
@@ -108,6 +150,15 @@ const mapDevice = (dto: DeviceDetailDto): Device => {
     host: dto.host,
     protocol: mapProtocol(dto.protocol),
     status,
+    schedule: dto.schedule
+      ? {
+          cronExpression: dto.schedule.cronExpression,
+          timeWindowStart: dto.schedule.timeWindowStart,
+          timeWindowEnd: dto.schedule.timeWindowEnd,
+        }
+      : undefined,
+    retentionPolicy: dto.retentionPolicy,
+    includeExcludeRules: dto.includeExcludeRules,
     lastBackup: dto.lastBackup?.timestamp,
     shares: dto.shares.map(mapShare),
   };

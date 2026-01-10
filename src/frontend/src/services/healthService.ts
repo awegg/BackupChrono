@@ -11,7 +11,7 @@ export const healthService = {
     try {
       const response = await apiClient.get('/health', { timeout: 3000 });
       return response.status === 200;
-    } catch (error) {
+    } catch {
       return false;
     }
   },

@@ -12,7 +12,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [backendOffline, setBackendOffline] = useState(false);
-  const [lastUpdated, setLastUpdated] = useState(new Date().toLocaleTimeString());
+  const [lastUpdated, setLastUpdated] = useState(() => new Date().toLocaleTimeString());
   const lastUpdateTimeRef = useRef(Date.now());
   const [isConnected, setIsConnected] = useState(true);
   
@@ -57,7 +57,7 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    setLoading(true);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadDashboardData();
     
     // Refresh data every 5 seconds
@@ -113,7 +113,7 @@ export default function Dashboard() {
     status: backup.status === BackupStatus.Success ? 'Success' as const : 'Warning' as const,
     duration: backup.duration || 'Unknown',
     dataTransferred: dashboardService.formatBytes(backup.dataAdded || 0),
-    completedAt: new Date(backup.timestamp).toLocaleTimeString(),
+    completedAt: new Date(backup.timestamp).toISOString(),
   }));
 
   const handleStopJob = async (jobId: string) => {

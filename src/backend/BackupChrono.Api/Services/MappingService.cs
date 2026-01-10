@@ -65,7 +65,7 @@ public class MappingService : IMappingService
             Schedule = ToScheduleDto(device.Schedule),
             RetentionPolicy = ToRetentionPolicyDto(device.RetentionPolicy),
             IncludeExcludeRules = ToIncludeExcludeRulesDto(device.IncludeExcludeRules),
-            Shares = shares.Select(ToShareDto).ToList(),
+            Shares = shares.Select(s => ToShareDetailDto(s)).ToList(),
             LastBackup = lastBackup != null ? ToBackupDto(lastBackup) : null
         };
     }

@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Backup, FileEntry } from '../types';
 import { BackupsList } from '../components/BackupsList';
@@ -22,11 +22,8 @@ export const BackupBrowser: React.FC = () => {
   const [restoreCurrentFolderOnly, setRestoreCurrentFolderOnly] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [restoreSuccess, setRestoreSuccess] = useState<string | null>(null);
-  useEffect(() => {
-    loadBackups();
-  }, [deviceId]);
 
-  const loadBackups = async () => {
+  const loadBackups = useCallback(async () => {
     if (!deviceId) return;
     
     setLoading(true);
@@ -41,7 +38,11 @@ export const BackupBrowser: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [deviceId]);
+
+  useEffect(() => {
+    loadBackups();
+  }, [loadBackups]);
 
   const handleBackupSelect = async (backup: Backup) => {
     setSelectedBackup(backup);
@@ -132,7 +133,7 @@ export const BackupBrowser: React.FC = () => {
     setRestoreSuccess(null);
 
     try {
-      const payload: any = {
+      const payload: { targetPath: string; includePaths?: string[] } = {
         targetPath: restoreTargetPath.trim()
       };
 
@@ -153,10 +154,17 @@ export const BackupBrowser: React.FC = () => {
       setShowRestoreDialog(false);
       setRestoreTargetPath('');
       setRestoreCurrentFolderOnly(false);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error restoring backup:', err);
-      const errorMsg = err.response?.data?.detail || err.response?.data?.error || 'Failed to restore backup';
-      setError(errorMsg);
+      if (err instanceof Error) {
+        setError(err.message);
+      } else if (err && typeof err === 'object') {
+        const maybeResponse = (err as { response?: { data?: { detail?: string; error?: string } } }).response;
+        const errorMsg = maybeResponse?.data?.detail || maybeResponse?.data?.error || (err as { message?: string }).message || 'Failed to restore backup';
+        setError(errorMsg);
+      } else {
+        setError('Failed to restore backup');
+      }
     } finally {
       setRestoring(false);
     }

@@ -21,7 +21,7 @@ export default function DeviceForm({ device, onSuccess, onCancel }: DeviceFormPr
     wakeOnLanMacAddress: device?.wakeOnLanMacAddress,
   });
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<any>(null);
+  const [error, setError] = useState<unknown>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,7 +35,7 @@ export default function DeviceForm({ device, onSuccess, onCancel }: DeviceFormPr
         await deviceService.createDevice(formData);
       }
       onSuccess();
-    } catch (err: any) {
+    } catch (err) {
       setError(err);
     } finally {
       setSubmitting(false);
@@ -48,7 +48,7 @@ export default function DeviceForm({ device, onSuccess, onCancel }: DeviceFormPr
         {device ? 'Edit Device' : 'Create Device'}
       </h2>
       <form onSubmit={handleSubmit} className="space-y-4">
-        {error && <ErrorDisplay error={error} />}
+        {error !== null && <ErrorDisplay error={error as Error | string} />}
 
         <div>
         <label className="block text-sm font-medium mb-1">Name</label>

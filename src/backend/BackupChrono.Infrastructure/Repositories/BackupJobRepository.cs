@@ -37,6 +37,9 @@ public class BackupJobRepository : IBackupJobRepository
         var filePath = GetJobFilePath(job.Id);
         var directory = Path.GetDirectoryName(filePath) ?? _jobsDirectory;
         var tempPath = Path.Combine(directory, $"{job.Id}.tmp.{Guid.NewGuid():N}.yaml");
+
+        // Ensure the jobs directory exists at write-time (in case it was cleaned up)
+        Directory.CreateDirectory(directory);
         
         try
         {

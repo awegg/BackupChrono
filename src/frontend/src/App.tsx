@@ -1,4 +1,5 @@
 ﻿import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { LegacyFilesRedirect } from './components/LegacyFilesRedirect';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { signalRService } from './services/signalr';
@@ -41,21 +42,24 @@ function App() {
           {/* Main Content */}
           <div className="flex-1 ml-64 min-h-screen bg-background">
             {signalRError && (
-              <ErrorNotification 
-                message={signalRError} 
+              <ErrorNotification
+                message={signalRError}
                 onClose={() => setSignalRError(null)}
               />
             )}
-            
+
             <main className="p-8 min-h-screen">
               <Routes>
-                <Route path="/overview" element={<BackupOverviewPage />} />
                 <Route path="/" element={<Dashboard />} />
+                <Route path="/backups" element={<BackupOverviewPage />} />
+                <Route path="/monitor" element={<Dashboard />} />
                 <Route path="/devices" element={<DevicesPage />} />
                 <Route path="/devices/:deviceId" element={<DeviceDetail />} />
                 <Route path="/devices/:deviceId/backups" element={<BackupsListPage />} />
                 <Route path="/devices/:deviceId/backups/:backupId/browse" element={<FileBrowserPage />} />
                 <Route path="/backups/:backupId/browse" element={<FileBrowserPage />} />
+                {/* Legacy deep-link support */}
+                <Route path="/backups/:backupId/files" element={<LegacyFilesRedirect />} />
                 <Route path="/backups/:backupId/logs" element={<BackupLogViewerPage />} />
               </Routes>
             </main>

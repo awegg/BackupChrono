@@ -246,31 +246,25 @@ export const DeviceShareTable: React.FC<DeviceShareTableProps> = ({
   const handleLastBackupClick = async (deviceId: string, shareId: string) => {
     // Clicking on last backup timestamp browses the latest backup
     try {
-      // Fetch backups for this device to get the latest one
       const response = await fetch(`/api/devices/${deviceId}/backups`);
       
       if (!response.ok) {
         throw new Error(`Failed to fetch backups: ${response.statusText}`);
       }
       
-      const backups = await response.json();
+      type BackupSummary = { id: string; shareId?: string | null; timestamp: string };
+      const backups: BackupSummary[] = await response.json();
 
-      // Filter by shareId if available and get the most recent
-      const shareBackups = backups.filter((b: any) => !b.shareId || b.shareId === shareId);
+      const shareBackups = backups.filter((b) => !b.shareId || b.shareId === shareId);
       if (shareBackups.length > 0) {
-        // Sort by timestamp descending and get the latest
-        shareBackups.sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        shareBackups.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
         const latestBackup = shareBackups[0];
-        
-        // Navigate to browse the latest backup
         navigate(`/devices/${deviceId}/backups/${latestBackup.id}/browse?deviceId=${deviceId}&shareId=${shareId}`);
       } else {
-        // No backups found, navigate to backups list instead
         navigate(`/devices/${deviceId}/backups?shareId=${shareId}`);
       }
     } catch (error) {
       console.error('Error fetching latest backup:', error);
-      // Fall back to backups list
       navigate(`/devices/${deviceId}/backups?shareId=${shareId}`);
     }
   };

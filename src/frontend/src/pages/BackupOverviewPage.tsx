@@ -1,378 +1,380 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { RefreshCw, Search, Clock, Server } from 'lucide-react';
-import { SummaryCard } from '../components/SummaryCard';
-import { DeviceShareTable } from '../components/DeviceShareTable';
-import { BackupStatus } from '../data/mockBackupData';
-import { StatusBadge } from '../components/StatusBadge';
-import { ErrorDisplay } from '../components/ErrorDisplay';
-import { overviewService, DashboardSummary } from '../services/overviewService';
+import { useState, useEffect } from 'react';
+import {
+  Server,
+  HardDrive,
+  Activity,
+  AlertTriangle,
+  CheckCircle,
+  XCircle,
+  Clock,
+  Play,
+  FileText,
+  FolderOpen,
+  StopCircle,
+  RefreshCw,
+  Database,
+  History
+} from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { dashboardService } from '../services/dashboardService';
+import { backupService } from '../services/deviceService';
+import { DashboardSummaryDto } from '../types';
 
-type SortField = 'name' | 'lastBackup' | 'status' | 'size' | 'files';
-type SortDirection = 'asc' | 'desc';
+export function BackupOverviewPage() {
+  const [data, setData] = useState<DashboardSummaryDto | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [cancellingJobId, setCancellingJobId] = useState<string | null>(null);
 
-// Helper function to check if a backup is stale (>2 days old or never backed up)
-const isBackupStale = (lastBackup: Date | null): boolean => {
-  if (!lastBackup) return true; // Never backed up
-  const twoDaysAgo = new Date();
-  twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
-  return lastBackup < twoDaysAgo;
-};
-
-export const BackupOverviewPage: React.FC = () => {
-  const navigate = useNavigate();
-  const [data, setData] = React.useState<DashboardSummary | null>(null);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState<Error | null>(null);
-  const [lastUpdated, setLastUpdated] = React.useState(new Date());
-  const [searchQuery, setSearchQuery] = React.useState('');
-  const [statusFilter, setStatusFilter] = React.useState<BackupStatus | 'all' | 'stale'>('all');
-  const [sortField, setSortField] = React.useState<SortField>('name');
-  const [sortDirection, setSortDirection] = React.useState<SortDirection>('asc');
-  const [expandedDevices, setExpandedDevices] = React.useState<Set<string>>(new Set());
-
-  const fetchData = async () => {
+  const loadData = async () => {
     try {
-      setLoading(true);
       setError(null);
-      const overviewData = await overviewService.getOverviewData();
-      setData(overviewData);
-      setLastUpdated(new Date());
-      // Expand all devices by default
-      setExpandedDevices(new Set(overviewData.devices.map(d => d.id)));
+      const summary = await dashboardService.getSummary();
+      setData(summary);
     } catch (err) {
-      console.error('Error fetching overview data:', err);
-      setError(err as Error);
+      setError('Failed to load dashboard data');
+      console.error(err);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
-  React.useEffect(() => {
-    fetchData();
+  useEffect(() => {
+    loadData();
+    // Refresh every 10 seconds
+    const interval = setInterval(loadData, 10000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleRefresh = () => {
-    fetchData();
+    setRefreshing(true);
+    loadData();
   };
 
-  const handleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortDirection('asc');
+  const handleCancelJob = async (jobId: string) => {
+    if (!confirm('Are you sure you want to cancel this running job?')) return;
+
+    try {
+      setCancellingJobId(jobId);
+      await backupService.cancelJob(jobId);
+      // Wait a bit then refresh
+      setTimeout(handleRefresh, 1000);
+    } catch (err) {
+      alert('Failed to cancel job');
+      console.error(err);
+    } finally {
+      setCancellingJobId(null);
     }
   };
 
-  const handleStatusFilterClick = (status: BackupStatus | 'all' | 'stale') => {
-    setStatusFilter(statusFilter === status ? 'all' : status);
-  };
-
-  const handleCardClick = (filter: 'attention' | 'all' | 'failures') => {
-    if (filter === 'attention') {
-      setStatusFilter(statusFilter === 'Warning' ? 'all' : 'Warning');
-    } else if (filter === 'failures') {
-      setStatusFilter(statusFilter === 'Failed' ? 'all' : 'Failed');
-    } else {
-      setStatusFilter('all');
+  const handleTriggerBackup = async (deviceId: string, shareId: string) => {
+    try {
+      await backupService.triggerShareBackup(deviceId, shareId);
+      // Wait a bit then refresh
+      setTimeout(handleRefresh, 1000);
+    } catch (err) {
+      alert('Failed to trigger backup');
+      console.error(err);
     }
   };
 
-  const handleToggleDevice = (deviceId: string) => {
-    setExpandedDevices(prev => {
-      const next = new Set(prev);
-      if (next.has(deviceId)) {
-        next.delete(deviceId);
-      } else {
-        next.add(deviceId);
+  const formatBytes = (bytes: number) => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  };
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return 'Never';
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffHours = diffMs / (1000 * 60 * 60);
+
+    // Handle future dates (negative diffMs)
+    if (diffMs < 0) {
+      const absDiffMs = Math.abs(diffMs);
+      const absDiffHours = Math.abs(diffHours);
+      
+      if (absDiffHours < 24) {
+        if (absDiffHours < 1) return 'in ' + Math.round(absDiffMs / (1000 * 60)) + ' mins';
+        return 'in ' + Math.round(absDiffHours) + ' hours';
       }
-      return next;
-    });
+      return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    // If less than 24h ago, show relative time
+    if (diffHours < 24) {
+      if (diffHours < 1) return Math.round(diffMs / (1000 * 60)) + ' mins ago';
+      return Math.round(diffHours) + ' hours ago';
+    }
+    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  // Filter and sort devices
-  const filteredDevices = React.useMemo(() => {
-    if (!data) return [];
-    
-    let filtered = data.devices.map(device => {
-      // Filter shares within each device
-      const filteredShares = device.shares.filter(share => {
-        const matchesSearch = searchQuery === '' || 
-          share.path.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          device.name.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesStatus = statusFilter === 'all' || 
-                             share.status === statusFilter ||
-                             (statusFilter === 'stale' && isBackupStale(share.lastBackup));
-        return matchesSearch && matchesStatus;
-      });
-
-      return { ...device, shares: filteredShares };
-    }).filter(device => {
-      // Keep device if it has matching shares or if the device itself matches search
-      const deviceMatchesSearch = searchQuery === '' || 
-        device.name.toLowerCase().includes(searchQuery.toLowerCase());
-      return device.shares.length > 0 || (deviceMatchesSearch && statusFilter === 'all');
-    });
-
-    // Sort shares within each device
-    filtered = filtered.map(device => {
-      const sortedShares = [...device.shares].sort((a, b) => {
-        let comparison = 0;
-        switch (sortField) {
-          case 'name':
-            comparison = a.path.localeCompare(b.path);
-            break;
-          case 'lastBackup': {
-            const aTime = a.lastBackup?.getTime() ?? 0;
-            const bTime = b.lastBackup?.getTime() ?? 0;
-            comparison = aTime - bTime;
-            break;
-          }
-          case 'status':
-            comparison = a.status.localeCompare(b.status);
-            break;
-          case 'size':
-            comparison = a.sizeGB - b.sizeGB;
-            break;
-          case 'files':
-            comparison = a.fileCount - b.fileCount;
-            break;
-        }
-        return sortDirection === 'asc' ? comparison : -comparison;
-      });      return { ...device, shares: sortedShares };
-    });
-
-    return filtered;
-  }, [data, searchQuery, statusFilter, sortField, sortDirection]);
-
-  const formattedLastUpdated = lastUpdated.toLocaleString('en-US', {
-    month: 'numeric',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  });
-
-  // Log for debugging (prevents unused variable warning)
-  React.useEffect(() => {
-    console.debug('Last updated:', formattedLastUpdated);
-  }, [formattedLastUpdated]);
-
-  const hasNoDevices = data?.devices.length === 0;
-  const hasNoResults = filteredDevices.length === 0 && !hasNoDevices;
-
-  const statusCounts = React.useMemo(() => {
-    if (!data) return { Success: 0, Failed: 0, Running: 0, Warning: 0, Disabled: 0, Partial: 0 };
-    
-    const counts: Record<BackupStatus, number> = {
-      Success: 0,
-      Failed: 0,
-      Running: 0,
-      Warning: 0,
-      Disabled: 0,
-      Partial: 0,
-    };
-    data.devices.forEach(device => {
-      device.shares.forEach(share => {
-        counts[share.status]++;
-      });
-    });
-    return counts;
-  }, [data]);
-
-  // Calculate stale backups count (>2 days or never backed up)
-  const staleCount = React.useMemo(() => {
-    if (!data) return 0;
-    
-    let count = 0;
-    data.devices.forEach(device => {
-      device.shares.forEach(share => {
-        if (isBackupStale(share.lastBackup)) {
-          count++;
-        }
-      });
-    });
-    return count;
-  }, [data]);
+  if (loading && !data) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <RefreshCw className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-8 py-4">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-3xl font-semibold text-foreground">Backup Overview</h1>
-            <p className="text-muted-foreground mt-1">Operational dashboard showing all devices and shares</p>
-          </div>
-          <button
-            onClick={handleRefresh}
-            disabled={loading}
-            className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-foreground hover:text-primary transition-colors disabled:opacity-50"
-            title="Refresh data"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            <span>Refresh</span>
-          </button>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Backup Overview</h1>
+          <p className="text-muted-foreground">System status and backup summary</p>
         </div>
-
-        {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Search devices or shares..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg text-sm text-slate-900 dark:text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
+        <button
+          onClick={handleRefresh}
+          className="p-2 hover:bg-accent rounded-full transition-colors"
+          disabled={refreshing}
+        >
+          <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
+        </button>
       </div>
 
-      {/* Main Content */}
-      <div className="px-8 py-4">
-        {/* Error Display */}
-        {error && (
-          <div className="mb-4">
-            <ErrorDisplay error={error} />
-          </div>
-        )}
+      {error && (
+        <div className="bg-destructive/10 border border-destructive text-destructive px-4 py-3 rounded-md flex items-center">
+          <AlertTriangle className="w-5 h-5 mr-2" />
+          {error}
+        </div>
+      )}
 
-        {/* Loading State */}
-        {loading && (
-          <div className="flex items-center justify-center min-h-[400px]">
-            <RefreshCw className="w-8 h-8 animate-spin text-slate-400" />
-          </div>
-        )}
-
-        {/* Content */}
-        {!loading && !error && data && (
-          <>
-            {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-              <SummaryCard
-                title="Devices Needing Attention"
-                value={data.devicesNeedingAttention}
-                subtitle="requiring action"
-                variant="warning"
-                onClick={() => handleCardClick('attention')}
-              />
-              <SummaryCard
-                title="Total Protected Data"
-                value={`${data.totalProtectedDataTB.toFixed(1)} TB`}
-                subtitle={`across ${data.devices.length} devices`}
-                variant="info"
-                onClick={() => handleCardClick('all')}
-              />
-              <SummaryCard
-                title="Recent Failures"
-                value={data.recentFailures}
-                subtitle="in last 24 hours"
-                variant="error"
-                onClick={() => handleCardClick('failures')}
-              />
+      {/* Stats Cards */}
+      {data && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="bg-card border rounded-xl p-4 shadow-sm">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Total Storage</p>
+                <h3 className="text-2xl font-bold mt-1">{formatBytes(data.stats.totalStoredBytes)}</h3>
+              </div>
+              <Database className="w-5 h-5 text-primary" />
             </div>
-
-            {/* Status Filter Badges */}
-            <div className="flex items-center gap-2 mb-4 flex-wrap">
-              <span className="text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">
-                Filter:
-              </span>
-              <button
-                onClick={() => handleStatusFilterClick('all')}
-                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                  statusFilter === 'all'
-                    ? 'bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-white'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
-                }`}
-              >
-                All ({data.devices.reduce((acc, d) => acc + d.shares.length, 0)})
-              </button>
-          {(['Success', 'Failed', 'Running', 'Warning', 'Partial', 'Disabled'] as BackupStatus[]).map(status => (
-            <button
-              key={status}
-              onClick={() => handleStatusFilterClick(status)}
-              className={`transition-opacity ${
-                statusFilter === status ? 'opacity-100' : 'opacity-50 hover:opacity-75'
-              }`}
-            >
-              <div className="flex items-center gap-1">
-                <StatusBadge status={status} />
-                <span className="text-xs text-slate-600 dark:text-slate-400">
-                  ({statusCounts[status]})
-                </span>
-              </div>
-            </button>
-          ))}
-          <button
-            onClick={() => handleStatusFilterClick('stale')}
-            className={`px-3 py-1 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 ${
-              statusFilter === 'stale'
-                ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 border-2 border-orange-500'
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 border-2 border-transparent'
-            }`}
-            title="Backups older than 2 days or never backed up"
-          >
-            <Clock className="w-3.5 h-3.5" />
-            <span>Stale ({staleCount})</span>
-          </button>
-            </div>
-
-            {/* Device/Share Table or Empty State */}
-            {hasNoDevices ? (
-              <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-12 text-center">
-                <div className="max-w-md mx-auto">
-                  <Server className="w-16 h-16 text-slate-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
-                    No Devices Found
-                  </h3>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 mb-6">
-                    Get started by adding your first backup device to begin monitoring your backups.
-                  </p>
-                  <button 
-                    onClick={() => navigate('/devices')}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
-                  >
-                    Add Device
-                  </button>
-                </div>
-              </div>
-            ) : hasNoResults ? (
-          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-12 text-center">
-            <div className="max-w-md mx-auto">
-              <div className="w-16 h-16 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Search className="w-8 h-8 text-slate-400" />
-              </div>
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
-                No results found
-              </h3>
-              <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-                No devices or shares match your current filters.
-              </p>
-              <button
-                onClick={() => {
-                  setSearchQuery('');
-                  setStatusFilter('all');
-                }}
-                className="px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-900 dark:text-white rounded-lg text-sm font-medium transition-colors"
-              >
-                Clear Filters
-              </button>
+            <div className={`mt-2 text-xs font-medium px-2 py-0.5 rounded-full inline-block ${data.stats.systemHealth === 'Healthy' ? 'bg-green-100 text-green-800' :
+              data.stats.systemHealth === 'Warning' ? 'bg-yellow-100 text-yellow-800' :
+                'bg-red-100 text-red-800'
+              }`}>
+              {data.stats.systemHealth}
             </div>
           </div>
-        ) : (
-          <DeviceShareTable
-            devices={filteredDevices}
-            sortField={sortField}
-            sortDirection={sortDirection}
-            onSort={handleSort}
-            expandedDevices={expandedDevices}
-            onToggleDevice={handleToggleDevice}
-          />
-        )}
-          </>
-        )}
+
+          <div className="bg-card border rounded-xl p-4 shadow-sm">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Devices / Shares</p>
+                <h3 className="text-2xl font-bold mt-1">{data.stats.totalDevices} / {data.stats.totalShares}</h3>
+              </div>
+              <Server className="w-5 h-5 text-blue-500" />
+            </div>
+          </div>
+
+          <div className="bg-card border rounded-xl p-4 shadow-sm">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Running Jobs</p>
+                <h3 className="text-2xl font-bold mt-1">{data.stats.runningJobs}</h3>
+              </div>
+              <Activity className={`w-5 h-5 ${data.stats.runningJobs > 0 ? 'text-blue-500 animate-pulse' : 'text-gray-400'}`} />
+            </div>
+          </div>
+
+          <div className="bg-card border rounded-xl p-4 shadow-sm">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Failures (24h)</p>
+                <h3 className="text-2xl font-bold mt-1">{data.stats.recentFailures}</h3>
+              </div>
+              <AlertTriangle className={`w-5 h-5 ${data.stats.recentFailures > 0 ? 'text-red-500' : 'text-gray-400'}`} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Host Summary Table */}
+      <div className="bg-card border rounded-xl shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b bg-muted/30">
+          <h2 className="font-semibold flex items-center">
+            <Server className="w-5 h-5 mr-2" />
+            Host Summary
+          </h2>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/50 text-muted-foreground text-left">
+              <tr>
+                <th className="px-6 py-3 font-medium">Host / Share</th>
+                <th className="px-6 py-3 font-medium">Status</th>
+                <th className="px-6 py-3 font-medium">Last Backup</th>
+                <th className="px-6 py-3 font-medium">Last Size</th>
+                <th className="px-6 py-3 font-medium">Next Run</th>
+                <th className="px-6 py-3 font-medium text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {data?.devices.map((device) => (
+                <>
+                  {/* Device Header Row */}
+                  <tr key={device.id} className="bg-muted/10 font-medium">
+                    <td className="px-6 py-3 flex items-center gap-2">
+                      {device.type === 'SMB' ? <FolderOpen className="w-4 h-4 text-orange-500" /> : <Server className="w-4 h-4 text-blue-500" />}
+                      <Link to={`/devices/${device.id}`} className="hover:underline">{device.name}</Link>
+                    </td>
+                    <td className="px-6 py-3" colSpan={5}>
+                      <span className="text-xs text-muted-foreground">Protocol: {device.type}</span>
+                    </td>
+                  </tr>
+
+                  {/* Share Rows */}
+                  {device.shares.map((share) => (
+                    <tr key={share.id} className="hover:bg-muted/5 group">
+                      <td className="px-6 py-3 pl-12 text-muted-foreground flex items-center gap-2">
+                        <HardDrive className="w-4 h-4" />
+                        <span className="truncate max-w-[200px]" title={share.name}>{share.name}</span>
+                      </td>
+                      <td className="px-6 py-3">
+                        <StatusBadge status={share.status} />
+                      </td>
+                      <td className="px-6 py-3 text-muted-foreground">
+                        <div className="flex flex-col">
+                          <span>{formatDate(share.lastBackupTime)}</span>
+                          {share.lastBackupId && (
+                            <span className="text-xs font-mono text-blue-500 cursor-pointer" title={share.lastBackupId}>
+                              {share.lastBackupId.substring(0, 8)}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-3 text-muted-foreground">
+                        {share.fileCount > 0 ? (
+                          <div className="flex flex-col">
+                            <span>{formatBytes(share.totalSize)}</span>
+                            <span className="text-xs">{share.fileCount} files</span>
+                          </div>
+                        ) : '0 B'}
+                      </td>
+                      <td className="px-6 py-3 text-muted-foreground">
+                        {share.nextBackupTime ? (
+                          <div className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {formatDate(share.nextBackupTime)}
+                          </div>
+                        ) : '-'}
+                      </td>
+                      <td className="px-6 py-3 text-right">
+                        <div className="flex justify-end gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                          {share.status === 'Running' ? (
+                            <button
+                              onClick={() => share.lastJobId && handleCancelJob(share.lastJobId)}
+                              className="p-1.5 text-red-500 hover:bg-red-50 rounded"
+                              title="Cancel Backup"
+                              disabled={cancellingJobId === share.lastJobId}
+                            >
+                              <StopCircle className={`w-4 h-4 ${cancellingJobId === share.lastJobId ? 'animate-pulse' : ''}`} />
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleTriggerBackup(device.id, share.id)}
+                              className="p-1.5 text-blue-500 hover:bg-blue-50 rounded"
+                              title="Backup Now"
+                            >
+                              <Play className="w-4 h-4" />
+                            </button>
+                          )}
+
+                          {share.lastBackupId && (
+                            <Link
+                              to={`/backups/${share.lastBackupId}/browse?deviceId=${device.id}&shareId=${share.id}`}
+                              className="p-1.5 text-gray-500 hover:bg-gray-100 rounded"
+                              title="Browse Latest Backup"
+                            >
+                              <FolderOpen className="w-4 h-4" />
+                            </Link>
+                          )}
+
+                          <Link
+                            to={`/devices/${device.id}/backups?shareId=${share.id}`}
+                            className="p-1.5 text-gray-500 hover:bg-gray-100 rounded"
+                            title="View All Backups"
+                          >
+                            <History className="w-4 h-4" />
+                          </Link>
+
+                          <Link
+                            to={`/devices/${device.id}`}
+                            className="p-1.5 text-gray-500 hover:bg-gray-100 rounded"
+                            title="View Device Details"
+                          >
+                            <FileText className="w-4 h-4" />
+                          </Link>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+
+                  {device.shares.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-3 pl-12 text-muted-foreground italic text-xs">
+                        No shares configured
+                      </td>
+                    </tr>
+                  )}
+                </>
+              ))}
+
+              {data?.devices.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-6 py-8 text-center text-muted-foreground">
+                    <div className="flex flex-col items-center">
+                      <Server className="w-8 h-8 opacity-20 mb-2" />
+                      No devices configured. <Link to="/devices" className="text-primary hover:underline">Add your first device</Link>.
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
-};
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const styles = {
+    Success: 'bg-green-100 text-green-700 border-green-200',
+    Failed: 'bg-red-100 text-red-700 border-red-200',
+    Running: 'bg-blue-100 text-blue-700 border-blue-200 animate-pulse',
+    Warning: 'bg-yellow-100 text-yellow-700 border-yellow-200',
+    Disabled: 'bg-gray-100 text-gray-500 border-gray-200',
+    Pending: 'bg-gray-50 text-gray-400 border-gray-100',
+    Unknown: 'bg-gray-50 text-gray-400 border-gray-100',
+  };
+
+  const icons = {
+    Success: CheckCircle,
+    Failed: XCircle,
+    Running: RefreshCw,
+    Warning: AlertTriangle,
+    Disabled: StopCircle,
+    Pending: Clock,
+    Unknown: Clock,
+  };
+
+  const style = styles[status as keyof typeof styles] || styles.Unknown;
+  const Icon = icons[status as keyof typeof icons] || icons.Unknown;
+
+  return (
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${style}`}>
+      <Icon className={`w-3 h-3 mr-1 ${status === 'Running' ? 'animate-spin' : ''}`} />
+      {status}
+    </span>
+  );
+}

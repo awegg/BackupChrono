@@ -218,7 +218,7 @@ public class BackupJobsControllerTests : IAsyncLifetime
             .ReturnsAsync(mockShare);
 
         // Save job to repository
-        var jobRepo = _factory.Services.GetRequiredService<IBackupJobRepository>();
+        var jobRepo = _factory.Server.Services.GetRequiredService<IBackupJobRepository>();
         await jobRepo.SaveJob(job);
 
         // Act
@@ -227,6 +227,7 @@ public class BackupJobsControllerTests : IAsyncLifetime
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var content = await response.Content.ReadAsStringAsync();
+        
         var jobs = JsonSerializer.Deserialize<List<BackupJobDto>>(content, new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true
@@ -268,7 +269,7 @@ public class BackupJobsControllerTests : IAsyncLifetime
         _factory.MockShareService.Setup(s => s.GetShare(shareId))
             .ReturnsAsync((Share?)null);
 
-        var jobRepo = _factory.Services.GetRequiredService<IBackupJobRepository>();
+        var jobRepo = _factory.Server.Services.GetRequiredService<IBackupJobRepository>();
         await jobRepo.SaveJob(job);
 
         // Act
@@ -325,7 +326,7 @@ public class BackupJobsControllerTests : IAsyncLifetime
         _factory.MockDeviceService.Setup(s => s.GetDevice(deviceId))
             .ReturnsAsync(mockDevice);
 
-        var jobRepo = _factory.Services.GetRequiredService<IBackupJobRepository>();
+        var jobRepo = _factory.Server.Services.GetRequiredService<IBackupJobRepository>();
         await jobRepo.SaveJob(job);
 
         // Act

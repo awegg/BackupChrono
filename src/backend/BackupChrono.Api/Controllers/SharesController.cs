@@ -12,17 +12,20 @@ public class SharesController : ControllerBase
     private readonly IDeviceService _deviceService;
     private readonly IShareService _shareService;
     private readonly IMappingService _mappingService;
+    private readonly IQuartzSchedulerService _schedulerService;
     private readonly ILogger<SharesController> _logger;
 
     public SharesController(
         IDeviceService deviceService,
         IShareService shareService,
         IMappingService mappingService,
+        IQuartzSchedulerService schedulerService,
         ILogger<SharesController> logger)
     {
         _deviceService = deviceService;
         _shareService = shareService;
         _mappingService = mappingService;
+        _schedulerService = schedulerService;
         _logger = logger;
     }
 
@@ -103,6 +106,12 @@ public class SharesController : ControllerBase
             var created = await _shareService.CreateShare(share);
             var responseDto = _mappingService.ToShareDto(created);
             
+            // Schedule backups if share has a schedule
+            if (created.Schedule != null)
+            {
+                await _schedulerService.ScheduleShareBackup(device, created, created.Schedule);
+            }
+            
             return CreatedAtAction(nameof(GetShare), new { deviceId, shareId = created.Id }, responseDto);
         }
         catch (InvalidOperationException ex)
@@ -121,10 +130,10 @@ public class SharesController : ControllerBase
     /// Update share
     /// </summary>
     [HttpPut("{shareId:guid}")]
-    [ProducesResponseType(typeof(ShareDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ShareDetailDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<ShareDto>> UpdateShare(Guid deviceId, Guid shareId, [FromBody] ShareUpdateDto dto)
+    public async Task<ActionResult<ShareDetailDto>> UpdateShare(Guid deviceId, Guid shareId, [FromBody] ShareUpdateDto dto)
     {
         try
         {
@@ -134,9 +143,31 @@ public class SharesController : ControllerBase
                 return NotFound(new ErrorResponse { Error = "Share not found", Detail = $"No share with ID {shareId} for device {deviceId}" });
             }
 
+            var oldSchedule = share.Schedule;
             _mappingService.ApplyUpdate(share, dto);
             var updated = await _shareService.UpdateShare(share);
-            var responseDto = _mappingService.ToShareDto(updated);
+            var responseDto = _mappingService.ToShareDetailDto(updated);
+            
+            // Update scheduler if schedule changed
+            var scheduleChanged = (oldSchedule == null && updated.Schedule != null) ||
+                                  (oldSchedule != null && updated.Schedule == null) ||
+                                  (oldSchedule != null && updated.Schedule != null && oldSchedule.CronExpression != updated.Schedule.CronExpression);
+            
+            if (scheduleChanged)
+            {
+                // Unschedule old job
+                await _schedulerService.UnscheduleShareBackup(shareId);
+                
+                // Schedule new job if schedule exists
+                if (updated.Schedule != null)
+                {
+                    var device = await _deviceService.GetDevice(deviceId);
+                    if (device != null)
+                    {
+                        await _schedulerService.ScheduleShareBackup(device, updated, updated.Schedule);
+                    }
+                }
+            }
             
             return Ok(responseDto);
         }
@@ -168,6 +199,9 @@ public class SharesController : ControllerBase
                 return NotFound(new ErrorResponse { Error = "Share not found", Detail = $"No share with ID {shareId} for device {deviceId}" });
             }
 
+            // Unschedule share backups
+            await _schedulerService.UnscheduleShareBackup(shareId);
+            
             await _shareService.DeleteShare(shareId);
             return NoContent();
         }

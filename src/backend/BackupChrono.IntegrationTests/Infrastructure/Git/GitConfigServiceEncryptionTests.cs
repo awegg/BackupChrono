@@ -87,7 +87,7 @@ public class GitConfigServiceEncryptionTests : IDisposable
             WakeOnLanMacAddress = "00:11:22:33:44:55",
             Schedule = new Schedule
             {
-                CronExpression = "0 2 * * *"
+                CronExpression = "0 0 2 * * ?" // Quartz format: at 2 AM daily
             },
             RetentionPolicy = new RetentionPolicy
             {

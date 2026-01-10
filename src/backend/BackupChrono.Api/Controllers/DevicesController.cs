@@ -16,6 +16,7 @@ public class DevicesController : ControllerBase
     private readonly IResticService _resticService;
     private readonly IBackupJobRepository _backupJobRepository;
     private readonly IMappingService _mappingService;
+    private readonly IQuartzSchedulerService _schedulerService;
     private readonly ILogger<DevicesController> _logger;
 
     public DevicesController(
@@ -24,6 +25,7 @@ public class DevicesController : ControllerBase
         IResticService resticService,
         IBackupJobRepository backupJobRepository,
         IMappingService mappingService,
+        IQuartzSchedulerService schedulerService,
         ILogger<DevicesController> logger)
     {
         _deviceService = deviceService;
@@ -31,6 +33,7 @@ public class DevicesController : ControllerBase
         _resticService = resticService;
         _backupJobRepository = backupJobRepository;
         _mappingService = mappingService;
+        _schedulerService = schedulerService;
         _logger = logger;
     }
 
@@ -97,6 +100,21 @@ public class DevicesController : ControllerBase
             var created = await _deviceService.CreateDevice(device);
             var responseDto = _mappingService.ToDeviceDto(created);
             
+            // Schedule backups if device has a schedule
+            if (created.Schedule != null)
+            {
+                try
+                {
+                    await _schedulerService.ScheduleDeviceBackup(created, created.Schedule);
+                }
+                catch (Exception scheduleEx)
+                {
+                    _logger.LogError(scheduleEx, "Failed to schedule device {DeviceId}, but device was created successfully", created.Id);
+                    // Device was created successfully, so return success but log the scheduling failure
+                    // The device can be manually triggered or rescheduled later
+                }
+            }
+            
             return CreatedAtAction(nameof(GetDevice), new { deviceId = created.Id }, responseDto);
         }
         catch (InvalidOperationException ex)
@@ -133,9 +151,30 @@ public class DevicesController : ControllerBase
                 return NotFound(new ErrorResponse { Error = "Device not found", Detail = $"No device with ID {deviceId}" });
             }
 
+            var oldSchedule = device.Schedule;
             _mappingService.ApplyUpdate(device, dto);
             var updated = await _deviceService.UpdateDevice(device);
             var responseDto = _mappingService.ToDeviceDto(updated);
+            
+            // Update scheduler if schedule changed (including time window)
+            var scheduleChanged = (oldSchedule == null && updated.Schedule != null) ||
+                                  (oldSchedule != null && updated.Schedule == null) ||
+                                  (oldSchedule != null && updated.Schedule != null && 
+                                   (oldSchedule.CronExpression != updated.Schedule.CronExpression ||
+                                    oldSchedule.TimeWindowStart != updated.Schedule.TimeWindowStart ||
+                                    oldSchedule.TimeWindowEnd != updated.Schedule.TimeWindowEnd));
+            
+            if (scheduleChanged)
+            {
+                // Unschedule old job
+                await _schedulerService.UnscheduleDeviceBackup(deviceId);
+                
+                // Schedule new job if schedule exists
+                if (updated.Schedule != null)
+                {
+                    await _schedulerService.ScheduleDeviceBackup(updated, updated.Schedule);
+                }
+            }
             
             return Ok(responseDto);
         }
@@ -167,6 +206,16 @@ public class DevicesController : ControllerBase
                 return NotFound(new ErrorResponse { Error = "Device not found", Detail = $"No device with ID {deviceId}" });
             }
 
+            // Unschedule device backups
+            await _schedulerService.UnscheduleDeviceBackup(deviceId);
+            
+            // Unschedule all share backups for this device
+            var shares = await _shareService.ListShares(deviceId);
+            foreach (var share in shares)
+            {
+                await _schedulerService.UnscheduleShareBackup(share.Id);
+            }
+            
             await _deviceService.DeleteDevice(deviceId);
             return NoContent();
         }
