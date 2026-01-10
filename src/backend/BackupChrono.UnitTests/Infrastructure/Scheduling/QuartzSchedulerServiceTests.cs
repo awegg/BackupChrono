@@ -6,6 +6,7 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
+using Quartz;
 using Xunit;
 
 namespace BackupChrono.UnitTests.Infrastructure.Scheduling;
@@ -136,9 +137,10 @@ public class QuartzSchedulerServiceTests : IAsyncLifetime
         // Act
         await _schedulerService.UnscheduleDeviceBackup(device.Id);
 
-        // Assert - Unscheduling should succeed without throwing
-        // TriggerImmediateBackup will create a new manual job, so it won't throw
-        await _schedulerService.TriggerImmediateBackup(device.Id);
+        // Assert - verify scheduled job was removed
+        var scheduler = GetScheduler();
+        var jobKey = new JobKey($"device-{device.Id}", "backups");
+        (await scheduler.CheckExists(jobKey)).Should().BeFalse();
     }
 
     [Fact]
@@ -157,9 +159,10 @@ public class QuartzSchedulerServiceTests : IAsyncLifetime
         // Act
         await _schedulerService.UnscheduleShareBackup(share.Id);
 
-        // Assert - Unscheduling should succeed without throwing
-        // TriggerImmediateBackup will create a new manual job, so it won't throw
-        await _schedulerService.TriggerImmediateBackup(device.Id, share.Id);
+        // Assert - verify scheduled job was removed
+        var scheduler = GetScheduler();
+        var jobKey = new JobKey($"share-{share.Id}", "backups");
+        (await scheduler.CheckExists(jobKey)).Should().BeFalse();
     }
 
     [Fact]
@@ -316,5 +319,16 @@ public class QuartzSchedulerServiceTests : IAsyncLifetime
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
+    }
+
+    private IScheduler GetScheduler()
+    {
+        var schedulerProperty = typeof(QuartzSchedulerService).GetProperty(
+            "Scheduler",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+        var scheduler = schedulerProperty?.GetValue(_schedulerService) as IScheduler;
+        scheduler.Should().NotBeNull();
+        return scheduler!;
     }
 }

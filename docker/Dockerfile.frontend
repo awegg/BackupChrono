@@ -1,13 +1,16 @@
 # Multi-stage build for production-ready React frontend
-FROM node:20-alpine AS builder
+FROM node:20-bullseye-slim AS builder
 
 WORKDIR /app
 
 # Copy package files
 COPY src/frontend/package*.json ./
 
-# Install dependencies
-RUN npm ci
+# Install dependencies (use npm install due to npm optional dependency bug with rollup)
+RUN npm install --no-audit --no-fund
+
+# Workaround npm optional dependency bug for rollup native binary
+RUN npm install @rollup/rollup-linux-x64-gnu --no-save --no-audit --no-fund
 
 # Copy source code
 COPY src/frontend/ ./

@@ -1,11 +1,19 @@
 ---
 name: review-and-commit
-description: Automated workflow that runs comprehensive pre-commit review, automatically fixes any issues found, stages changes, and commits with a proper message if review passes. Use when user asks to "review and commit", "auto commit", "review then commit", or wants automated review + commit workflow.
+description: Semi-automated workflow that runs comprehensive pre-commit review, requires a manual verification pass, auto-fixes safe issues, and commits with a proper message if review passes. Use when user asks to "review and commit", "auto commit", "review then commit", or wants automated review + commit workflow.
 ---
 
 # Review and Commit
 
 Automated workflow that executes pre-commit review and handles the commit process intelligently based on review results.
+
+## Integration with Pre-Commit Review
+
+This skill builds on the pre-commit-review skill:
+- **Pre-commit-review:** Analysis and reporting only
+- **Review-and-commit:** Analysis + auto-fix + commit
+
+Both skills share the same quality standards and review criteria.
 
 ## Workflow
 
@@ -26,7 +34,7 @@ This performs:
 - Architecture review
 - Security and maintainability assessment
 
-**Manual code/spec review is REQUIRED:** After automated analysis, read every changed source file (skip only auto-generated assets like lockfiles unless flagged) and verify against relevant specs (e.g., specs/001-backup-system/spec.md). Do not proceed to staging/commit without this manual pass; record findings before continuing.
+**Manual code/spec review is REQUIRED:** After automated analysis, review changed non-generated files and verify against relevant specs (e.g., specs/001-backup-system/spec.md). For large changesets, prioritize high-risk and behavior-changing files first, then sample lower-risk files; always note any areas not manually inspected. Do not proceed to staging/commit without recording the manual review outcome.
 
 **CRITICAL:** Block commit if review is not performed. Report findings before proceeding.
 
@@ -38,11 +46,11 @@ Based on review findings, take appropriate action:
 
 **Automatically fix and retry:**
 
-1. Analyze each issue and determine fix
-2. Implement fixes using appropriate tools
+1. Analyze each issue and determine fix scope
+2. Apply safe fixes using standard tools (formatters: prettier/eslint/dotnet format; linters; targeted code edits for clear null/typing/test setup issues)
 3. Re-run pre-commit review
 4. Repeat until no issues remain or maximum 3 iterations reached
-5. If unable to resolve after 3 iterations, report to user with details
+5. Escalate to user for logic/architectural changes or after 3 failed attempts; do not keep auto-retrying
 
 Common auto-fixes:
 - Code formatting issues
@@ -68,10 +76,10 @@ Wait for user response before proceeding.
 1. Run `git status --porcelain` to show all changes
 2. Run `git diff --stat` to show change summary  
 3. Present the list of files to be committed
-4. Ask user: "Ready to stage and commit these changes? (yes/no)"
-5. Wait for explicit confirmation
-6. If confirmed:
-   - Stage all changes: `git add -A`
+4. Ask user: "Ready for me to stage these changes? (yes/no)"
+5. If yes, stage all changes: `git add -A`
+6. Ask: "Ready for me to commit the staged changes? (yes/no)"
+7. If yes:
    - Generate proper commit message based on changes
    - Commit with generated message
    - Report commit hash and summary
@@ -136,13 +144,18 @@ refactor(tests): improve test infrastructure
 
 ## Auto-Fix Guidelines
 
-**Safe to auto-fix:**
+**Safe to auto-fix (use tools above, keep behavior unchanged):**
 - Formatting/linting errors
-- Missing using statements
-- Obvious null reference issues
-- Test setup problems
+- Missing using statements/imports
+- Obvious null-reference/typing issues
+- Test setup problems with clear intent
 - Debug code removal
 - Exposed secrets/credentials
+
+**Decision cues:**
+- If linter/formatter flags it → auto-fix.
+- If failing test has a clear fixture/setup fix → auto-fix and re-run.
+- If change alters logic, API, or data contracts → pause and confirm with user.
 
 **Require user confirmation:**
 - Logic changes that affect behavior

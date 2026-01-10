@@ -49,6 +49,16 @@ Execute the test suite and verify coverage threshold:
 
 If coverage is below threshold, identify untested code and request additional tests.
 
+Then, build Docker images to validate production build integrity:
+
+```powershell
+# Backend and frontend container builds (must succeed)
+docker build -f docker/Dockerfile.backend -t backupchrono-backend:review .
+docker build -f docker/Dockerfile.frontend -t backupchrono-frontend:review .
+```
+
+If Docker is not available or a build fails, treat as a blocking issue and stop the review.
+
 ### 4. Check Specification Alignment
 
 Read relevant spec files to verify implementation matches requirements:
