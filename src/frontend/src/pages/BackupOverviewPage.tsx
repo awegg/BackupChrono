@@ -17,7 +17,7 @@ import {
 import { Link } from 'react-router-dom';
 import { dashboardService } from '../services/dashboardService';
 import { backupService } from '../services/deviceService';
-import { DashboardSummaryDto, DeviceDashboardDto, ShareDashboardDto } from '../types';
+import { DashboardSummaryDto } from '../types';
 
 export function BackupOverviewPage() {
   const [data, setData] = useState<DashboardSummaryDto | null>(null);
@@ -290,7 +290,7 @@ export function BackupOverviewPage() {
 
                           {share.lastBackupId && (
                             <Link
-                              to={`/backups/${share.lastBackupId}/files?deviceId=${device.id}&shareId=${share.id}`}
+                              to={`/backups/${share.lastBackupId}/browse?deviceId=${device.id}&shareId=${share.id}`}
                               className="p-1.5 text-gray-500 hover:bg-gray-100 rounded"
                               title="Browse Files"
                             >

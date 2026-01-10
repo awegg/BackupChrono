@@ -1,4 +1,5 @@
 ﻿import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { LegacyFilesRedirect } from './components/LegacyFilesRedirect';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { signalRService } from './services/signalr';
@@ -57,6 +58,8 @@ function App() {
                 <Route path="/devices/:deviceId/backups" element={<BackupsListPage />} />
                 <Route path="/devices/:deviceId/backups/:backupId/browse" element={<FileBrowserPage />} />
                 <Route path="/backups/:backupId/browse" element={<FileBrowserPage />} />
+                {/* Legacy deep-link support */}
+                <Route path="/backups/:backupId/files" element={<LegacyFilesRedirect />} />
                 <Route path="/backups/:backupId/logs" element={<BackupLogViewerPage />} />
               </Routes>
             </main>
