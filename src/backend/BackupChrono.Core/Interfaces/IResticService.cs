@@ -99,7 +99,18 @@ public interface IResticService
     /// <param name="backupId">Backup snapshot ID.</param>
     /// <param name="repositoryPath">Optional repository path override.</param>
     /// <returns>A tuple containing (Backup, SnapshotMetadata, SnapshotStats).</returns>
-    Task<(Backup Backup, SnapshotMetadata Metadata, SnapshotStats Stats)> GetBackupDetailComplete(string backupId, string? repositoryPath = null);
+    Task<(Backup Backup, SnapshotMetadata Metadata, SnapshotStats Stats)> GetBackupDetailComplete(string backupId, string? repositoryPath = null, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Applies retention policy to a repository by running restic forget and prune.
+    /// </summary>
+    /// <param name="deviceName">Device name for repository path construction.</param>
+    /// <param name="shareName">Optional share name for repository path construction.</param>
+    /// <param name="policy">Retention policy to apply.</param>
+    /// <param name="dryRun">If true, only show what would be deleted without actually deleting.</param>
+    /// <param name="repositoryPath">Optional repository path override.</param>
+    /// <returns>Tuple of (snapshotsPruned, spaceReclaimedBytes).</returns>
+    Task<(int SnapshotsPruned, long SpaceReclaimedBytes)> ApplyRetentionPolicy(string deviceName, string? shareName, RetentionPolicy policy, bool dryRun = false, string? repositoryPath = null);
 
     /// <summary>
     /// Browses files in a backup snapshot.

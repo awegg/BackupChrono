@@ -2,14 +2,12 @@ version: '3.8'
 
 services:
   backend:
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile.backend
+    image: weggerle/backupchrono:backend-latest
     container_name: backupchrono-backend
     ports:
       - "5000:5000"
     volumes:
-      # Git configuration repository (stores backup job definitions)
+      # Git configuration repository (stores backup job definitions and logs)
       - ./config:/config
       # Restic repository (stores actual backup data)
       - ./repository:/repository
@@ -23,9 +21,7 @@ services:
       - backupchrono
 
   frontend:
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile.frontend
+    image: weggerle/backupchrono:frontend-latest
     container_name: backupchrono-frontend
     ports:
       - "3000:80"

@@ -124,15 +124,15 @@ public class BackupsController : ControllerBase
             if (deviceId.HasValue && shareId.HasValue)
             {
                 repositoryPath = GetRepositoryPath(deviceId.Value, shareId.Value);
-                _logger.LogInformation("Repository path constructed: {RepositoryPath}", repositoryPath);
+                _logger.LogDebug("Repository path constructed: {RepositoryPath}", repositoryPath);
             }
             else
             {
                 _logger.LogWarning("No deviceId/shareId provided, repository path will be null");
             }
 
-            _logger.LogInformation("Calling ResticService.GetBackupDetailComplete with repositoryPath={RepositoryPath}", repositoryPath);
-            var (backup, metadata, stats) = await _resticService.GetBackupDetailComplete(backupId, repositoryPath);
+            _logger.LogDebug("Calling ResticService.GetBackupDetailComplete with repositoryPath={RepositoryPath}", repositoryPath);
+            var (backup, metadata, stats) = await _resticService.GetBackupDetailComplete(backupId, repositoryPath, HttpContext.RequestAborted);
             
             var backupDetail = new BackupDetailDto
             {
@@ -210,6 +210,24 @@ public class BackupsController : ControllerBase
             {
                 Error = "Backup not found",
                 Detail = $"No backup with ID {backupId} (repository does not exist)"
+            });
+        }
+        catch (TimeoutException ex)
+        {
+            _logger.LogWarning(ex, "Backup detail request timed out (server timeout) for {BackupId} with repositoryPath={RepositoryPath}", backupId, repositoryPath ?? "null");
+            return StatusCode(504, new ErrorResponse
+            {
+                Error = "Backup detail timed out",
+                Detail = "The backup detail request exceeded the server timeout. Please retry or narrow the query."
+            });
+        }
+        catch (OperationCanceledException ex)
+        {
+            _logger.LogInformation(ex, "Backup detail request cancelled by client for {BackupId}", backupId);
+            return StatusCode(499, new ErrorResponse
+            {
+                Error = "Request cancelled",
+                Detail = "The request was cancelled by the client."
             });
         }
         catch (Exception ex)

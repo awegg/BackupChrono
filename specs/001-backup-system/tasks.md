@@ -332,16 +332,16 @@ This document organizes implementation tasks by **user story** to enable indepen
 
 #### Feature 3: Retention Policy Execution
 
-- [ ] T249 [MVP] [P] Create IRetentionPolicyService interface in BackupChrono.Core/Interfaces/
-- [ ] T250 [MVP] [P] Implement RetentionPolicyService in BackupChrono.Infrastructure/Services/ calling ResticService.ApplyRetentionPolicy
-- [ ] T251 [MVP] [P] Create RetentionPolicyJob in BackupChrono.Infrastructure/Scheduling/ as Quartz job
-- [ ] T252 [MVP] [P] Schedule RetentionPolicyJob to run daily at 3 AM (configurable via appsettings.json)
-- [ ] T253 [MVP] [P] Create POST /api/retention-policy/execute endpoint in new RetentionPolicyController.cs for manual trigger
-- [ ] T254 [MVP] [P] Add retention policy execution logging to logs/retention-policy.jsonl
-- [ ] T255 [MVP] [P] Add retention policy statistics to dashboard: last run, snapshots pruned, space reclaimed
-- [ ] T256 [MVP] [MinUI] Add "Run Retention Policy Now" button to global settings page or dashboard
-- [ ] T257 [MVP] [MinUI] Show retention policy last run timestamp and results in dashboard
-- [ ] T258 [MVP] Create integration tests in RetentionPolicyFlowTests.cs for policy execution
+- [X] T249 [MVP] [P] Create IRetentionPolicyService interface in BackupChrono.Core/Interfaces/
+- [X] T250 [MVP] [P] Implement RetentionPolicyService in BackupChrono.Infrastructure/Services/ calling ResticService.ApplyRetentionPolicy
+- [X] T251 [MVP] [P] Create RetentionPolicyJob in BackupChrono.Infrastructure/Scheduling/ as Quartz job
+- [X] T252 [MVP] [P] Schedule RetentionPolicyJob to run daily at 3 AM (configurable via appsettings.json)
+- [X] T253 [MVP] [P] Create POST /api/retention-policy/execute endpoint in new RetentionPolicyController.cs for manual trigger
+- [X] T254 [MVP] [P] Add retention policy execution logging to logs/retention-policy.jsonl
+- [X] T255 [MVP] [P] Add retention policy statistics to dashboard: last run, snapshots pruned, space reclaimed
+- [X] T256 [MVP] [MinUI] Add "Run Retention Policy Now" button to global settings page or dashboard
+- [X] T257 [MVP] [MinUI] Show retention policy last run timestamp and results in dashboard
+- [X] T258 [MVP] Create integration tests in RetentionPolicyFlowTests.cs for policy execution
 
 **Checkpoint**: Can view all backups across devices with filtering, delete individual snapshots with confirmation, retention policy runs automatically and can be triggered manually, all features tested via integration tests.
 

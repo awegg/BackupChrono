@@ -33,6 +33,23 @@ export interface RetentionPolicy {
   keepYearly?: number;
 }
 
+export interface RetentionRunResult {
+  deviceName: string;
+  shareName?: string;
+  snapshotsPruned: number;
+  spaceReclaimedBytes: number;
+  startTime: string;
+  endTime: string;
+  duration: string;
+  error?: string;
+}
+
+export interface RetentionLastRun {
+  timestamp: string;
+  totalSnapshotsPruned: number;
+  totalSpaceReclaimedBytes: number;
+}
+
 export interface IncludeExcludeRules {
   excludePatterns?: string[];
   excludeRegex?: string[];

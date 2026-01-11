@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Diagnostics;
 using BackupChrono.Core.DTOs;
 using BackupChrono.Core.Entities;
 using BackupChrono.Core.Interfaces;
@@ -467,13 +468,16 @@ public class ResticService : IResticService
     /// Get complete backup details including snapshots, metadata, and stats in a single efficient call.
     /// This method combines GetBackup, GetSnapshotMetadata, and GetSnapshotStats into one to minimize restic calls.
     /// </summary>
-    public async Task<(Backup Backup, SnapshotMetadata Metadata, SnapshotStats Stats)> GetBackupDetailComplete(string backupId, string? repositoryPath = null)
+    public async Task<(Backup Backup, SnapshotMetadata Metadata, SnapshotStats Stats)> GetBackupDetailComplete(string backupId, string? repositoryPath = null, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("GetBackupDetailComplete called: backupId={BackupId}, repositoryPath={RepositoryPath}", backupId, repositoryPath ?? "default");
-        
+
+        var snapshotTimeout = TimeSpan.FromSeconds(45);
+        var statsTimeout = TimeSpan.FromSeconds(15);
+
         // Get snapshot details - this is the base query
         var snapshotsArgs = new[] { "snapshots", backupId, "--json" };
-        var snapshotsOutput = await _client.ExecuteCommand(snapshotsArgs, repositoryPathOverride: repositoryPath);
+        var snapshotsOutput = await _client.ExecuteCommand(snapshotsArgs, cancellationToken, snapshotTimeout, repositoryPathOverride: repositoryPath);
         
         // Parse snapshots once
         SnapshotMetadata metadata;
@@ -497,83 +501,88 @@ public class ResticService : IResticService
             throw;
         }
 
-        // Now get stats in parallel
-        var statsTask = _client.ExecuteCommand(new[] { "stats", backupId, "--json" }, repositoryPathOverride: repositoryPath);
-        var restoreSizeTask = _client.ExecuteCommand(new[] { "stats", backupId, "--json", "--mode=restore-size" }, repositoryPathOverride: repositoryPath);
-        var blobsTask = _client.ExecuteCommand(new[] { "stats", backupId, "--json", "--mode=blobs-per-file" }, repositoryPathOverride: repositoryPath);
-        var rawDataTask = _client.ExecuteCommand(new[] { "stats", backupId, "--json", "--mode=raw-data" }, repositoryPathOverride: repositoryPath);
-        
-        await Task.WhenAll(statsTask, restoreSizeTask, blobsTask, rawDataTask);
-        
-        var statsOutput = await statsTask;
-        var restoreSizeOutput = await restoreSizeTask;
-        var blobsOutput = await blobsTask;
-        string rawDataOutput = string.Empty;
-        try
+        // Try to get stats without blocking the entire request on slow restic calls
+        async Task<string?> TryGetStats(string label, string[] args, TimeSpan timeout)
         {
-            rawDataOutput = await rawDataTask;
+            try
+            {
+                var output = await _client.ExecuteCommand(args, cancellationToken, timeout, repositoryPathOverride: repositoryPath);
+                return output;
+            }
+            catch (TimeoutException ex)
+            {
+                _logger.LogWarning(ex, "{Label} timed out for {BackupId}", label, backupId);
+                return null;
+            }
+            catch (OperationCanceledException)
+            {
+                // Respect caller cancellation (e.g., request aborted)
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "{Label} failed for {BackupId}", label, backupId);
+                return null;
+            }
         }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Raw-data stats unavailable for {BackupId}, falling back to restore-size only", backupId);
-        }
+
+        // Keep stats optional; fall back to zeros if the calls are slow or fail
+        var statsOutput = await TryGetStats("stats default", new[] { "stats", backupId, "--json" }, statsTimeout);
+        var rawDataOutput = await TryGetStats("stats raw-data", new[] { "stats", backupId, "--json", "--mode=raw-data" }, TimeSpan.FromSeconds(10));
+        var blobsOutput = await TryGetStats("stats blobs-per-file", new[] { "stats", backupId, "--json", "--mode=blobs-per-file" }, TimeSpan.FromSeconds(10));
         
-        // Parse stats
+        // Parse stats (guard nulls to keep the request fast even when restic is slow)
         long totalSize = 0;
         int totalFileCount = 0;
         
-        try
+        if (!string.IsNullOrWhiteSpace(statsOutput))
         {
-            using var statsDoc = JsonDocument.Parse(statsOutput);
-            var stats = statsDoc.RootElement;
-            totalSize = stats.TryGetProperty("total_size", out var size) ? size.GetInt64() : 0;
-            totalFileCount = stats.TryGetProperty("total_file_count", out var count) ? count.GetInt32() : 0;
-        }
-        catch (JsonException)
-        {
-            _logger.LogWarning("Failed to parse backup stats for {BackupId}", backupId);
-        }
-
-        // Parse restore-size stats
-        long restoreSize = 0;
-        try
-        {
-            using var restoreDoc = JsonDocument.Parse(restoreSizeOutput);
-            var restoreStats = restoreDoc.RootElement;
-            restoreSize = restoreStats.TryGetProperty("total_size", out var rs) ? rs.GetInt64() : 0;
-        }
-        catch (JsonException)
-        {
-            _logger.LogWarning("Failed to parse restore-size stats for {BackupId}", backupId);
+            try
+            {
+                using var statsDoc = JsonDocument.Parse(statsOutput);
+                var stats = statsDoc.RootElement;
+                totalSize = stats.TryGetProperty("total_size", out var size) ? size.GetInt64() : 0;
+                totalFileCount = stats.TryGetProperty("total_file_count", out var count) ? count.GetInt32() : 0;
+            }
+            catch (JsonException)
+            {
+                _logger.LogWarning("Failed to parse backup stats for {BackupId}", backupId);
+            }
         }
 
         // Parse raw-data stats for actual stored size after deduplication
         long rawDataSize = 0;
-        try
+        if (!string.IsNullOrWhiteSpace(rawDataOutput))
         {
-            using var rawDoc = JsonDocument.Parse(rawDataOutput);
-            var rawStats = rawDoc.RootElement;
-            rawDataSize = rawStats.TryGetProperty("total_size", out var rds) ? rds.GetInt64() : 0;
-        }
-        catch (JsonException)
-        {
-            _logger.LogWarning("Failed to parse raw-data stats for {BackupId}", backupId);
+            try
+            {
+                using var rawDoc = JsonDocument.Parse(rawDataOutput);
+                var rawStats = rawDoc.RootElement;
+                rawDataSize = rawStats.TryGetProperty("total_size", out var rds) ? rds.GetInt64() : 0;
+            }
+            catch (JsonException)
+            {
+                _logger.LogWarning("Failed to parse raw-data stats for {BackupId}", backupId);
+            }
         }
 
         // Parse blobs stats
         long totalBlobCount = 0;
-        try
+        if (!string.IsNullOrWhiteSpace(blobsOutput))
         {
-            using var blobDoc = JsonDocument.Parse(blobsOutput);
-            var blobStats = blobDoc.RootElement;
-            totalBlobCount = blobStats.TryGetProperty("total_blob_count", out var tbc) ? tbc.GetInt64() : 0;
-        }
-        catch (JsonException)
-        {
-            _logger.LogWarning("Failed to parse blob stats for {BackupId}", backupId);
+            try
+            {
+                using var blobDoc = JsonDocument.Parse(blobsOutput);
+                var blobStats = blobDoc.RootElement;
+                totalBlobCount = blobStats.TryGetProperty("total_blob_count", out var tbc) ? tbc.GetInt64() : 0;
+            }
+            catch (JsonException)
+            {
+                _logger.LogWarning("Failed to parse blob stats for {BackupId}", backupId);
+            }
         }
 
-        var logicalSize = restoreSize > 0 ? restoreSize : totalSize;
+        var logicalSize = totalSize;
         var dedupedSize = rawDataSize > 0 ? rawDataSize : logicalSize;
         var spaceSaved = Math.Max(0, logicalSize - dedupedSize);
         var deduplicationRatio = logicalSize > 0
@@ -611,7 +620,115 @@ public class ResticService : IResticService
 
         return (backup, metadata, snapshotStats);
     }
+    public async Task<(int SnapshotsPruned, long SpaceReclaimedBytes)> ApplyRetentionPolicy(string deviceName, string? shareName, RetentionPolicy policy, bool dryRun = false, string? repositoryPath = null)
+    {
+        _logger.LogInformation("Applying retention policy for {Device}/{Share}: keep-latest={Latest}, keep-daily={Daily}, keep-weekly={Weekly}, keep-monthly={Monthly}, keep-yearly={Yearly}, dry-run={DryRun}",
+            deviceName, shareName ?? "(all)", policy.KeepLatest, policy.KeepDaily, policy.KeepWeekly, policy.KeepMonthly, policy.KeepYearly, dryRun);
 
+        var args = new List<string> { "forget" };
+
+        // Add retention policy arguments
+        if (policy.KeepLatest > 0)
+            args.AddRange(new[] { "--keep-last", policy.KeepLatest.ToString() });
+        if (policy.KeepDaily > 0)
+            args.AddRange(new[] { "--keep-daily", policy.KeepDaily.ToString() });
+        if (policy.KeepWeekly > 0)
+            args.AddRange(new[] { "--keep-weekly", policy.KeepWeekly.ToString() });
+        if (policy.KeepMonthly > 0)
+            args.AddRange(new[] { "--keep-monthly", policy.KeepMonthly.ToString() });
+        if (policy.KeepYearly > 0)
+            args.AddRange(new[] { "--keep-yearly", policy.KeepYearly.ToString() });
+
+        // Add tags to filter snapshots
+        args.Add("--tag");
+        args.Add($"device:{deviceName}");
+        if (shareName != null)
+        {
+            args.Add("--tag");
+            args.Add($"share:{shareName}");
+        }
+
+        if (dryRun)
+        {
+            args.Add("--dry-run");
+        }
+
+        // Run forget to mark snapshots for deletion
+        var forgetOutput = await _client.ExecuteCommand(args.ToArray(), repositoryPathOverride: repositoryPath);
+        
+        // Parse forget output to count removed snapshots
+        // Restic forget outputs lines like "remove 5 snapshots" or "5 snapshots have been removed"
+        int snapshotsPruned = 0;
+        var snapshotPattern = new System.Text.RegularExpressions.Regex(
+            @"(?:remove|removed|removing)\s+(\d+)\s+snapshot|(?<!keep\s+)(\d+)\s+snapshot.*(?:remove|removed)",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        
+        foreach (var line in forgetOutput.Split('\n'))
+        {
+            var match = snapshotPattern.Match(line);
+            if (match.Success)
+            {
+                var countStr = match.Groups[1].Success ? match.Groups[1].Value : match.Groups[2].Value;
+                if (int.TryParse(countStr, out var count))
+                {
+                    snapshotsPruned += count;
+                    _logger.LogDebug("Parsed snapshot count from line: {Line} -> {Count}", line.Trim(), count);
+                }
+            }
+        }
+
+        _logger.LogInformation("Forget completed: {Count} snapshots marked for removal", snapshotsPruned);
+
+        long spaceReclaimedBytes = 0;
+        
+        // Only run prune if not in dry-run mode
+        if (!dryRun && snapshotsPruned > 0)
+        {
+            _logger.LogInformation("Running prune to reclaim space...");
+            var pruneArgs = new[] { "prune" };
+            var pruneOutput = await _client.ExecuteCommand(pruneArgs, repositoryPathOverride: repositoryPath);
+            
+            // Parse prune output for space reclaimed
+            // Restic prune outputs lines like "freed 512.5 MiB" or "will free 2.3 GiB" or "2.3 GiB freed"
+            var spacePattern = new System.Text.RegularExpressions.Regex(
+                @"(?:freed?|will\s+free)\s+([\d.]+)\s*(\w+)|([\d.]+)\s*(\w+)\s+freed?",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            
+            foreach (var line in pruneOutput.Split('\n'))
+            {
+                var match = spacePattern.Match(line);
+                if (match.Success)
+                {
+                    var sizeStr = match.Groups[1].Success ? match.Groups[1].Value : match.Groups[3].Value;
+                    var unit = (match.Groups[2].Success ? match.Groups[2].Value : match.Groups[4].Value).ToUpperInvariant();
+                    
+                    if (double.TryParse(sizeStr, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var size))
+                    {
+                        var bytesFromUnit = unit switch
+                        {
+                            "B" or "BYTES" => (long)size,
+                            "K" or "KB" or "KIB" or "KIBIBYTE" or "KIBIBYTES" => (long)(size * 1024),
+                            "M" or "MB" or "MIB" or "MEBIBYTE" or "MEBIBYTES" => (long)(size * 1024 * 1024),
+                            "G" or "GB" or "GIB" or "GIBIBYTE" or "GIBIBYTES" => (long)(size * 1024 * 1024 * 1024),
+                            "T" or "TB" or "TIB" or "TEBIBYTE" or "TEBIBYTES" => (long)(size * 1024L * 1024 * 1024 * 1024),
+                            _ => 0
+                        };
+                        
+                        if (bytesFromUnit > 0)
+                        {
+                            spaceReclaimedBytes = bytesFromUnit;
+                            _logger.LogDebug("Parsed space reclaimed from line: {Line} -> {Bytes} bytes", line.Trim(), bytesFromUnit);
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            _logger.LogInformation("Prune completed: {Bytes} bytes reclaimed", spaceReclaimedBytes);
+        }
+
+        return (snapshotsPruned, spaceReclaimedBytes);
+    }
     public async Task<IEnumerable<FileEntry>> BrowseBackup(string backupId, string path = "/", string? repositoryPath = null)
     {
         var args = new[] { "ls", backupId, "--json" };

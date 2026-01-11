@@ -164,6 +164,9 @@ builder.Services.AddSingleton<IShareService, ShareService>();
 // Backup orchestration - Singleton to preserve job state during shutdown
 builder.Services.AddSingleton<IBackupOrchestrator, BackupOrchestrator>();
 
+// Retention policy service
+builder.Services.AddSingleton<IRetentionPolicyService, RetentionPolicyService>();
+
 // Storage monitoring
 builder.Services.AddSingleton<IStorageMonitor, StorageMonitor>();
 
@@ -179,11 +182,22 @@ builder.Services.AddSingleton<IBackupJobRepository, BackupJobRepository>(sp =>
 
 builder.Services.AddScoped<IBackupRepository, BackupRepository>();
 
+// Global config repository
+builder.Services.AddSingleton<IGlobalConfigRepository, GlobalConfigRepository>();
+
 // Quartz Scheduler
-builder.Services.AddSingleton<IQuartzSchedulerService, QuartzSchedulerService>();
+builder.Services.AddSingleton<IQuartzSchedulerService>(sp => 
+    new QuartzSchedulerService(
+        sp.GetRequiredService<IServiceScopeFactory>(),
+        sp.GetRequiredService<ILogger<QuartzSchedulerService>>(),
+        schedulerName: null,
+        sp.GetRequiredService<IConfiguration>()));
 
 // Register BackupJob for DI (required by Quartz job factory)
 builder.Services.AddTransient<BackupChrono.Infrastructure.Scheduling.BackupJob>();
+
+// Register RetentionPolicyJob for DI (required by Quartz job factory)
+builder.Services.AddTransient<BackupChrono.Infrastructure.Scheduling.RetentionPolicyJob>();
 
 // BackupProgressBroadcaster - bridges BackupOrchestrator events to SignalR (must be after all dependencies)
 builder.Services.AddHostedService<BackupProgressBroadcaster>();
