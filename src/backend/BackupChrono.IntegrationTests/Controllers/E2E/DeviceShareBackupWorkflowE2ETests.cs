@@ -228,8 +228,10 @@ public class DeviceShareBackupWorkflowE2ETests : IClassFixture<BackupChronoE2EWe
         });
         trigger2Response.StatusCode.Should().Be(HttpStatusCode.Accepted);
 
-        // Note: Without a real backup system, jobs won't be created immediately in tests
-        // The important part is that the trigger requests are accepted
+        // Note: Jobs are queued and will execute asynchronously with real BackupOrchestrator.
+        // They will fail (host 192.168.1.200 unreachable) but that's expected for API contract tests.
+        // Give a brief moment for jobs to queue before cleanup to avoid race conditions.
+        await Task.Delay(100);
 
         // CLEANUP - Delete shares one by one
         var delete1 = await _client.DeleteAsync($"/api/devices/{deviceId}/shares/{share1.Id}");
@@ -302,8 +304,10 @@ public class DeviceShareBackupWorkflowE2ETests : IClassFixture<BackupChronoE2EWe
         });
         triggerResponse.StatusCode.Should().Be(HttpStatusCode.Accepted);
 
-        // Note: Without a real backup system, jobs won't be created immediately in tests
-        // The important part is that the configuration flow works end-to-end
+        // Note: Jobs execute asynchronously with real BackupOrchestrator.
+        // They will fail (host 192.168.1.50 unreachable) but that's expected for API contract tests.
+        // Give a brief moment for the job to queue before cleanup.
+        await Task.Delay(100);
 
         // CLEANUP
         await _client.DeleteAsync($"/api/devices/{device.Id}/shares/{share.Id}");
