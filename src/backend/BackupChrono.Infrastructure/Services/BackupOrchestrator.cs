@@ -170,22 +170,32 @@ public class BackupOrchestrator : IBackupOrchestrator
                 _logger.LogInformation("Device backup completed successfully for '{DeviceName}'", device.Name);
                 RaiseProgressUpdate(job, percentComplete: 100);
 
-                // Apply retention policy after successful backup completion
-                _ = Task.Run(async () =>
+                // Apply retention policy after successful backup completion (with cooldown to prevent excessive runs)
+                if (_retentionPolicyService != null)
                 {
-                    try
+                    _ = Task.Run(async () =>
                     {
-                        if (_retentionPolicyService != null)
+                        try
                         {
-                            _logger.LogInformation("Applying retention policy for device '{DeviceName}'", device.Name);
-                            _ = await _retentionPolicyService.ApplyForDevice(device.Name, dryRun: false, cancellationToken: default);
+                            // Check if retention was run recently for this device (within last hour)
+                            var lastRun = await _retentionPolicyService.GetLastRun();
+                            if (lastRun == null || (DateTime.UtcNow - lastRun.Timestamp) > TimeSpan.FromHours(1))
+                            {
+                                _logger.LogInformation("Applying retention policy for device '{DeviceName}'", device.Name);
+                                await _retentionPolicyService.ApplyForDevice(device.Name, dryRun: false, cancellationToken: default);
+                            }
+                            else
+                            {
+                                _logger.LogDebug("Skipping retention policy for device '{DeviceName}' - last run was {Minutes} minutes ago",
+                                    device.Name, (DateTime.UtcNow - lastRun.Timestamp).TotalMinutes);
+                            }
                         }
-                    }
-                    catch (Exception retentionEx)
-                    {
-                        _logger.LogError(retentionEx, "Failed to apply retention policy for device '{DeviceName}'", device.Name);
-                    }
-                });
+                        catch (Exception retentionEx)
+                        {
+                            _logger.LogError(retentionEx, "Failed to apply retention policy for device '{DeviceName}'", device.Name);
+                        }
+                    });
+                }
             }
             else if (backups.Count > 0)
             {

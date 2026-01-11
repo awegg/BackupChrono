@@ -58,7 +58,15 @@ public class GlobalConfigRepository : IGlobalConfigRepository
 
     public async Task SaveConfiguration<T>(string key, T value) where T : class
     {
-        await _gitConfigService.WriteYamlFile($"{key}.yaml", value);
+        try
+        {
+            await _gitConfigService.WriteYamlFile($"{key}.yaml", value);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to save configuration for key: {Key}", key);
+            throw new InvalidOperationException($"Failed to save configuration for {key}", ex);
+        }
     }
 
     /// <summary>
