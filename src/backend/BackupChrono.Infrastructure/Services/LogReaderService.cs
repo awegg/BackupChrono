@@ -111,21 +111,20 @@ public class LogReaderService : ILogReaderService
             }
             
             var fileDate = ExtractDateFromFileName(filePath);
+            var fileEntries = new List<LogEntry>();
             LogEntry? currentEntry = null;
 
-            foreach (var line in lines.AsEnumerable().Reverse()) // Read from bottom (newest) to top
+            // Read forward to properly associate multi-line exceptions
+            foreach (var line in lines)
             {
-                if (logs.Count >= limit)
-                    break;
-
                 var match = LogLineRegex.Match(line);
                 
                 if (match.Success)
                 {
                     // Save previous entry if exists
-                    if (currentEntry != null && MatchesFilters(currentEntry, parameters))
+                    if (currentEntry != null)
                     {
-                        logs.Add(currentEntry);
+                        fileEntries.Add(currentEntry);
                     }
 
                     // Start new entry
@@ -148,15 +147,27 @@ public class LogReaderService : ILogReaderService
                     }
                     else
                     {
-                        currentEntry.Exception = line + Environment.NewLine + currentEntry.Exception;
+                        currentEntry.Exception += Environment.NewLine + line;
                     }
                 }
             }
 
             // Add last entry
-            if (currentEntry != null && MatchesFilters(currentEntry, parameters))
+            if (currentEntry != null)
             {
-                logs.Add(currentEntry);
+                fileEntries.Add(currentEntry);
+            }
+            
+            // Reverse to get newest first, then filter and add to results
+            foreach (var entry in fileEntries.AsEnumerable().Reverse())
+            {
+                if (logs.Count >= limit)
+                    break;
+                    
+                if (MatchesFilters(entry, parameters))
+                {
+                    logs.Add(entry);
+                }
             }
         }
         catch (IOException ex)
@@ -185,10 +196,11 @@ public class LogReaderService : ILogReaderService
 
     private static DateTime ParseTimestamp(DateTime fileDate, string timestampStr)
     {
-        // Parse full Serilog timestamp: 2026-01-11 21:10:52.832 +01:00
-        if (DateTime.TryParse(timestampStr, out var timestamp))
+        // Parse full Serilog timestamp with timezone: 2026-01-11 21:10:52.832 +01:00
+        // Use DateTimeOffset to properly handle timezone offsets, then convert to UTC
+        if (DateTimeOffset.TryParse(timestampStr, out var timestampOffset))
         {
-            return timestamp;
+            return timestampOffset.UtcDateTime;
         }
         return fileDate;
     }

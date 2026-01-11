@@ -1,6 +1,7 @@
 using BackupChrono.Core.DTOs;
 using BackupChrono.Infrastructure.Services;
 using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel.DataAnnotations;
 
 namespace BackupChrono.Api.Controllers;
 
@@ -33,7 +34,7 @@ public class LogsController : ControllerBase
         [FromQuery] string? search = null,
         [FromQuery] DateTime? startDate = null,
         [FromQuery] DateTime? endDate = null,
-        [FromQuery] int limit = 100,
+        [FromQuery] [Range(1, 1000)] int limit = 100,
         CancellationToken cancellationToken = default)
     {
         try
