@@ -71,6 +71,41 @@ Verify:
 - Implementation behavior matches spec
 - No undocumented features or deviations
 
+### 4.1. Verify tasks.md Updates
+
+**CRITICAL**: When implementing features, tasks.md MUST be updated to reflect completed work.
+
+Check if `/specs/001-backup-system/tasks.md` has been updated:
+
+1. **Review changed files** - Identify which task IDs (T###) the changes implement
+2. **Check tasks.md** - Verify corresponding tasks are marked complete with `[X]` or `- [X]`
+3. **Validate completeness** - Ensure all sub-tasks for a feature are marked if claiming completion
+
+**Red flags indicating missing task updates:**
+- Code changes implement features but tasks.md is unchanged
+- New files created that correspond to unchecked tasks
+- Tests added for functionality that's still marked `[ ]` incomplete
+- Documentation refers to completed features but tasks remain unchecked
+
+**How to identify task IDs:**
+- Look for task references in code comments: `// Task T217A`, `<!-- T060B -->`
+- Match file names to task descriptions (e.g., LogsController.cs → T217A)
+- Check commit messages or PR descriptions for task IDs
+- Search tasks.md for keywords from changed files
+
+**Example verification:**
+```
+Changed files: LogsController.cs, LogReaderService.cs, LogViewer.tsx
+Task search: grep -i "logs" tasks.md
+Found: T217A-T217G (Application Log Viewer tasks)
+Expected: All T217A-T217G should be marked [X] or [-X-] in tasks.md
+```
+
+**Approval criteria:**
+- ✅ PASS: tasks.md updated with completed task checkboxes matching implemented features
+- ⚠️ WARNING: Some tasks marked complete but related tests missing
+- ❌ FAIL: Code implements features but tasks.md not updated (must fix before commit)
+
 ### 5. Architectural Review
 
 Verify adherence to Clean Architecture:

@@ -10,16 +10,46 @@ This checklist provides a structured approach for reviewing code changes before 
 - [ ] Implementation matches the specified behavior
 - [ ] No undocumented feature additions or changes
 - [ ] Any deviations from spec are justified and documented
+- [ ] **tasks.md is updated** - Completed tasks marked with [X] or [-X-]
 
 **Key questions:**
 - What spec/user story does this change address?
 - Does the implementation fully satisfy the requirements?
 - Are there any edge cases not covered by the spec?
+- **Have corresponding tasks in tasks.md been marked as complete?**
 
 **Where to look:**
 - `/specs/001-backup-system/spec.md` - Main feature specification
 - `/specs/001-backup-system/tasks.md` - Task breakdown
 - `/specs/001-backup-system/checklists/requirements.md` - Requirements checklist
+
+**Task tracking verification:**
+
+When code changes implement features, verify `/specs/001-backup-system/tasks.md` is updated:
+
+1. Identify which task IDs (T###) the changed files implement
+2. Check if corresponding tasks are marked complete: `- [X]` or `- [-X-]`
+3. Ensure all sub-tasks for a feature are marked if claiming completion
+
+**How to identify task IDs:**
+- Search for task references in code comments: `// Task T217A`
+- Match file/class names to task descriptions
+- Use `grep -i "keyword" tasks.md` to find related tasks
+- Check commit messages for task references
+
+**Red flags for missing task updates:**
+- New controller/service files but tasks unmarked
+- Test files added for features still marked incomplete
+- Documentation references completed features but tasks unchecked
+- tasks.md file not in the changeset when features are implemented
+
+**Example verification:**
+```
+Changed: LogsController.cs, LogReaderService.cs, LogViewer.tsx
+Search: grep -i "log viewer\|logs controller" tasks.md
+Found: T217A-T217G (Application Log Viewer)
+Check: Are T217A-T217G marked [X] in tasks.md?
+```
 
 ## 2. Consistency & Unnecessary Changes
 

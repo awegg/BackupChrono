@@ -196,20 +196,26 @@ export function AddDeviceDialog({ open, onClose, onCreated, editingDeviceId }: A
   const effectiveScheduleSource = schedule.trim() ? 'Device' : 'Global';
 
   const effectiveRetention = (() => {
+    const hasDeviceRetention = retentionLatest || retentionDaily || retentionWeekly || retentionMonthly || retentionYearly;
+    
+    if (!hasDeviceRetention) {
+      return {
+        label: 'Not configured',
+        source: 'Unconfigured',
+      };
+    }
+    
     const parts = {
-      latest: retentionLatest.trim() || GLOBAL_DEFAULT_RETENTION.latest.toString(),
-      daily: retentionDaily.trim() || GLOBAL_DEFAULT_RETENTION.daily.toString(),
-      weekly: retentionWeekly.trim() || GLOBAL_DEFAULT_RETENTION.weekly.toString(),
-      monthly: retentionMonthly.trim() || GLOBAL_DEFAULT_RETENTION.monthly.toString(),
-      yearly: retentionYearly.trim() || GLOBAL_DEFAULT_RETENTION.yearly.toString(),
+      latest: retentionLatest.trim() || '-',
+      daily: retentionDaily.trim() || '-',
+      weekly: retentionWeekly.trim() || '-',
+      monthly: retentionMonthly.trim() || '-',
+      yearly: retentionYearly.trim() || '-',
     };
-    const source =
-      retentionLatest || retentionDaily || retentionWeekly || retentionMonthly || retentionYearly
-        ? 'Device'
-        : 'Global';
+    
     return {
       label: `${parts.latest}/${parts.daily}/${parts.weekly}/${parts.monthly}/${parts.yearly}`,
-      source,
+      source: 'Device',
     };
   })();
 
@@ -757,6 +763,8 @@ export function AddDeviceDialog({ open, onClose, onCreated, editingDeviceId }: A
                     <span className={`text-xs font-medium px-2 py-0.5 rounded ${
                       effectiveRetention.source === 'Device'
                         ? 'bg-blue-100 text-blue-700'
+                        : effectiveRetention.source === 'Unconfigured'
+                        ? 'bg-yellow-100 text-yellow-700'
                         : 'bg-gray-200 text-gray-700'
                     }`}>
                       {effectiveRetention.source}
