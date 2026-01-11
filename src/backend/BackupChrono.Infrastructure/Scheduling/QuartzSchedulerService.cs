@@ -3,6 +3,7 @@ using System.Threading;
 using BackupChrono.Core.Entities;
 using BackupChrono.Core.Interfaces;
 using BackupChrono.Core.ValueObjects;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Quartz;
@@ -18,6 +19,7 @@ public class QuartzSchedulerService : IQuartzSchedulerService
     internal IScheduler? Scheduler => _scheduler;
     private IScheduler? _scheduler;
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IConfiguration? _configuration;
     private readonly ILogger<QuartzSchedulerService> _logger;
     private readonly SemaphoreSlim _schedulerLock = new(1, 1);
     private readonly string _schedulerName;
@@ -25,9 +27,11 @@ public class QuartzSchedulerService : IQuartzSchedulerService
     public QuartzSchedulerService(
         IServiceScopeFactory scopeFactory,
         ILogger<QuartzSchedulerService> logger,
-        string? schedulerName = null)
+        string? schedulerName = null,
+        IConfiguration? configuration = null)
     {
         _scopeFactory = scopeFactory;
+        _configuration = configuration;
         _logger = logger;
         _schedulerName = schedulerName ?? "DefaultQuartzScheduler";
     }
@@ -91,6 +95,9 @@ public class QuartzSchedulerService : IQuartzSchedulerService
 
         // Schedule all devices and shares
         await ScheduleAllBackups();
+
+        // Schedule retention policy job
+        await ScheduleRetentionPolicyJob();
 
         _logger.LogInformation("Quartz scheduler started successfully");
     }
@@ -386,5 +393,51 @@ public class QuartzSchedulerService : IQuartzSchedulerService
         }
 
         return cron;
+    }
+
+    /// <summary>
+    /// Schedules the retention policy job based on configuration.
+    /// </summary>
+    private async Task ScheduleRetentionPolicyJob()
+    {
+        // Skip if configuration is not available (e.g., in unit tests)
+        if (_configuration == null)
+        {
+            _logger.LogDebug("Configuration not available, skipping retention policy job scheduling");
+            return;
+        }
+        
+        var enabled = _configuration.GetValue<bool>("RetentionPolicy:Schedule:Enabled", true);
+        if (!enabled)
+        {
+            _logger.LogInformation("Retention policy scheduling is disabled");
+            return;
+        }
+
+        var cronExpression = _configuration.GetValue<string>("RetentionPolicy:Schedule:CronExpression") ?? "0 0 3 * * ?";
+        var normalizedCron = NormalizeCronExpression(cronExpression);
+
+        var scheduler = await GetSchedulerAsync();
+        var jobKey = new JobKey("retention-policy", "maintenance");
+        var triggerKey = new TriggerKey("retention-policy-trigger", "maintenance");
+
+        // Remove existing job if any
+        if (await scheduler.CheckExists(jobKey))
+        {
+            await scheduler.DeleteJob(jobKey);
+        }
+
+        var job = JobBuilder.Create<RetentionPolicyJob>()
+            .WithIdentity(jobKey)
+            .Build();
+
+        var trigger = TriggerBuilder.Create()
+            .WithIdentity(triggerKey)
+            .WithCronSchedule(normalizedCron)
+            .Build();
+
+        await scheduler.ScheduleJob(job, trigger);
+
+        _logger.LogInformation("Scheduled retention policy job with cron: {Cron}", normalizedCron);
     }
 }

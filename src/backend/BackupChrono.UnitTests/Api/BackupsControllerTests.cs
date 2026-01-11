@@ -5,6 +5,7 @@ using BackupChrono.Core.Interfaces;
 using BackupChrono.Infrastructure.Services;
 using BackupChrono.Infrastructure.Restic;
 using FluentAssertions;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -29,6 +30,10 @@ public class BackupsControllerTests
         _mockLogger = new Mock<ILogger<BackupsController>>();
         var resticOptions = Options.Create(new ResticOptions { RepositoryBasePath = "./repositories" });
         _controller = new BackupsController(_mockResticService.Object, _mockBackupLogService.Object, resticOptions, _mockLogger.Object);
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext()
+        };
     }
 
     [Fact]
@@ -137,15 +142,16 @@ public class BackupsControllerTests
         };
 
         _mockResticService
-            .Setup(s => s.GetBackupDetailComplete(backupId, It.IsAny<string?>()))
+            .Setup(s => s.GetBackupDetailComplete(backupId, It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((backup, metadata, stats));
 
         // Act
         var result = await _controller.GetBackup(backupId);
 
         // Assert
-        var okResult = result.Result.Should().BeOfType<OkObjectResult>().Subject;
-        var returnedBackup = okResult.Value.Should().BeOfType<BackupDetailDto>().Subject;
+        var objectResult = result.Result.Should().BeAssignableTo<ObjectResult>().Subject;
+        objectResult.StatusCode.Should().Be((int)System.Net.HttpStatusCode.OK);
+        var returnedBackup = objectResult.Value.Should().BeOfType<BackupDetailDto>().Subject;
         returnedBackup.Id.Should().Be(backupId);
         returnedBackup.DeviceName.Should().Be("TestDevice");
     }
@@ -156,15 +162,16 @@ public class BackupsControllerTests
         // Arrange
         var backupId = "nonexistent";
         _mockResticService
-            .Setup(s => s.GetBackupDetailComplete(backupId, It.IsAny<string?>()))
+            .Setup(s => s.GetBackupDetailComplete(backupId, It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new KeyNotFoundException($"Backup {backupId} not found"));
 
         // Act
         var result = await _controller.GetBackup(backupId);
 
         // Assert
-        var notFoundResult = result.Result.Should().BeOfType<NotFoundObjectResult>().Subject;
-        var errorResponse = notFoundResult.Value.Should().BeOfType<ErrorResponse>().Subject;
+        var objectResult = result.Result.Should().BeAssignableTo<ObjectResult>().Subject;
+        objectResult.StatusCode.Should().Be((int)System.Net.HttpStatusCode.NotFound);
+        var errorResponse = objectResult.Value.Should().BeOfType<ErrorResponse>().Subject;
         errorResponse.Error.Should().Contain("not found");
     }
 
@@ -174,15 +181,16 @@ public class BackupsControllerTests
         // Arrange
         var backupId = "test456";
         _mockResticService
-            .Setup(s => s.GetBackupDetailComplete(backupId, It.IsAny<string?>()))
+            .Setup(s => s.GetBackupDetailComplete(backupId, It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("repository does not exist"));
 
         // Act
         var result = await _controller.GetBackup(backupId);
 
         // Assert
-        var notFoundResult = result.Result.Should().BeOfType<NotFoundObjectResult>().Subject;
-        var errorResponse = notFoundResult.Value.Should().BeOfType<ErrorResponse>().Subject;
+        var objectResult = result.Result.Should().BeAssignableTo<ObjectResult>().Subject;
+        objectResult.StatusCode.Should().Be((int)System.Net.HttpStatusCode.NotFound);
+        var errorResponse = objectResult.Value.Should().BeOfType<ErrorResponse>().Subject;
         errorResponse.Detail.Should().Contain("repository does not exist");
     }
 

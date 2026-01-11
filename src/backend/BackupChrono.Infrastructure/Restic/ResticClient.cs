@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
@@ -14,6 +15,27 @@ public class ResticClient : IResticClient
     private readonly string _repositoryPath;
     private readonly string _password;
     private readonly ILogger<ResticClient> _logger;
+    
+    // Static dictionary of semaphores per repository path to prevent concurrent restic operations
+    // on the same repository (restic uses exclusive locks that cause deadlocks)
+    private static readonly ConcurrentDictionary<string, SemaphoreSlim> _repositoryLocks = new();
+
+    public static (bool exists, int currentCount) GetRepoLockInfo(string repositoryPath)
+    {
+        if (_repositoryLocks.TryGetValue(repositoryPath, out var sem))
+        {
+            return (true, sem.CurrentCount);
+        }
+        return (false, 1);
+    }
+
+    public static IEnumerable<(string repositoryPath, int currentCount)> GetAllRepoLocks()
+    {
+        foreach (var kvp in _repositoryLocks)
+        {
+            yield return (kvp.Key, kvp.Value.CurrentCount);
+        }
+    }
 
     public string RepositoryPath => _repositoryPath;
 
@@ -39,21 +61,56 @@ public class ResticClient : IResticClient
     /// </summary>
     public async Task<string> ExecuteCommand(string[] args, CancellationToken cancellationToken = default, TimeSpan? timeout = null, Action<string>? onOutputLine = null, string? repositoryPathOverride = null, Action<string>? onErrorLine = null)
     {
-        // Default timeout: 30 minutes for long-running operations
-        var effectiveTimeout = timeout ?? TimeSpan.FromMinutes(30);
-        using var timeoutCts = new CancellationTokenSource(effectiveTimeout);
-        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
-        
         // Set environment variables - use override if provided, otherwise use default
         var effectiveRepositoryPath = repositoryPathOverride ?? _repositoryPath;
         _logger.LogDebug("ExecuteCommand: args={Args}, effectiveRepositoryPath={RepositoryPath}", string.Join(" ", args), effectiveRepositoryPath);
         
+        // Determine if the command is read-only (safe to run concurrently)
+        var cmd = args.Length > 0 ? args[0].ToLowerInvariant() : string.Empty;
+        var isReadOnly = cmd is "snapshots" or "stats" or "ls" or "find" or "cat" or "dump";
+
+        if (isReadOnly)
+        {
+            _logger.LogDebug("Skipping repository lock for read-only command '{Command}' on {RepositoryPath}", cmd, effectiveRepositoryPath);
+            return await ExecuteCommandInternal(args, cancellationToken, timeout, onOutputLine, effectiveRepositoryPath, onErrorLine);
+        }
+
+        // Get or create semaphore for this repository to prevent concurrent access (restic uses exclusive locks)
+        var repoLock = _repositoryLocks.GetOrAdd(effectiveRepositoryPath, _ => new SemaphoreSlim(1, 1));
+        
+        _logger.LogDebug("Waiting for repository lock: {RepositoryPath}", effectiveRepositoryPath);
+        bool lockAcquired = false;
+        try
+        {
+            await repoLock.WaitAsync(cancellationToken);
+            lockAcquired = true;
+            _logger.LogDebug("Acquired repository lock: {RepositoryPath}", effectiveRepositoryPath);
+            
+            return await ExecuteCommandInternal(args, cancellationToken, timeout, onOutputLine, effectiveRepositoryPath, onErrorLine);
+        }
+        finally
+        {
+            if (lockAcquired)
+            {
+                repoLock.Release();
+                _logger.LogDebug("Released repository lock: {RepositoryPath}", effectiveRepositoryPath);
+            }
+        }
+    }
+    
+    private async Task<string> ExecuteCommandInternal(string[] args, CancellationToken cancellationToken, TimeSpan? timeout, Action<string>? onOutputLine, string effectiveRepositoryPath, Action<string>? onErrorLine)
+    {
+        // Default timeout: 30 minutes for long-running operations
+        var effectiveTimeout = timeout ?? TimeSpan.FromMinutes(30);
+        using var timeoutCts = new CancellationTokenSource(effectiveTimeout);
+        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
+
         var startInfo = new ProcessStartInfo
         {
             FileName = _resticPath,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
-            RedirectStandardInput = false,  // Changed from true - we don't need stdin
+            RedirectStandardInput = false,
             UseShellExecute = false,
             CreateNoWindow = true
         };
@@ -65,91 +122,114 @@ public class ResticClient : IResticClient
         }
 
         startInfo.Environment["RESTIC_REPOSITORY"] = effectiveRepositoryPath;
-        startInfo.Environment["RESTIC_PASSWORD"] = _password;
+        startInfo.Environment["RESTIC_PASSWORD"] = _password ?? string.Empty;
 
         using var process = new Process { StartInfo = startInfo };
-        var outputBuilder = new StringBuilder();
-        var errorBuilder = new StringBuilder();
-        var outputLock = new object();
-        var errorLock = new object();
 
-        process.OutputDataReceived += (sender, e) =>
-        {
-            if (e.Data != null)
-            {
-                lock (outputLock)
-                {
-                    outputBuilder.AppendLine(e.Data);
-                }
-                
-                // Invoke callback for each output line if provided
-                onOutputLine?.Invoke(e.Data);
-            }
-        };
-
-        process.ErrorDataReceived += (sender, e) =>
-        {
-            if (e.Data != null)
-            {
-                lock (errorLock)
-                {
-                    errorBuilder.AppendLine(e.Data);
-                }
-
-                // Invoke callback for each error line if provided
-                onErrorLine?.Invoke(e.Data);
-            }
-        };
-
-        process.Start();
-        process.BeginOutputReadLine();
-        process.BeginErrorReadLine();
+        // Two modes:
+        // 1) Progress mode (for backup) uses async line events to stream updates
+        // 2) Simple mode (stats/snapshots) reads streams to end to avoid event-driven hangs
+        var useProgressMode = onOutputLine != null || onErrorLine != null;
 
         try
         {
-            await process.WaitForExitAsync(linkedCts.Token);
+            process.Start();
+            _logger.LogDebug("Process started, PID={ProcessId}", process.Id);
+
+            if (useProgressMode)
+            {
+                var outputBuilder = new StringBuilder();
+                var errorBuilder = new StringBuilder();
+                var outputLock = new object();
+                var errorLock = new object();
+
+                process.OutputDataReceived += (sender, e) =>
+                {
+                    if (e.Data != null)
+                    {
+                        lock (outputLock)
+                        {
+                            outputBuilder.AppendLine(e.Data);
+                        }
+                        onOutputLine?.Invoke(e.Data);
+                    }
+                };
+
+                process.ErrorDataReceived += (sender, e) =>
+                {
+                    if (e.Data != null)
+                    {
+                        lock (errorLock)
+                        {
+                            errorBuilder.AppendLine(e.Data);
+                        }
+                        onErrorLine?.Invoke(e.Data);
+                    }
+                };
+
+                process.BeginOutputReadLine();
+                process.BeginErrorReadLine();
+
+                await process.WaitForExitAsync(linkedCts.Token);
+
+                string output;
+                string error;
+                lock (outputLock) { output = outputBuilder.ToString(); }
+                lock (errorLock)  { error  = errorBuilder.ToString(); }
+
+                _logger.LogInformation("Restic command exit code: {ExitCode}, output length: {OutputLength}, error length: {ErrorLength}", process.ExitCode, output.Length, error.Length);
+
+                if (process.ExitCode != 0)
+                {
+                    _logger.LogError("Restic command failed with exit code {ExitCode}: {Error}", process.ExitCode, error);
+                    throw new InvalidOperationException($"Restic command failed with exit code {process.ExitCode}. Error: {error}");
+                }
+
+                return output;
+            }
+            else
+            {
+                // Simple mode: read stdout/stderr concurrently to avoid deadlock
+                var readOutTask = process.StandardOutput.ReadToEndAsync();
+                var readErrTask = process.StandardError.ReadToEndAsync();
+                
+                var exitTask = process.WaitForExitAsync(linkedCts.Token);
+
+                // Wait for all three tasks concurrently to prevent buffer deadlocks
+                await Task.WhenAll(readOutTask, readErrTask, exitTask);
+
+                var output = readOutTask.Result;
+                var error  = readErrTask.Result;
+
+                _logger.LogInformation("Restic command exit code: {ExitCode}, output length: {OutputLength}, error length: {ErrorLength}", process.ExitCode, output?.Length ?? 0, error?.Length ?? 0);
+
+                if (process.ExitCode != 0)
+                {
+                    _logger.LogError("Restic command failed with exit code {ExitCode}: {Error}", process.ExitCode, error);
+                    throw new InvalidOperationException($"Restic command failed with exit code {process.ExitCode}. Error: {error}");
+                }
+
+                return output ?? string.Empty;
+            }
         }
         catch (OperationCanceledException)
         {
-            // Kill the process if it's still running
             try
             {
                 if (!process.HasExited)
                 {
                     process.Kill(entireProcessTree: true);
-                    // Give it a moment to clean up
                     await Task.Delay(500);
                 }
             }
-            catch
-            {
-                // Ignore errors during kill
-            }
+            catch { }
 
             if (timeoutCts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
             {
                 throw new TimeoutException($"Restic command timed out after {effectiveTimeout.TotalMinutes:F1} minutes");
             }
-            
             throw;
         }
-
-        string output;
-        string error;
-        
-        lock (outputLock) { output = outputBuilder.ToString(); }
-        lock (errorLock) { error = errorBuilder.ToString(); }
-
-        _logger.LogInformation("Restic command exit code: {ExitCode}, output length: {OutputLength}, error length: {ErrorLength}", process.ExitCode, output.Length, error.Length);
-
-        if (process.ExitCode != 0)
-        {
-            _logger.LogError("Restic command failed with exit code {ExitCode}: {Error}", process.ExitCode, error);
-            throw new InvalidOperationException(
-                $"Restic command failed with exit code {process.ExitCode}. Error: {error}");
-        }
-
-        return output;
     }
 
     /// <summary>

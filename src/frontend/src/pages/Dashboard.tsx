@@ -2,11 +2,13 @@
 import { RefreshCw, AlertTriangle } from 'lucide-react';
 import { dashboardService } from '../services/dashboardService';
 import { backupService } from '../services/deviceService';
+import { retentionService } from '../services/retentionService';
+import { RetentionPanel } from '../components/RetentionPanel';
 import { DashboardHeader } from '../components/DashboardHeader';
 import { DashboardMetrics } from '../components/DashboardMetrics';
 import { ActiveJobsTable } from '../components/ActiveJobsTable';
 import { RecentlyCompletedTable } from '../components/RecentlyCompletedTable';
-import { BackupJob, Backup, BackupStatus } from '../types';
+import { BackupJob, Backup, BackupStatus, RetentionLastRun, RetentionRunResult } from '../types';
 
 export default function Dashboard() {
   const [loading, setLoading] = useState(true);
@@ -27,6 +29,11 @@ export default function Dashboard() {
   });
   const [activeJobs, setActiveJobs] = useState<BackupJob[]>([]);
   const [recentBackups, setRecentBackups] = useState<Backup[]>([]);
+  const [retentionLastRun, setRetentionLastRun] = useState<RetentionLastRun | null>(null);
+  const [retentionResults, setRetentionResults] = useState<RetentionRunResult[]>([]);
+  const [retentionRunning, setRetentionRunning] = useState(false);
+  const [retentionSummaryLoading, setRetentionSummaryLoading] = useState(true);
+  const [retentionError, setRetentionError] = useState<string | null>(null);
 
   const loadDashboardData = async () => {
     try {
@@ -56,14 +63,57 @@ export default function Dashboard() {
     }
   };
 
+  const loadRetentionSummary = async () => {
+    try {
+      setRetentionSummaryLoading(true);
+      const summary = await retentionService.getLastRun();
+      setRetentionLastRun(summary);
+      setRetentionError(null);
+    } catch (err: any) {
+      console.error('Failed to load retention summary:', err);
+      const isNetworkError = !err.response;
+      const errorMessage = isNetworkError 
+        ? 'Unable to connect to backend server'
+        : `Failed to load retention summary: ${err.response?.data?.message || err.message}`;
+      setRetentionError(errorMessage);
+    } finally {
+      setRetentionSummaryLoading(false);
+    }
+  };
+
+  const handleRunRetention = async (dryRun = false) => {
+    try {
+      setRetentionRunning(true);
+      setRetentionError(null);
+      const results = await retentionService.runRetention(dryRun);
+      setRetentionResults(results);
+      await loadRetentionSummary();
+    } catch (err: any) {
+      console.error('Failed to execute retention policy:', err);
+      const isNetworkError = !err.response;
+      const errorMessage = isNetworkError
+        ? 'Unable to connect to backend server'
+        : `Retention policy execution failed: ${err.response?.data?.detail || err.response?.data?.error || err.message}`;
+      setRetentionError(errorMessage);
+    } finally {
+      setRetentionRunning(false);
+    }
+  };
+
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadDashboardData();
+    loadRetentionSummary();
     
     // Refresh data every 5 seconds
     const dataInterval = setInterval(() => {
       loadDashboardData();
     }, 5000);
+
+    // Refresh retention summary every minute
+    const retentionInterval = setInterval(() => {
+      loadRetentionSummary();
+    }, 60000);
 
     // Check connection status every second
     const connectionCheckInterval = setInterval(() => {
@@ -74,6 +124,7 @@ export default function Dashboard() {
     return () => {
       clearInterval(dataInterval);
       clearInterval(connectionCheckInterval);
+      clearInterval(retentionInterval);
     };
   }, []); // Empty dependency array - only run once on mount
 
@@ -181,6 +232,15 @@ export default function Dashboard() {
         failedJobs={stats.failedJobs}
         avgSpeed={stats.avgSpeed}
         dataToday={stats.dataToday}
+      />
+
+      <RetentionPanel
+        lastRun={retentionLastRun}
+        recentResults={retentionResults}
+        onRunRetention={handleRunRetention}
+        running={retentionRunning}
+        loadingSummary={retentionSummaryLoading}
+        error={retentionError}
       />
 
       {/* Active Backup Jobs Section */}
