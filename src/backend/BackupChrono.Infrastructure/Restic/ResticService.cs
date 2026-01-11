@@ -866,23 +866,6 @@ public class ResticService : IResticService
         return Task.FromResult(Enumerable.Empty<FileVersion>());
     }
 
-    public async Task ApplyRetentionPolicy(string deviceName, RetentionPolicy policy)
-    {
-        var args = new List<string>
-        {
-            "forget",
-            "--host", deviceName,
-            "--keep-last", policy.KeepLatest.ToString(),
-            "--keep-daily", policy.KeepDaily.ToString(),
-            "--keep-weekly", policy.KeepWeekly.ToString(),
-            "--keep-monthly", policy.KeepMonthly.ToString(),
-            "--keep-yearly", policy.KeepYearly.ToString(),
-            "--prune"
-        };
-
-        await _client.ExecuteCommand(args.ToArray());
-    }
-
     public async Task<byte[]> DumpFile(string backupId, string filePath, string? repositoryPath = null)
     {
         try

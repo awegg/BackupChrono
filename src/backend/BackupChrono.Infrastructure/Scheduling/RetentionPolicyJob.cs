@@ -32,7 +32,7 @@ public class RetentionPolicyJob : IJob
             
             var totalPruned = results.Sum(r => r.SnapshotsPruned);
             var totalReclaimed = results.Sum(r => r.SpaceReclaimedBytes);
-            var errorCount = results.Count(r => !string.IsNullOrEmpty(r.Error));
+            var errorCount = results.Count(r => !string.IsNullOrWhiteSpace(r.Error));
 
             _logger.LogInformation(
                 "Retention policy job completed: {JobId}, {Devices} devices processed, {Pruned} snapshots pruned, {Reclaimed} bytes reclaimed, {Errors} errors",

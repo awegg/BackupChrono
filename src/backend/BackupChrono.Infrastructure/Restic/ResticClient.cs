@@ -67,7 +67,7 @@ public class ResticClient : IResticClient
         
         // Determine if the command is read-only (safe to run concurrently)
         var cmd = args.Length > 0 ? args[0].ToLowerInvariant() : string.Empty;
-        var isReadOnly = cmd is "snapshots" or "stats" or "ls" or "find" or "cat";
+        var isReadOnly = cmd is "snapshots" or "stats" or "ls" or "find" or "cat" or "dump";
 
         if (isReadOnly)
         {

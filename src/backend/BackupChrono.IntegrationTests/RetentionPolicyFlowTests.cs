@@ -1,12 +1,8 @@
 using System.Net;
 using System.Net.Http.Json;
-using System.Linq;
 using BackupChrono.Core.DTOs;
-using BackupChrono.Core.Interfaces;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Extensions.DependencyInjection;
-using Moq;
 using Xunit;
 
 namespace BackupChrono.IntegrationTests;
@@ -39,7 +35,6 @@ public class RetentionPolicyFlowTests : IAsyncLifetime
         var payload = await response.Content.ReadFromJsonAsync<List<RetentionRunResult>>();
         payload.Should().NotBeNull();
         // Results may be empty if no devices configured, which is OK for integration test
-        payload.Should().BeOfType<List<RetentionRunResult>>();
     }
 
     [Fact]

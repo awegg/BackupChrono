@@ -122,13 +122,6 @@ public interface IResticService
     /// </summary>
     Task<IEnumerable<FileVersion>> GetFileHistory(string deviceName, string filePath);
 
-    // Retention
-
-    /// <summary>
-    /// Applies retention policy to remove old backups.
-    /// </summary>
-    Task ApplyRetentionPolicy(string deviceName, RetentionPolicy policy);
-
     // Restore
 
     /// <summary>

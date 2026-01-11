@@ -10,8 +10,11 @@ export const retentionService = {
   async runRetention(dryRun: boolean = false): Promise<RetentionRunResult[]> {
     const response = await apiClient.post<RetentionRunResult[]>(
       '/api/retention-policy/execute',
-      null,
-      { params: { dryRun } }
+      undefined,
+      { 
+        params: { dryRun },
+        timeout: 300000 // 5 minutes for retention operations (restic prune can be slow)
+      }
     );
     return response.data;
   },

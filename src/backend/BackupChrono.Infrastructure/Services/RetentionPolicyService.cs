@@ -22,8 +22,8 @@ public class RetentionPolicyService : IRetentionPolicyService
     private readonly string _logFilePath;
     private readonly string _lastRunFilePath;
 
-    private static RetentionLastRun? _lastRun = null;
-    private static readonly object _lastRunLock = new();
+    private RetentionLastRun? _lastRun = null;
+    private readonly object _lastRunLock = new();
 
     public RetentionPolicyService(
         IResticService resticService,
@@ -45,8 +45,8 @@ public class RetentionPolicyService : IRetentionPolicyService
         _logFilePath = Path.Combine(logDirectory, "retention-policy.jsonl");
         _lastRunFilePath = Path.Combine(logDirectory, "retention-last-run.json");
         
-        // Load last run from file on startup
-        _ = LoadLastRunFromFile();
+        // Load last run from file on startup (synchronous to ensure it completes before constructor returns)
+        LoadLastRunFromFileSync();
     }
 
     public async Task<IEnumerable<RetentionRunResult>> ApplyForAll(bool dryRun = false, CancellationToken cancellationToken = default)
@@ -246,13 +246,13 @@ public class RetentionPolicyService : IRetentionPolicyService
     /// <summary>
     /// Loads last run summary from file.
     /// </summary>
-    private async Task LoadLastRunFromFile()
+    private void LoadLastRunFromFileSync()
     {
         try
         {
             if (File.Exists(_lastRunFilePath))
             {
-                var json = await File.ReadAllTextAsync(_lastRunFilePath);
+                var json = File.ReadAllText(_lastRunFilePath);
                 var lastRun = JsonSerializer.Deserialize<RetentionLastRun>(json);
                 lock (_lastRunLock)
                 {
@@ -291,7 +291,7 @@ public class RetentionPolicyService : IRetentionPolicyService
     {
         try
         {
-            foreach (var result in results)
+            var logLines = results.Select(result =>
             {
                 var logEntry = new
                 {
@@ -303,12 +303,15 @@ public class RetentionPolicyService : IRetentionPolicyService
                     durationSeconds = result.Duration.TotalSeconds,
                     snapshotsPruned = result.SnapshotsPruned,
                     spaceReclaimedBytes = result.SpaceReclaimedBytes,
-                    success = string.IsNullOrEmpty(result.Error),
+                    success = string.IsNullOrWhiteSpace(result.Error),
                     error = result.Error
                 };
+                return JsonSerializer.Serialize(logEntry);
+            }).ToList();
 
-                var json = JsonSerializer.Serialize(logEntry);
-                await File.AppendAllLinesAsync(_logFilePath, new[] { json });
+            if (logLines.Any())
+            {
+                await File.AppendAllLinesAsync(_logFilePath, logLines);
             }
 
             _logger.LogDebug("Written {Count} retention results to {LogFile}", results.Count(), _logFilePath);

@@ -35,13 +35,13 @@ export interface RetentionPolicy {
 
 export interface RetentionRunResult {
   deviceName: string;
-  shareName?: string;
+  shareName: string | null;
   snapshotsPruned: number;
   spaceReclaimedBytes: number;
   startTime: string;
   endTime: string;
   duration: string;
-  error?: string;
+  error: string | null;
 }
 
 export interface RetentionLastRun {

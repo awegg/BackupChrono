@@ -62,7 +62,7 @@ public class RetentionPolicyJobTests
     }
 
     [Fact]
-    public async Task Execute_LogsResultSummary()
+    public async Task Execute_CompletesWithMixedResults()
     {
         // Arrange
         var results = new List<RetentionRunResult>

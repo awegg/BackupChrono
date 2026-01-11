@@ -19,7 +19,7 @@ public class QuartzSchedulerService : IQuartzSchedulerService
     internal IScheduler? Scheduler => _scheduler;
     private IScheduler? _scheduler;
     private readonly IServiceScopeFactory _scopeFactory;
-        private readonly IConfiguration? _configuration;
+    private readonly IConfiguration? _configuration;
     private readonly ILogger<QuartzSchedulerService> _logger;
     private readonly SemaphoreSlim _schedulerLock = new(1, 1);
     private readonly string _schedulerName;
@@ -31,7 +31,7 @@ public class QuartzSchedulerService : IQuartzSchedulerService
         IConfiguration? configuration = null)
     {
         _scopeFactory = scopeFactory;
-            _configuration = configuration;
+        _configuration = configuration;
         _logger = logger;
         _schedulerName = schedulerName ?? "DefaultQuartzScheduler";
     }
@@ -414,7 +414,7 @@ public class QuartzSchedulerService : IQuartzSchedulerService
             return;
         }
 
-    var cronExpression = _configuration.GetValue<string>("RetentionPolicy:Schedule:CronExpression") ?? "0 0 3 * * ?";
+        var cronExpression = _configuration.GetValue<string>("RetentionPolicy:Schedule:CronExpression") ?? "0 0 3 * * ?";
         var normalizedCron = NormalizeCronExpression(cronExpression);
 
         var scheduler = await GetSchedulerAsync();
