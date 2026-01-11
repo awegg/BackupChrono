@@ -22,7 +22,7 @@ public class SmbPlugin : IProtocolPlugin
 
     public bool RequiresAuthentication => true;
 
-    public Task<bool> TestConnection(Device device)
+    public async Task<bool> TestConnection(Device device)
     {
         // Use SMBLibrary for cross-platform connection testing
         // Note: SMBLibrary Connect() doesn't support custom ports - it always uses 445
@@ -30,23 +30,36 @@ public class SmbPlugin : IProtocolPlugin
         var client = new SMB2Client();
         try
         {
-            var connected = client.Connect(device.Host, SMBTransportType.DirectTCPTransport);
+            // Wrap connection in timeout to prevent hanging on unreachable hosts
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            var connectTask = Task.Run(() => client.Connect(device.Host, SMBTransportType.DirectTCPTransport), cts.Token);
+            
+            bool connected;
+            try
+            {
+                connected = await connectTask;
+            }
+            catch (OperationCanceledException)
+            {
+                return false; // Timeout - host unreachable
+            }
+
             if (!connected)
             {
-                return Task.FromResult(false);
+                return false;
             }
 
             var status = client.Login(string.Empty, device.Username, device.Password.GetPlaintext());
             if (status != NTStatus.STATUS_SUCCESS)
             {
-                return Task.FromResult(false);
+                return false;
             }
 
-            return Task.FromResult(true);
+            return true;
         }
         catch (Exception)
         {
-            return Task.FromResult(false);
+            return false;
         }
         finally
         {
