@@ -428,7 +428,7 @@ export function AddShareDialog({ open, onClose, device, onCreated, editingShare 
                             type="number"
                             value={retentionLatest}
                             onChange={(e) => setRetentionLatest(e.target.value)}
-                            placeholder={deviceConfig.retention.latest.toString()}
+                            placeholder={deviceConfig.retention?.keepLatest?.toString() ?? ''}
                             className="w-full px-2 py-1 border border-gray-300 rounded text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           />
                         </div>
@@ -438,7 +438,7 @@ export function AddShareDialog({ open, onClose, device, onCreated, editingShare 
                             type="number"
                             value={retentionDaily}
                             onChange={(e) => setRetentionDaily(e.target.value)}
-                            placeholder={deviceConfig.retention.daily.toString()}
+                            placeholder={deviceConfig.retention?.keepDaily?.toString() ?? ''}
                             className="w-full px-2 py-1 border border-gray-300 rounded text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           />
                         </div>
@@ -448,7 +448,7 @@ export function AddShareDialog({ open, onClose, device, onCreated, editingShare 
                             type="number"
                             value={retentionWeekly}
                             onChange={(e) => setRetentionWeekly(e.target.value)}
-                            placeholder={deviceConfig.retention.weekly.toString()}
+                            placeholder={deviceConfig.retention?.keepWeekly?.toString() ?? ''}
                             className="w-full px-2 py-1 border border-gray-300 rounded text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           />
                         </div>
@@ -458,7 +458,7 @@ export function AddShareDialog({ open, onClose, device, onCreated, editingShare 
                             type="number"
                             value={retentionMonthly}
                             onChange={(e) => setRetentionMonthly(e.target.value)}
-                            placeholder={deviceConfig.retention.monthly.toString()}
+                            placeholder={deviceConfig.retention?.keepMonthly?.toString() ?? ''}
                             className="w-full px-2 py-1 border border-gray-300 rounded text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           />
                         </div>
@@ -468,7 +468,7 @@ export function AddShareDialog({ open, onClose, device, onCreated, editingShare 
                             type="number"
                             value={retentionYearly}
                             onChange={(e) => setRetentionYearly(e.target.value)}
-                            placeholder={deviceConfig.retention.yearly.toString()}
+                            placeholder={deviceConfig.retention?.keepYearly?.toString() ?? ''}
                             className="w-full px-2 py-1 border border-gray-300 rounded text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           />
                         </div>

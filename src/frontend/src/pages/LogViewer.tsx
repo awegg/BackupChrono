@@ -1,6 +1,5 @@
+import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useState, useEffect } from 'react';
-import React from 'react';
 import { Search, Filter, RefreshCw } from 'lucide-react';
 import { LogEntry, LogQueryParameters } from '../types/Log';
 import { apiClient } from '../services/api';
@@ -60,21 +59,21 @@ export default function LogViewer() {
     }
   };
 
-  const highlightMessage = (message: string): JSX.Element => {
-    // Regex patterns for highlighting (split patterns use /g, test patterns don't)
+  const highlightMessage = (message: string): React.ReactElement => {
+    // Regex patterns for highlighting
     const urlPattern = /(https?:\/\/[^\s]+|\/[^\s]*)/g;
     const httpMethodPattern = /\b(GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)\b/g;
     const statusCodePattern = /\b(200|201|204|400|401|403|404|500|502|503)\b/g;
     const numberPattern = /\b(\d+(?:\.\d+)?(?:ms|s|KB|MB|GB)?)\b/g;
     
-    let parts: (string | JSX.Element)[] = [message];
+    let parts: (string | React.ReactElement)[] = [message];
     
     // Highlight URLs and paths
     parts = parts.flatMap((part, idx) => {
       if (typeof part !== 'string') return part;
       const segments = part.split(urlPattern);
       return segments.map((segment, i) => {
-        if (/https?:\/\/[^\s]+|\/[^\s]*/.test(segment)) {
+        if (urlPattern.test(segment)) {
           return <span key={`url-${idx}-${i}`} className="text-cyan-600 dark:text-cyan-400">{segment}</span>;
         }
         return segment;
@@ -86,7 +85,7 @@ export default function LogViewer() {
       if (typeof part !== 'string') return part;
       const segments = part.split(httpMethodPattern);
       return segments.map((segment, i) => {
-        if (/\b(GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)\b/.test(segment)) {
+        if (httpMethodPattern.test(segment)) {
           return <span key={`method-${idx}-${i}`} className="text-green-600 dark:text-green-400 font-semibold">{segment}</span>;
         }
         return segment;
@@ -98,7 +97,7 @@ export default function LogViewer() {
       if (typeof part !== 'string') return part;
       const segments = part.split(statusCodePattern);
       return segments.map((segment, i) => {
-        if (/\b(200|201|204|400|401|403|404|500|502|503)\b/.test(segment)) {
+        if (statusCodePattern.test(segment)) {
           const code = parseInt(segment);
           const colorClass = code >= 200 && code < 300 
             ? 'text-green-600 dark:text-green-400' 
@@ -116,7 +115,7 @@ export default function LogViewer() {
       if (typeof part !== 'string') return part;
       const segments = part.split(numberPattern);
       return segments.map((segment, i) => {
-        if (/\b(\d+(?:\.\d+)?(?:ms|s|KB|MB|GB)?)\b/.test(segment)) {
+        if (numberPattern.test(segment)) {
           return <span key={`num-${idx}-${i}`} className="text-purple-600 dark:text-purple-400">{segment}</span>;
         }
         return segment;
