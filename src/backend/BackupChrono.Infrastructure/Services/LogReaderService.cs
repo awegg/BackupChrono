@@ -213,7 +213,7 @@ public class LogReaderService : ILogReaderService
             return false;
         }
 
-        if (parameters.EndDate.HasValue && entry.Timestamp > parameters.EndDate.Value)
+        if (parameters.EndDate.HasValue && entry.Timestamp >= parameters.EndDate.Value)
         {
             return false;
         }
