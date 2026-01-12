@@ -60,7 +60,7 @@ export default function LogViewer() {
   };
 
   const highlightMessage = (message: string): React.ReactElement => {
-    // Regex patterns for highlighting
+    // Regex patterns for highlighting (split patterns use /g, test patterns don't)
     const urlPattern = /(https?:\/\/[^\s]+|\/[^\s]*)/g;
     const httpMethodPattern = /\b(GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)\b/g;
     const statusCodePattern = /\b(200|201|204|400|401|403|404|500|502|503)\b/g;
@@ -73,7 +73,7 @@ export default function LogViewer() {
       if (typeof part !== 'string') return part;
       const segments = part.split(urlPattern);
       return segments.map((segment, i) => {
-        if (urlPattern.test(segment)) {
+        if (/https?:\/\/[^\s]+|\/[^\s]*/.test(segment)) {
           return <span key={`url-${idx}-${i}`} className="text-cyan-600 dark:text-cyan-400">{segment}</span>;
         }
         return segment;
@@ -85,7 +85,7 @@ export default function LogViewer() {
       if (typeof part !== 'string') return part;
       const segments = part.split(httpMethodPattern);
       return segments.map((segment, i) => {
-        if (httpMethodPattern.test(segment)) {
+        if (/\b(GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)\b/.test(segment)) {
           return <span key={`method-${idx}-${i}`} className="text-green-600 dark:text-green-400 font-semibold">{segment}</span>;
         }
         return segment;
@@ -97,7 +97,7 @@ export default function LogViewer() {
       if (typeof part !== 'string') return part;
       const segments = part.split(statusCodePattern);
       return segments.map((segment, i) => {
-        if (statusCodePattern.test(segment)) {
+        if (/\b(200|201|204|400|401|403|404|500|502|503)\b/.test(segment)) {
           const code = parseInt(segment);
           const colorClass = code >= 200 && code < 300 
             ? 'text-green-600 dark:text-green-400' 
@@ -115,7 +115,7 @@ export default function LogViewer() {
       if (typeof part !== 'string') return part;
       const segments = part.split(numberPattern);
       return segments.map((segment, i) => {
-        if (numberPattern.test(segment)) {
+        if (/\b(\d+(?:\.\d+)?(?:ms|s|KB|MB|GB)?)\b/.test(segment)) {
           return <span key={`num-${idx}-${i}`} className="text-purple-600 dark:text-purple-400">{segment}</span>;
         }
         return segment;
