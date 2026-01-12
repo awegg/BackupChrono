@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Search, Filter, RefreshCw } from 'lucide-react';
 import { LogEntry, LogQueryParameters } from '../types/Log';
 import { apiClient } from '../services/api';
+import { useDebouncedValue } from '../hooks/useDebouncedValue';
 
 export default function LogViewer() {
   const [search, setSearch] = useState('');
@@ -10,8 +11,11 @@ export default function LogViewer() {
   const [limit, setLimit] = useState(100);
   const [autoRefresh, setAutoRefresh] = useState(false);
 
+  // Debounce search to reduce API calls on every keystroke
+  const debouncedSearch = useDebouncedValue(search, 300);
+
   const queryParams: LogQueryParameters = {
-    search: search || undefined,
+    search: debouncedSearch || undefined,
     level: level || undefined,
     limit,
   };
