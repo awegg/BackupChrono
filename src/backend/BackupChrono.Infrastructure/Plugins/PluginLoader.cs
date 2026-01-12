@@ -1,5 +1,7 @@
 using BackupChrono.Core.Entities;
 using BackupChrono.Core.Interfaces;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace BackupChrono.Infrastructure.Plugins;
 
@@ -10,11 +12,11 @@ public class PluginLoader
 {
     private readonly Dictionary<ProtocolType, IProtocolPlugin> _plugins = new();
 
-    public PluginLoader()
+    public PluginLoader(IServiceProvider serviceProvider)
     {
         // Register built-in plugins
         RegisterPlugin(new SmbPlugin());
-        RegisterPlugin(new SshPlugin());
+        RegisterPlugin(serviceProvider.GetRequiredService<SshPlugin>());
         RegisterPlugin(new RsyncPlugin());
     }
 
