@@ -37,13 +37,14 @@ interface AddShareDialogProps {
 const getDeviceConfig = (device: DeviceLike) => ({
   schedule: device.schedule || '0 2 * * *',
   scheduleDesc: device.schedule ? 'Device schedule' : '2 AM daily (global)',
-  retention: {
-    latest: device.retentionPolicy?.keepLatest ?? 7,
-    daily: device.retentionPolicy?.keepDaily ?? 7,
-    weekly: device.retentionPolicy?.keepWeekly ?? 4,
-    monthly: 12,
-    yearly: 3,
-  },
+  retention: device.retentionPolicy || null,
+  hasRetentionPolicy: !!device.retentionPolicy && (
+    device.retentionPolicy.keepLatest !== undefined ||
+    device.retentionPolicy.keepDaily !== undefined ||
+    device.retentionPolicy.keepWeekly !== undefined ||
+    device.retentionPolicy.keepMonthly !== undefined ||
+    device.retentionPolicy.keepYearly !== undefined
+  ),
 });
 
 export function AddShareDialog({ open, onClose, device, onCreated, editingShare }: AddShareDialogProps) {
@@ -252,8 +253,18 @@ export function AddShareDialog({ open, onClose, device, onCreated, editingShare 
   const effectiveScheduleSource = schedule ? 'Share' : 'Device';
 
   const hasRetentionOverride = retentionLatest || retentionDaily || retentionWeekly || retentionMonthly || retentionYearly;
-  const effectiveRetention = `${retentionLatest || deviceConfig.retention.latest}/${retentionDaily || deviceConfig.retention.daily}/${retentionWeekly || deviceConfig.retention.weekly}/${retentionMonthly || deviceConfig.retention.monthly}/${retentionYearly || deviceConfig.retention.yearly}`;
-  const effectiveRetentionSource = hasRetentionOverride ? 'Share' : 'Device';
+  
+  const effectiveRetention = (() => {
+    if (hasRetentionOverride) {
+      return `${retentionLatest || '-'}/${retentionDaily || '-'}/${retentionWeekly || '-'}/${retentionMonthly || '-'}/${retentionYearly || '-'}`;
+    }
+    if (deviceConfig.hasRetentionPolicy && deviceConfig.retention) {
+      return `${deviceConfig.retention.keepLatest ?? '-'}/${deviceConfig.retention.keepDaily ?? '-'}/${deviceConfig.retention.keepWeekly ?? '-'}/${deviceConfig.retention.keepMonthly ?? '-'}/${deviceConfig.retention.keepYearly ?? '-'}`;
+    }
+    return 'Not configured';
+  })();
+  
+  const effectiveRetentionSource = hasRetentionOverride ? 'Share' : deviceConfig.hasRetentionPolicy ? 'Device' : 'Unconfigured';
 
   const hasPatternsOverride = includePatterns || excludePatterns;
   const effectiveIncludeCount = includePatterns ? includePatterns.split('\n').filter(p => p.trim()).length : 1;
@@ -417,7 +428,7 @@ export function AddShareDialog({ open, onClose, device, onCreated, editingShare 
                             type="number"
                             value={retentionLatest}
                             onChange={(e) => setRetentionLatest(e.target.value)}
-                            placeholder={deviceConfig.retention.latest.toString()}
+                            placeholder={deviceConfig.retention?.keepLatest?.toString() ?? ''}
                             className="w-full px-2 py-1 border border-gray-300 rounded text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           />
                         </div>
@@ -427,7 +438,7 @@ export function AddShareDialog({ open, onClose, device, onCreated, editingShare 
                             type="number"
                             value={retentionDaily}
                             onChange={(e) => setRetentionDaily(e.target.value)}
-                            placeholder={deviceConfig.retention.daily.toString()}
+                            placeholder={deviceConfig.retention?.keepDaily?.toString() ?? ''}
                             className="w-full px-2 py-1 border border-gray-300 rounded text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           />
                         </div>
@@ -437,7 +448,7 @@ export function AddShareDialog({ open, onClose, device, onCreated, editingShare 
                             type="number"
                             value={retentionWeekly}
                             onChange={(e) => setRetentionWeekly(e.target.value)}
-                            placeholder={deviceConfig.retention.weekly.toString()}
+                            placeholder={deviceConfig.retention?.keepWeekly?.toString() ?? ''}
                             className="w-full px-2 py-1 border border-gray-300 rounded text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           />
                         </div>
@@ -447,7 +458,7 @@ export function AddShareDialog({ open, onClose, device, onCreated, editingShare 
                             type="number"
                             value={retentionMonthly}
                             onChange={(e) => setRetentionMonthly(e.target.value)}
-                            placeholder={deviceConfig.retention.monthly.toString()}
+                            placeholder={deviceConfig.retention?.keepMonthly?.toString() ?? ''}
                             className="w-full px-2 py-1 border border-gray-300 rounded text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           />
                         </div>
@@ -457,7 +468,7 @@ export function AddShareDialog({ open, onClose, device, onCreated, editingShare 
                             type="number"
                             value={retentionYearly}
                             onChange={(e) => setRetentionYearly(e.target.value)}
-                            placeholder={deviceConfig.retention.yearly.toString()}
+                            placeholder={deviceConfig.retention?.keepYearly?.toString() ?? ''}
                             className="w-full px-2 py-1 border border-gray-300 rounded text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           />
                         </div>
@@ -559,6 +570,8 @@ export function AddShareDialog({ open, onClose, device, onCreated, editingShare 
                     <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium border ${
                       effectiveRetentionSource === 'Share'
                         ? 'bg-green-100 border-green-300 text-green-700'
+                        : effectiveRetentionSource === 'Unconfigured'
+                        ? 'bg-yellow-100 border-yellow-300 text-yellow-700'
                         : 'bg-blue-100 border-blue-300 text-blue-700'
                     }`}>
                       {effectiveRetentionSource}

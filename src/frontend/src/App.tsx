@@ -10,6 +10,7 @@ import { DevicesPage } from './pages/DevicesPage';
 import { FileBrowserPage } from './pages/FileBrowserPage';
 import { BackupLogViewerPage } from './pages/BackupLogViewerPage';
 import { BackupOverviewPage } from './pages/BackupOverviewPage';
+import LogViewer from './pages/LogViewer';
 import { ErrorNotification } from './components/ErrorNotification';
 import { Sidebar } from './components/Sidebar';
 import './App.css';
@@ -53,6 +54,7 @@ function App() {
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/backups" element={<BackupOverviewPage />} />
                 <Route path="/monitor" element={<Dashboard />} />
+                <Route path="/logs" element={<LogViewer />} />
                 <Route path="/devices" element={<DevicesPage />} />
                 <Route path="/devices/:deviceId" element={<DeviceDetail />} />
                 <Route path="/devices/:deviceId/backups" element={<BackupsListPage />} />

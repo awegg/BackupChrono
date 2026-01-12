@@ -183,6 +183,15 @@ This document organizes implementation tasks by **user story** to enable indepen
 
 - [ ] T060A [US1] [Non-blocking][Phase 3.5 Observability add-on] Add backup job log storage and retrieval: Add LogOutput to BackupJob entity, create GET /api/backup-jobs/{id}/logs endpoint, build LogViewerDialog component with "View Logs" buttons in UI
 
+**Application Log Viewer (MVP Observability)** ✅ **COMPLETE**:
+- [X] T217A [MVP] [MinUI] Create LogsController in BackupChrono.Api/Controllers/LogsController.cs with GET /api/logs endpoint supporting query parameters: level (Info/Warning/Error), search (text filter), limit (default 100, max 1000), startDate, endDate
+- [X] T217B [MVP] [MinUI] Implement LogReaderService in BackupChrono.Infrastructure/Services/LogReaderService.cs to read Serilog log files from logs/ directory, parse log entries, and filter/search by parameters
+- [X] T217C [MVP] [MinUI] Create LogViewer page component in src/frontend/src/pages/LogViewer.tsx with search bar, level filter dropdown (All/Info/Warning/Error), date range picker, and scrollable log display
+- [X] T217D [MVP] [MinUI] Add log entry TypeScript interface in src/frontend/src/types/Log.ts with timestamp, level, message, exception fields
+- [X] T217E [MVP] [MinUI] Add "Logs" navigation item in sidebar linking to /logs route
+- [X] T217F [MVP] [MinUI] Add auto-refresh toggle in LogViewer with 5-second interval option for live log monitoring
+- [X] T217G [MVP] [MinUI] Add color-coded log levels in UI (Error=red, Warning=yellow, Info=blue) with monospace font for log messages
+
 - [X] T201 [P] [MinUI] Initialize React 18 project in src/frontend/ with Vite, TypeScript, Tailwind CSS
 - [X] T202 [P] [MinUI] Install minimal dependencies: react-router-dom, axios, @tanstack/react-query, lucide-react
 - [X] T203 [P] [MinUI] Create API client in src/frontend/src/services/api.ts with axios configured for backend

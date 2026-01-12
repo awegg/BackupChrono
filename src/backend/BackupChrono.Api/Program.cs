@@ -149,6 +149,9 @@ builder.Services.AddSingleton<BackupExecutionLogRepository>(sp =>
 // Backup log service with persistence
 builder.Services.AddSingleton<IBackupLogService, InMemoryBackupLogService>();
 
+// Log reader service
+builder.Services.AddSingleton<ILogReaderService, LogReaderService>();
+
 // Protocol plugins
 builder.Services.AddSingleton<SmbPlugin>();
 builder.Services.AddSingleton<SshPlugin>();
